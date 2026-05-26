@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../stores/store";
 import api, {
   deliveryService,
   userService,
   orderService,
 } from "../services/api";
-import { Truck, MapPin, CheckCircle, Clock, Star } from "lucide-react";
+import { Truck, MapPin, CheckCircle, Clock, Star, Map as MapIcon } from "lucide-react";
+
+const DeliveryMap = lazy(() => import("../components/DeliveryMap"));
 
 const COMISSAO = 0.03;
 
@@ -61,6 +63,77 @@ function statusBadgeClass(status) {
   return map[status] || "bg-gray-100 text-gray-700";
 }
 
+function statusLabel(status) {
+  const map = {
+    disponivel: "Disponível",
+    aceita: "Aceita",
+    coletando: "Coletando",
+    coletada: "Coletada",
+    em_transito: "Em trânsito",
+    entregue: "Entregue",
+    cancelada: "Cancelada",
+  };
+  return map[status] || status || "—";
+}
+
+function pointToLatLng(location) {
+  const coords = location?.coordinates;
+  if (!Array.isArray(coords) || coords.length !== 2) return null;
+  const [lng, lat] = coords.map(Number);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return [lat, lng];
+}
+
+function historyPointToLatLng(item) {
+  const lat = Number(item?.localizacao?.latitude);
+  const lng = Number(item?.localizacao?.longitude);
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null;
+  return [lat, lng];
+}
+
+function getRouteHistory(delivery) {
+  return [...(delivery?.historico_status || [])].sort(
+    (a, b) => new Date(a.alterado_em || 0) - new Date(b.alterado_em || 0),
+  );
+}
+
+function latestRoutePoint(delivery) {
+  const history = getRouteHistory(delivery);
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const point = historyPointToLatLng(history[i]);
+    if (point) return point;
+  }
+  return null;
+}
+
+function getMapData(delivery) {
+  const pharmacyLocation = pointToLatLng(delivery?.endereco_coleta?.location);
+  const destinationLocation = pointToLatLng(delivery?.endereco_entrega?.location);
+  const driverLocation =
+    latestRoutePoint(delivery) ||
+    (delivery?.status === "entregue" ? destinationLocation : pharmacyLocation);
+
+  return { pharmacyLocation, destinationLocation, driverLocation };
+}
+
+function hasMapData(delivery) {
+  const data = getMapData(delivery);
+  return Boolean(data.pharmacyLocation && data.destinationLocation);
+}
+
+function formatAddressSnapshot(addr) {
+  if (!addr || typeof addr !== "object") return "Endereço de entrega";
+  return [
+    addr.logradouro,
+    addr.numero,
+    addr.bairro,
+    addr.cidade,
+    addr.estado,
+  ]
+    .filter(Boolean)
+    .join(", ");
+}
+
 /** Destino no Maps a partir de endereco_* da própria entrega (snapshot). */
 function mapsHrefFromAddressSnapshot(addr) {
   if (!addr || typeof addr !== "object") return "https://maps.google.com/";
@@ -99,6 +172,7 @@ export default function EntregadorDashboard() {
   const [codigoEntrega, setCodigoEntrega] = useState("");
   const [fotoComprovante, setFotoComprovante] = useState(null);
   const [aceitandoId, setAceitandoId] = useState(null);
+  const [expandedRoutes, setExpandedRoutes] = useState({});
 
   const entregador = user?.dados_entregador || {};
   const disponivel = Boolean(entregador.disponivel);
@@ -388,6 +462,12 @@ export default function EntregadorDashboard() {
       : null);
 
   const currentStepIndexEntrega = getStepIndex(activeDelivery?.status ?? "");
+  const activeMap = getMapData(activeDelivery);
+  const activeRouteHistory = getRouteHistory(activeDelivery);
+
+  const toggleRoute = (id) => {
+    setExpandedRoutes((current) => ({ ...current, [id]: !current[id] }));
+  };
 
   const clienteNome =
     activeOrder?.id_usuario?.nome ||
@@ -505,7 +585,7 @@ export default function EntregadorDashboard() {
                 const farm = entrega.id_farmacia;
                 const nomeFarm = farm?.nome || "Farmácia";
                 const total = Number(pedido.total) || 0;
-                const ganhoEst = total * COMISSAO;
+                const ganhoEst = Number(entrega.valor_entrega) || total * COMISSAO;
                 const did = entrega._id;
                 const addr = entrega.endereco_entrega;
                 const distanciaKm = entrega.distancia_km;
@@ -527,7 +607,7 @@ export default function EntregadorDashboard() {
                         {addr?.bairro || "—"}, {addr?.cidade || "—"}
                       </p>
                       <p className="text-gray-700">
-                        Pedido: {formatMoney(total)} · Ganho estimado:{" "}
+                        Pedido: {formatMoney(total)} · Valor da entrega:{" "}
                         <span className="font-medium text-emerald-700">
                           {formatMoney(ganhoEst)}
                         </span>
@@ -631,6 +711,45 @@ export default function EntregadorDashboard() {
               </div>
             </div>
 
+            {hasMapData(activeDelivery) && (
+              <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4">
+                <Suspense fallback={<div className="h-72 bg-gray-100 rounded-xl animate-pulse" />}>
+                  <DeliveryMap
+                    driverLocation={activeMap.driverLocation}
+                    pharmacyLocation={activeMap.pharmacyLocation}
+                    destinationLocation={activeMap.destinationLocation}
+                    pharmacyName={activeDelivery.id_farmacia?.nome}
+                    destinationAddress={formatAddressSnapshot(activeDelivery.endereco_entrega)}
+                    status={activeDelivery.status}
+                    className="h-72"
+                  />
+                </Suspense>
+                <div className="min-w-0">
+                  <p className="text-sm font-semibold text-gray-900 mb-3">
+                    Histórico da rota
+                  </p>
+                  <div className="space-y-3 border-l-2 border-gray-200 pl-4">
+                    {activeRouteHistory.map((item, index) => (
+                      <div key={`${item.status}-${index}`} className="relative">
+                        <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-600 ring-4 ring-white" />
+                        <p className="text-sm font-medium text-gray-900">
+                          {statusLabel(item.status)}
+                        </p>
+                        <p className="text-xs text-gray-500">
+                          {formatDate(item.alterado_em)}
+                        </p>
+                        {item.observacao && (
+                          <p className="text-xs text-gray-600 mt-1">
+                            {item.observacao}
+                          </p>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+            )}
+
             <p className="mt-3 text-sm text-slate-700 bg-slate-100 rounded-lg px-3 py-2">
               O código de 6 dígitos aparece para o cliente em Meus pedidos e
               em Rastrear. Confira com o cliente e digite abaixo.
@@ -706,38 +825,84 @@ export default function EntregadorDashboard() {
               const farmNome = d.id_farmacia?.nome || "Farmácia";
               const cliNome = d.id_cliente?.nome || "Cliente";
               const totalPedido = Number(d.id_pedido?.total) || 0;
-              const ganho = totalPedido * COMISSAO;
+              const ganho = Number(d.valor_entrega) || totalPedido * COMISSAO;
               const nota = d.avaliacao_cliente?.nota;
+              const mapData = getMapData(d);
+              const routeHistory = getRouteHistory(d);
+              const showRoute = expandedRoutes[d._id];
               return (
                 <div
                   key={d._id}
-                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 text-sm"
+                  className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm text-sm"
                 >
-                  <div>
-                    <p className="font-medium text-gray-900">
-                      {formatDate(d.createdAt)}
-                    </p>
-                    <p className="text-gray-600">
-                      {farmNome} · {cliNome}
-                    </p>
-                    <p className="text-gray-700">
-                      Ganho:{" "}
-                      <span className="font-semibold text-emerald-700">
-                        {formatMoney(ganho)}
-                      </span>
-                    </p>
-                    {nota != null && (
-                      <p className="text-amber-600 flex items-center gap-1 mt-1">
-                        <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
-                        {nota}/5
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2">
+                    <div>
+                      <p className="font-medium text-gray-900">
+                        {formatDate(d.createdAt)}
                       </p>
-                    )}
+                      <p className="text-gray-600">
+                        {farmNome} · {cliNome}
+                      </p>
+                      <p className="text-gray-700">
+                        Valor da entrega:{" "}
+                        <span className="font-semibold text-emerald-700">
+                          {formatMoney(ganho)}
+                        </span>
+                      </p>
+                      {nota != null && (
+                        <p className="text-amber-600 flex items-center gap-1 mt-1">
+                          <Star className="w-4 h-4 fill-amber-400 text-amber-500" />
+                          {nota}/5
+                        </p>
+                      )}
+                    </div>
+                    <div className="flex flex-wrap gap-2 items-center">
+                      {hasMapData(d) && (
+                        <button
+                          type="button"
+                          onClick={() => toggleRoute(d._id)}
+                          className="px-3 py-1 rounded-full text-xs font-semibold bg-gray-100 text-gray-700 hover:bg-gray-200 inline-flex items-center gap-1"
+                        >
+                          <MapIcon className="w-3.5 h-3.5" />
+                          {showRoute ? "Ocultar rota" : "Ver rota"}
+                        </button>
+                      )}
+                      <span
+                        className={`px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(d.status)}`}
+                      >
+                        {statusLabel(d.status)}
+                      </span>
+                    </div>
                   </div>
-                  <span
-                    className={`self-start sm:self-center px-3 py-1 rounded-full text-xs font-semibold ${statusBadgeClass(d.status)}`}
-                  >
-                    {d.status}
-                  </span>
+
+                  {showRoute && hasMapData(d) && (
+                    <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-4 border-t border-gray-100 pt-4">
+                      <Suspense fallback={<div className="h-64 bg-gray-100 rounded-xl animate-pulse" />}>
+                        <DeliveryMap
+                          driverLocation={mapData.driverLocation}
+                          pharmacyLocation={mapData.pharmacyLocation}
+                          destinationLocation={mapData.destinationLocation}
+                          pharmacyName={farmNome}
+                          destinationAddress={formatAddressSnapshot(d.endereco_entrega)}
+                          status={d.status}
+                          className="h-64"
+                        />
+                      </Suspense>
+                      <div className="space-y-3 border-l-2 border-gray-200 pl-4">
+                        {routeHistory.map((item, index) => (
+                          <div key={`${item.status}-${index}`} className="relative">
+                            <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-emerald-600 ring-4 ring-white" />
+                            <p className="text-sm font-medium text-gray-900">
+                              {statusLabel(item.status)}
+                            </p>
+                            <p className="text-xs text-gray-500">
+                              {formatDate(item.alterado_em)}
+                            </p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
               );
             })
