@@ -17,6 +17,7 @@
     "seed": "node seed.js",
     "seed:all": "node seed-all.js",
     "seed:gyn": "node src/scripts/seedGynPharmacyOwners.js",
+    "seed:demo-flows": "node src/scripts/seedDemoFlows.js",
     "seed:reviews": "node src/scripts/seedReviews.js",
     "backfill:pharmacy-addresses": "node src/scripts/backfillPharmacyAddresses.js"
   },

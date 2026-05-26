@@ -11,7 +11,7 @@ export default defineConfig({
       manifest: {
         name: 'Saúde na Mão',
         short_name: 'Saúde na Mão',
-        description: 'Protótipo acadêmico de farmácias e entrega de medicamentos',
+        description: 'Farmácias, receitas e entrega de medicamentos em uma única plataforma',
         theme_color: '#059669',
         background_color: '#ffffff',
         display: 'standalone',

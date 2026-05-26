@@ -12,7 +12,7 @@ export const ALLOW_CONTROLLED_REMOTE_SALE =
   import.meta.env.VITE_ALLOW_CONTROLLED_REMOTE_SALE === 'true'
 
 export const COMPLIANCE_DEMO_NOTICE =
-  'Protótipo acadêmico: não realiza dispensação real de medicamentos. Compras com receita dependem de validação farmacêutica, e controlados ficam bloqueados no checkout remoto.'
+  'Demonstração controlada: não realiza dispensação real de medicamentos. Compras com receita dependem de validação farmacêutica, e controlados ficam bloqueados no checkout remoto.'
 
 export function requiresPrescription(product) {
   const classification = product?.classificacao_receita || 'sem_receita'

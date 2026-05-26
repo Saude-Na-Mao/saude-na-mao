@@ -5,9 +5,10 @@ import { deliveryService, orderService } from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import Alert from '../components/Alert'
 import Modal from '../components/Modal'
+import DeliveryMap from '../components/DeliveryMap'
 import {
   Truck, Package, MapPin, Clock, CheckCircle, XCircle,
-  Navigation, ChevronRight, RefreshCw, Filter, Star, QrCode
+  Navigation, ChevronRight, RefreshCw, Star, QrCode, Map as MapIcon
 } from 'lucide-react'
 
 const STATUS_CONFIG = {
@@ -46,6 +47,52 @@ function formatDate(d) {
   })
 }
 
+function pointToLatLng(location) {
+  const coords = location?.coordinates
+  if (!Array.isArray(coords) || coords.length !== 2) return null
+  const [lng, lat] = coords.map(Number)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function historyPointToLatLng(item) {
+  const lat = Number(item?.localizacao?.latitude)
+  const lng = Number(item?.localizacao?.longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function getRouteHistory(delivery) {
+  return [...(delivery?.historico_status || [])].sort(
+    (a, b) => new Date(a.alterado_em || 0) - new Date(b.alterado_em || 0)
+  )
+}
+
+function getLatestRoutePoint(delivery) {
+  const history = getRouteHistory(delivery)
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const point = historyPointToLatLng(history[i])
+    if (point) return point
+  }
+  return null
+}
+
+function getMapData(delivery) {
+  const pharmacyLocation = pointToLatLng(delivery?.endereco_coleta?.location)
+  const destinationLocation = pointToLatLng(delivery?.endereco_entrega?.location)
+  const latestPoint = getLatestRoutePoint(delivery)
+  const driverLocation = latestPoint || (
+    delivery?.status === 'entregue' ? destinationLocation : pharmacyLocation
+  )
+
+  return { pharmacyLocation, destinationLocation, driverLocation }
+}
+
+function hasMapData(delivery) {
+  const data = getMapData(delivery)
+  return Boolean(data.pharmacyLocation && data.destinationLocation)
+}
+
 export default function Entregas() {
   const navigate = useNavigate()
   const { token, user } = useAuthStore()
@@ -61,6 +108,7 @@ export default function Entregas() {
   const [confirmCode, setConfirmCode] = useState('')
   const [qrToken, setQrToken] = useState('')
   const [qrConfirmLoading, setQrConfirmLoading] = useState(false)
+  const [expandedRoutes, setExpandedRoutes] = useState({})
 
   useEffect(() => {
     if (!token) {
@@ -175,6 +223,10 @@ export default function Entregas() {
   const filteredMyDeliveries = statusFilter === 'todos'
     ? myDeliveries
     : myDeliveries.filter(d => d.status === statusFilter)
+
+  const toggleRoute = (id) => {
+    setExpandedRoutes((current) => ({ ...current, [id]: !current[id] }))
+  }
 
   if (loading) return <LoadingSpinner />
 
@@ -366,6 +418,9 @@ export default function Entregas() {
                 const nextStatus = NEXT_STATUS[delivery.status]
                 const nextLabel = NEXT_STATUS_LABEL[delivery.status]
                 const isActive = ['aceita', 'coletando', 'coletada', 'em_transito'].includes(delivery.status)
+                const showRoute = expandedRoutes[delivery._id]
+                const mapData = getMapData(delivery)
+                const routeHistory = getRouteHistory(delivery)
 
                 return (
                   <div
@@ -436,6 +491,65 @@ export default function Entregas() {
                           </span>
                         )}
                       </div>
+
+                      {hasMapData(delivery) && (
+                        <div className="pt-3 border-t border-gray-100">
+                          <button
+                            onClick={() => toggleRoute(delivery._id)}
+                            className="inline-flex items-center gap-2 px-3 py-2 text-sm font-medium rounded-lg bg-gray-100 text-gray-800 hover:bg-gray-200 transition"
+                          >
+                            <MapIcon className="w-4 h-4" />
+                            {showRoute ? 'Ocultar rota' : 'Ver rota e histórico'}
+                          </button>
+
+                          {showRoute && (
+                            <div className="mt-4 grid grid-cols-1 lg:grid-cols-[1.2fr_0.8fr] gap-5">
+                              <DeliveryMap
+                                driverLocation={mapData.driverLocation}
+                                pharmacyLocation={mapData.pharmacyLocation}
+                                destinationLocation={mapData.destinationLocation}
+                                pharmacyName={delivery.id_farmacia?.nome}
+                                destinationAddress={formatAddress(delivery.endereco_entrega)}
+                                status={delivery.status}
+                                className="h-72"
+                              />
+
+                              <div className="min-w-0">
+                                <div className="flex items-center justify-between gap-3 mb-3">
+                                  <p className="text-sm font-semibold text-gray-900">Histórico da rota</p>
+                                  {delivery.valor_entrega > 0 && (
+                                    <span className="text-sm font-semibold text-green-700">
+                                      R$ {delivery.valor_entrega.toFixed(2)}
+                                    </span>
+                                  )}
+                                </div>
+
+                                <div className="space-y-3 border-l-2 border-gray-200 pl-4">
+                                  {routeHistory.map((item, index) => {
+                                    const itemConfig = STATUS_CONFIG[item.status] || STATUS_CONFIG.disponivel
+                                    return (
+                                      <div key={`${item.status}-${index}`} className="relative">
+                                        <span className="absolute -left-[21px] top-1.5 w-2.5 h-2.5 rounded-full bg-blue-600 ring-4 ring-white" />
+                                        <p className="text-sm font-medium text-gray-900">
+                                          {itemConfig.label}
+                                        </p>
+                                        <p className="text-xs text-gray-500">
+                                          {formatDate(item.alterado_em)}
+                                        </p>
+                                        {item.observacao && (
+                                          <p className="text-xs text-gray-600 mt-1">
+                                            {item.observacao}
+                                          </p>
+                                        )}
+                                      </div>
+                                    )
+                                  })}
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {/* Actions */}
                       {isActive && (

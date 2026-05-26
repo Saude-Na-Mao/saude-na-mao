@@ -100,10 +100,10 @@ Esta política descreve como a plataforma trata dados pessoais durante cadastro,
 Receitas médicas podem conter dados pessoais sensíveis. Em ambientes de teste, recomenda-se usar arquivos fictícios ou anonimizados.
 
 ## 4. Uso dos Dados
-Os dados são usados para demonstrar funcionalidades do sistema, autenticar usuários, validar regras do carrinho e registrar histórico acadêmico de pedidos.
+Os dados são usados para demonstrar funcionalidades do sistema, autenticar usuários, validar regras do carrinho e registrar histórico de pedidos.
 
 ## 5. Compartilhamento
-Em ambiente acadêmico, dados não devem ser enviados a farmácias, entregadores ou processadores de pagamento reais. Qualquer integração real exigiria contrato, base legal, medidas de segurança e informação clara ao titular.
+Em ambiente de demonstração, dados não devem ser enviados a farmácias, entregadores ou processadores de pagamento reais. Qualquer integração real exigiria contrato, base legal, medidas de segurança e informação clara ao titular.
 
 ## 6. Direitos do Titular
 Você tem direito a:
@@ -115,10 +115,10 @@ Você tem direito a:
 Para exercer esses direitos, contate o responsável pela plataforma.
 
 ## 7. Retenção
-Dados de teste devem ser mantidos pelo menor tempo necessário para avaliação acadêmica. Arquivos de receita devem ser removidos ou anonimizados após a demonstração.
+Dados de teste devem ser mantidos pelo menor tempo necessário para validação do produto. Arquivos de receita devem ser removidos ou anonimizados após a demonstração.
 
 ## 8. Segurança
-O projeto usa autenticação, controle de acesso e validações de backend. Mesmo assim, não deve receber documentos reais sem necessidade acadêmica e autorização adequada.
+O projeto usa autenticação, controle de acesso e validações de backend. Mesmo assim, não deve receber documentos reais sem necessidade operacional e autorização adequada.
 
 ## 9. Alterações
 Esta política pode ser atualizada conforme o protótipo evoluir.
