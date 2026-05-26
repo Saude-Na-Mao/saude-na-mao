@@ -31,7 +31,18 @@ export const getConfig = () => {
 }
 
 export function getApiBaseUrl() {
-  return (import.meta.env.VITE_API_BASE_URL || DEFAULT_API_BASE_URL).replace(/\/$/, '')
+  const explicitBase = import.meta.env.VITE_API_BASE_URL
+  const backendUrl = import.meta.env.VITE_API_URL
+
+  if (explicitBase) return explicitBase.replace(/\/$/, '')
+
+  if (backendUrl) {
+    const cleanBackendUrl = backendUrl.replace(/\/$/, '')
+    if (/\/api(\/v\d+)?$/.test(cleanBackendUrl)) return cleanBackendUrl
+    return `${cleanBackendUrl}/api/v1`
+  }
+
+  return DEFAULT_API_BASE_URL
 }
 
 export function apiUrl(path = '') {
@@ -42,7 +53,7 @@ export function apiUrl(path = '') {
 
 /** URL do servidor Socket.io (porta do backend, não o proxy /api do Vite). */
 export function getSocketUrl() {
-  const fromEnv = import.meta.env.VITE_API_URL
+  const fromEnv = import.meta.env.VITE_SOCKET_URL || import.meta.env.VITE_API_URL
   if (fromEnv) return fromEnv.replace(/\/$/, '')
   if (typeof window !== 'undefined') {
     const { protocol, hostname } = window.location
