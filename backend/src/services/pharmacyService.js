@@ -3,6 +3,7 @@ const Pharmacy = require("../models/Pharmacy");
 const Product = require("../models/Product");
 const Review = require("../models/Review");
 const Order = require("../models/Order");
+const Pharmacist = require("../models/Pharmacist");
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -27,6 +28,7 @@ async function listPharmacies({
     page,
     limit,
     sort: { avaliacao: -1 },
+    lean: true,
   });
 
   const docs = Array.isArray(resultado?.docs) ? resultado.docs : [];
@@ -36,19 +38,38 @@ async function listPharmacies({
     .map((id) => new mongoose.Types.ObjectId(id));
 
   if (ids.length > 0) {
-    const stats = await Review.aggregate([
-      { $match: { id_farmacia: { $in: ids } } },
-      {
-        $group: {
-          _id: "$id_farmacia",
-          total: { $sum: 1 },
-          avgRating: { $avg: "$nota" },
+    const [reviewStats, pharmacistStats] = await Promise.all([
+      Review.aggregate([
+        { $match: { id_farmacia: { $in: ids } } },
+        {
+          $group: {
+            _id: "$id_farmacia",
+            total: { $sum: 1 },
+            avgRating: { $avg: "$nota" },
+          },
         },
-      },
+      ]),
+      Pharmacist.aggregate([
+        {
+          $match: {
+            id_farmacia: { $in: ids },
+            ativo: true,
+            logado: true,
+            disponivel_chat: { $ne: false },
+            bloqueado: { $ne: true },
+          },
+        },
+        {
+          $group: {
+            _id: "$id_farmacia",
+            total: { $sum: 1 },
+          },
+        },
+      ]),
     ]);
 
     const statsByPharmacy = new Map(
-      stats.map((s) => [
+      reviewStats.map((s) => [
         String(s._id),
         {
           total: s.total || 0,
@@ -56,11 +77,17 @@ async function listPharmacies({
         },
       ]),
     );
+    const onlineByPharmacy = new Map(
+      pharmacistStats.map((s) => [String(s._id), s.total || 0]),
+    );
 
     for (const pharmacy of docs) {
       const stat = statsByPharmacy.get(String(pharmacy._id));
+      const onlineCount = onlineByPharmacy.get(String(pharmacy._id)) || 0;
       pharmacy.avaliacao = stat ? stat.avg : 0;
       pharmacy.total_avaliacoes = stat ? stat.total : 0;
+      pharmacy.farmaceuticos_online = onlineCount;
+      pharmacy.farmaceutico_online = onlineCount > 0;
     }
   }
 

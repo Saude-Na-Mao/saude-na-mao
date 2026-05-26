@@ -11,25 +11,29 @@ const USERS = [
   { nome: "Cliente Teste", email: "teste@teste.com", senha: "Teste@123", tipo_usuario: "cliente" },
 
   // FARMACÊUTICO GENÉRICO
-  { nome: "Farmacêutico Genérico", email: "farmaceutico@saudenamao.com", senha: "Farm@123", tipo_usuario: "farmaceutico", farmacia: "Drogaria Cidade Jardim", crf: "GO-00001" },
+  { nome: "Farmacêutico Genérico", email: "farmaceutico@saudenamao.com", senha: "Farm@123", tipo_usuario: "farmaceutico", farmacia: "Drogaria Rosário - Jardim Goiás", crf: "GO-00001" },
 
   // FARMACÊUTICOS POR FARMÁCIA (Goiânia)
-  { nome: "Carla Mendes", email: "farm.jardim@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Cidade Jardim", crf: "GO-12001" },
-  { nome: "Renato Souza", email: "farm.bueno@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Farmácia Saúde+ Bueno", crf: "GO-12002" },
+  { nome: "Carla Mendes", email: "farm.jardim@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Rosário - Jardim Goiás", crf: "GO-12001" },
+  { nome: "Renato Souza", email: "farm.bueno@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogarias Pacheco - Setor Bueno", crf: "GO-12002" },
   { nome: "Beatriz Alves", email: "farm.marista@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Droga Raia - Marista", crf: "GO-12003" },
-  { nome: "Lucas Pereira", email: "farm.oeste@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Farmácia Popular - Oeste", crf: "GO-12004" },
+  { nome: "Lucas Pereira", email: "farm.oeste@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Santa Marta - Setor Oeste", crf: "GO-12004" },
+  { nome: "Paula Nogueira", email: "farm.lozandes@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogasil - Park Lozandes", crf: "GO-12005" },
+  { nome: "Marcos Oliveira", email: "farm.central@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Farmácia Pague Menos - Central", crf: "GO-12006" },
 
   // ENTREGADOR
   { nome: "Entregador Teste", email: "entregador@saudenamao.com", senha: "Entrega@123", tipo_usuario: "entregador" },
 
   // DONO DE FARMÁCIA GENÉRICO
-  { nome: "Dono Genérico", email: "dono@farmacia.com", senha: "Dono@123", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Cidade Jardim" },
+  { nome: "Dono Genérico", email: "dono@farmacia.com", senha: "Dono@123", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Rosário - Jardim Goiás" },
 
   // DONOS POR FARMÁCIA
-  { nome: "Maria Silva", email: "dono.jardim.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Cidade Jardim" },
-  { nome: "João Santos", email: "dono.bueno.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Farmácia Saúde+ Bueno" },
+  { nome: "Maria Silva", email: "dono.jardim.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Rosário - Jardim Goiás" },
+  { nome: "João Santos", email: "dono.bueno.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogarias Pacheco - Setor Bueno" },
   { nome: "Ana Costa", email: "dono.marista.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Droga Raia - Marista" },
-  { nome: "Pedro Lima", email: "dono.oeste.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Farmácia Popular - Oeste" },
+  { nome: "Pedro Lima", email: "dono.oeste.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Santa Marta - Setor Oeste" },
+  { nome: "Fernanda Rocha", email: "dono.lozandes.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogasil - Park Lozandes" },
+  { nome: "Rafael Lima", email: "dono.central.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Farmácia Pague Menos - Central" },
 
   // ADMIN
   { nome: "Administrador", email: "admin@saudenamao.com", senha: "Admin@123", tipo_usuario: "administrador" },
@@ -93,6 +97,10 @@ async function ensureFarmaceuticoSeedProfile(userData) {
           crm,
           nome: userData.nome,
           email: user.email,
+          logado: true,
+          disponivel_chat: true,
+          status_motivo: "online",
+          ultima_atividade: new Date(),
         },
       },
     );
@@ -115,6 +123,9 @@ async function ensureFarmaceuticoSeedProfile(userData) {
     id_farmacia: pharmacyId,
     dias_atendimento: ["segunda", "terca", "quarta", "quinta", "sexta"],
     disponivel_chat: true,
+    logado: true,
+    status_motivo: "online",
+    ultima_atividade: new Date(),
   });
   console.log(`  🔗 Pharmacist criado: ${userData.email} → ${userData.farmacia}`);
 }

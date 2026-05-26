@@ -4,7 +4,7 @@ import { useCartStore, useUiStore } from '../stores/store'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
 import { productService, pharmacyService } from '../services/api'
-import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info } from 'lucide-react'
+import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
@@ -32,6 +32,7 @@ export default function Produtos() {
   const [priceRange, setPriceRange] = useState([0, 500])
   const [categoryFilter, setCategoryFilter] = useState('')
   const [pharmacyFilter, setPharmacyFilter] = useState('')
+  const [onlyOnlinePharmacist, setOnlyOnlinePharmacist] = useState(false)
   const [suggestions, setSuggestions] = useState([])
   const [showSuggestions, setShowSuggestions] = useState(false)
   const debounceRef = useRef(null)
@@ -125,6 +126,11 @@ export default function Produtos() {
     .filter((p) => p.preco >= priceRange[0] && p.preco <= priceRange[1])
     .filter((p) => !categoryFilter || p.categoria === categoryFilter)
     .filter((p) => !pharmacyFilter || getPharmacyId(p) === pharmacyFilter)
+    .filter((p) => {
+      if (!onlyOnlinePharmacist) return true
+      const pharmacy = pharmacies[getPharmacyId(p)]
+      return Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
+    })
     .sort((a, b) => {
       if (sortBy === 'preco-asc') return (a.preco_final || a.preco) - (b.preco_final || b.preco)
       if (sortBy === 'preco-desc') return (b.preco_final || b.preco) - (a.preco_final || a.preco)
@@ -196,6 +202,35 @@ export default function Produtos() {
             <h3 className="font-bold flex items-center gap-2 text-sm">
               <Filter className="w-4 h-4 text-primary" /> Filtros
             </h3>
+
+            <label className={`flex items-center gap-3 rounded-xl border p-3 cursor-pointer transition ${
+              onlyOnlinePharmacist
+                ? 'border-primary bg-primary/5 shadow-sm'
+                : 'border-gray-100 bg-gray-50 hover:bg-gray-100'
+            }`}>
+              <input
+                type="checkbox"
+                checked={onlyOnlinePharmacist}
+                onChange={(e) => setOnlyOnlinePharmacist(e.target.checked)}
+                className="sr-only"
+              />
+              <span className={`relative inline-flex h-6 w-11 flex-shrink-0 rounded-full transition ${
+                onlyOnlinePharmacist ? 'bg-primary' : 'bg-gray-300'
+              }`}>
+                <span className={`absolute top-0.5 h-5 w-5 rounded-full bg-white shadow transition ${
+                  onlyOnlinePharmacist ? 'left-5' : 'left-0.5'
+                }`} />
+              </span>
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-sm font-semibold text-gray-800">
+                  <MessageCircle className="w-4 h-4 text-primary" />
+                  Farmacêutico online
+                </span>
+                <span className="block text-xs text-gray-500 mt-0.5">
+                  Mostrar farmácias com atendimento agora
+                </span>
+              </span>
+            </label>
 
             <div>
               <label className="text-xs font-semibold text-gray-500 block mb-2">Farmácia</label>
@@ -392,6 +427,12 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
         >
           {pharmacy?.nome || 'Farmácia'}
         </Link>
+        {(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0) && (
+          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
+            online
+          </span>
+        )}
         {pharmacy?.bairro && (
           <span className="text-xs text-gray-400 ml-auto truncate">{pharmacy.bairro}</span>
         )}
