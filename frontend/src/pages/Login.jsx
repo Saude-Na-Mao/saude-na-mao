@@ -1,0 +1,261 @@
+import { useNavigate, useLocation, Link } from 'react-router-dom'
+import { useAuthStore } from '../stores/store'
+import { authService } from '../services/api'
+import { useForm } from '../hooks'
+import ValidationService from '../utils/validation'
+import Alert from '../components/Alert'
+import Logger from '../utils/logger'
+import { getApiErrorMessage } from '../utils/apiErrorMessage'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart } from 'lucide-react'
+import { useState } from 'react'
+
+const logger = new Logger('Login')
+
+const loginSchema = {
+  email: (value) => {
+    const validation = ValidationService.validateEmail(value)
+    return validation.valid ? null : validation.error
+  },
+  senha: (value) => {
+    if (!value) return 'Senha é obrigatória'
+    return null
+  },
+}
+
+export default function Login() {
+  const navigate = useNavigate()
+  const location = useLocation()
+  const { setUser, setToken } = useAuthStore()
+  const [apiError, setApiError] = useState(null)
+  const [showPassword, setShowPassword] = useState(false)
+
+  const { values, errors, touched, isSubmitting, handleChange, handleBlur, handleSubmit } = useForm(
+    { email: '', senha: '' },
+    async (formData) => {
+      try {
+        setApiError(null)
+        logger.info('Attempting login', { email: formData.email })
+        
+        const response = await authService.login(formData.email, formData.senha)
+        logger.debug('Login response:', response.data)
+        
+        const { accessToken, user } = response.data.data
+
+        if (!accessToken || !user) {
+          throw new Error('Resposta inválida do servidor')
+        }
+
+        setToken(accessToken)
+        setUser(user)
+        logger.info('Login successful', { userId: user.id })
+
+        const role =
+          user?.tipo_usuario ||
+          user?.role ||
+          (user?.dados_entregador ? 'entregador' : null)
+        const from = location.state?.from
+        const defaultDestByRole = {
+          admin: '/admin',
+          administrador: '/admin',
+          farmaceutico: '/farmaceutico',
+          dono_farmacia: '/dono-farmacia',
+          entregador: '/entregas',
+          cliente: '/perfil',
+        }
+        const defaultDest = defaultDestByRole[role] || '/perfil'
+
+        const fromAllowedByRole = {
+          entregador: (path) => path === '/entregas' || path.startsWith('/entregas/'),
+          farmaceutico: (path) => path === '/farmaceutico' || path.startsWith('/farmaceutico/'),
+          dono_farmacia: (path) => path === '/dono-farmacia' || path.startsWith('/dono-farmacia/'),
+          administrador: (path) => path === '/admin' || path.startsWith('/admin/'),
+          admin: (path) => path === '/admin' || path.startsWith('/admin/'),
+          cliente: () => true,
+        }
+
+        const canUseFrom = Boolean(from && fromAllowedByRole[role]?.(from))
+        const dest = canUseFrom ? from : defaultDest
+        setTimeout(() => navigate(dest, { replace: true }), 500)
+      } catch (error) {
+        logger.error('Login error:', error)
+        setApiError(getApiErrorMessage(error, 'Erro ao fazer login'))
+      }
+    },
+    (field, value) => loginSchema[field]?.(value)
+  )
+
+  return (
+    <div className="min-h-[calc(100vh-4rem)] flex">
+      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary-600 to-secondary relative overflow-hidden">
+        <div className="absolute inset-0 opacity-10">
+          <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl" />
+          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl" />
+        </div>
+        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
+          <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
+            <Heart className="w-7 h-7" />
+          </div>
+          <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
+            Sua saúde na<br />palma da mão
+          </h2>
+          <p className="text-lg text-white/80 mb-8 max-w-md">
+            Compre medicamentos com segurança e receba em casa com rapidez e praticidade.
+          </p>
+          <div className="space-y-4">
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+              <span className="text-white/90">Entrega em até 4 horas</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+              <span className="text-white/90">Preços competitivos e transparentes</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+              <span className="text-white/90">Pagamento seguro e protegido</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-8 py-12 bg-gray-50">
+        <div className="w-full max-w-md">
+          <div className="lg:hidden text-center mb-8">
+            <div className="inline-flex items-center gap-2.5 mb-2">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-sm">
+                <span className="text-white text-xl font-bold">S</span>
+              </div>
+              <span className="font-bold text-xl text-gray-900">Saúde na Mão</span>
+            </div>
+          </div>
+
+          <div className="bg-white rounded-2xl shadow-card p-8 sm:p-10">
+            <div className="mb-8">
+              <h1 className="text-2xl font-bold text-gray-900">Bem-vindo de volta</h1>
+              <p className="text-gray-500 text-sm mt-1.5">
+                Entre com suas credenciais para acessar sua conta
+              </p>
+            </div>
+
+            {apiError && (
+              <div className="mb-6">
+                <Alert type="error" message={apiError} onClose={() => setApiError(null)} />
+              </div>
+            )}
+
+            <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <div>
+                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Email
+                </label>
+                <div className="relative">
+                  <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
+                  <input
+                    id="email"
+                    type="email"
+                    name="email"
+                    value={values.email}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="seu@email.com"
+                    className={`input-field pl-11 ${
+                      touched.email && errors.email ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : ''
+                    }`}
+                    disabled={isSubmitting}
+                    aria-invalid={touched.email && !!errors.email}
+                    aria-describedby={touched.email && errors.email ? 'email-error' : undefined}
+                  />
+                </div>
+                {touched.email && errors.email && (
+                  <p id="email-error" className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-red-500 rounded-full" />
+                    {errors.email}
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <label htmlFor="senha" className="block text-sm font-medium text-gray-700 mb-1.5">
+                  Senha
+                </label>
+                <div className="relative">
+                  <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4.5 h-4.5 text-gray-400 pointer-events-none" />
+                  <input
+                    id="senha"
+                    type={showPassword ? 'text' : 'password'}
+                    name="senha"
+                    value={values.senha}
+                    onChange={handleChange}
+                    onBlur={handleBlur}
+                    placeholder="••••••••"
+                    className={`input-field pl-11 pr-11 ${
+                      touched.senha && errors.senha ? 'border-red-400 focus:ring-red-200 focus:border-red-400' : ''
+                    }`}
+                    disabled={isSubmitting}
+                    aria-invalid={touched.senha && !!errors.senha}
+                    aria-describedby={touched.senha && errors.senha ? 'senha-error' : undefined}
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 transition p-0.5"
+                    aria-label={showPassword ? 'Ocultar senha' : 'Mostrar senha'}
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+                {touched.senha && errors.senha && (
+                  <p id="senha-error" className="text-red-500 text-xs mt-1.5 flex items-center gap-1">
+                    <span className="w-1 h-1 bg-red-500 rounded-full" />
+                    {errors.senha}
+                  </p>
+                )}
+              </div>
+
+              <div className="flex items-center justify-between">
+                <label className="flex items-center gap-2 cursor-pointer">
+                  <input type="checkbox" className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30" />
+                  <span className="text-sm text-gray-600">Lembrar-me</span>
+                </label>
+                <Link to="/legal" className="text-sm text-primary hover:text-secondary font-medium transition">
+                  Esqueci a senha
+                </Link>
+              </div>
+
+              <button
+                type="submit"
+                disabled={isSubmitting}
+                className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+              >
+                {isSubmitting ? (
+                  <>
+                    <div className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    Entrando...
+                  </>
+                ) : (
+                  <>
+                    Entrar
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+
+            <div className="my-8 flex items-center gap-4">
+              <div className="flex-1 h-px bg-gray-200" />
+              <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">ou</span>
+              <div className="flex-1 h-px bg-gray-200" />
+            </div>
+
+            <p className="text-center text-gray-500 text-sm">
+              Ainda não tem conta?{' '}
+              <Link to="/registro" className="text-primary font-semibold hover:text-secondary transition">
+                Cadastre-se gratuitamente
+              </Link>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}

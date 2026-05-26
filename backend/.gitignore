@@ -1,0 +1,14 @@
+node_modules/
+.env
+por.traineddata
+uploads/perfil/*.jpg
+uploads/perfil/*.png
+uploads/perfil/*.webp
+src/config/firebase-service-account.json
+
+uploads/receitas/*.jpg
+uploads/receitas/*.png
+uploads/receitas/*.pdf
+
+uploads/comprovantes/*.txt
+uploads/comprovantes/*.pdf

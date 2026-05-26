@@ -1,0 +1,286 @@
+.drug-alert-container {
+  background: white;
+  border-left: 4px solid #3b82f6;
+  border-radius: 8px;
+  padding: 20px;
+  margin: 20px 0;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+}
+
+.drug-alert-container.loading {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  min-height: 200px;
+  gap: 15px;
+}
+
+.drug-alert-container.error {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.alert-header {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-bottom: 20px;
+  padding-bottom: 15px;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.status-icon {
+  font-size: 24px;
+}
+
+.alert-header h3 {
+  flex: 1;
+  margin: 0;
+  font-size: 18px;
+  font-weight: 600;
+}
+
+.score {
+  background: #f3f4f6;
+  padding: 4px 12px;
+  border-radius: 20px;
+  font-size: 12px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.alertas-list {
+  margin-bottom: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.alerta-item {
+  background: #f9fafb;
+  border-left: 3px solid #3b82f6;
+  padding: 15px;
+  border-radius: 6px;
+}
+
+.alerta-item.severity-LEVE {
+  border-left-color: #10b981;
+  background: #f0fdf4;
+}
+
+.alerta-item.severity-MODERADA {
+  border-left-color: #f59e0b;
+  background: #fffbf0;
+}
+
+.alerta-item.severity-GRAVE {
+  border-left-color: #ef4444;
+  background: #fef2f2;
+}
+
+.alerta-item.severity-CONTRAINDICADA {
+  border-left-color: #8b5cf6;
+  background: #faf5ff;
+}
+
+.alerta-item h4 {
+  margin: 0 0 8px 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.severity {
+  display: inline-block;
+  font-size: 12px;
+  font-weight: 600;
+  padding: 4px 10px;
+  border-radius: 4px;
+  margin-bottom: 12px;
+}
+
+.alerta-item.severity-LEVE .severity {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.alerta-item.severity-MODERADA .severity {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.alerta-item.severity-GRAVE .severity {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.alerta-item.severity-CONTRAINDICADA .severity {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.efeitos {
+  margin: 12px 0;
+}
+
+.efeitos strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.efeitos ul {
+  margin: 0;
+  padding-left: 20px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.efeitos li {
+  margin-bottom: 4px;
+}
+
+.recomendacao {
+  margin: 12px 0;
+  padding: 10px;
+  background: white;
+  border-radius: 4px;
+}
+
+.recomendacao strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 6px;
+  color: #374151;
+}
+
+.recomendacao p {
+  margin: 0;
+  font-size: 14px;
+  color: #4b5563;
+  line-height: 1.4;
+}
+
+.alternativas {
+  margin-top: 12px;
+}
+
+.alternativas strong {
+  display: block;
+  font-size: 13px;
+  margin-bottom: 8px;
+  color: #374151;
+}
+
+.alt-item {
+  padding: 8px;
+  margin: 6px 0;
+  background: white;
+  border-left: 2px solid #10b981;
+  border-radius: 3px;
+}
+
+.alt-item p {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 500;
+  color: #374151;
+}
+
+.alt-item small {
+  display: block;
+  font-size: 12px;
+  color: #9ca3af;
+  margin-top: 3px;
+}
+
+.alert-footer {
+  margin-top: 20px;
+  padding-top: 15px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.recommendation {
+  font-size: 14px;
+  color: #6b7280;
+  margin-bottom: 15px;
+  line-height: 1.5;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-cancel,
+.btn-validate {
+  padding: 10px 20px;
+  border: none;
+  border-radius: 6px;
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-cancel {
+  background: #f3f4f6;
+  color: #374151;
+  border: 1px solid #d1d5db;
+}
+
+.btn-cancel:hover {
+  background: #e5e7eb;
+  border-color: #9ca3af;
+}
+
+.btn-validate {
+  background: #3b82f6;
+  color: white;
+}
+
+.btn-validate:hover {
+  background: #2563eb;
+  box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
+}
+
+.spinner {
+  width: 40px;
+  height: 40px;
+  border: 4px solid #e5e7eb;
+  border-top-color: #3b82f6;
+  border-radius: 50%;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 640px) {
+  .drug-alert-container {
+    padding: 15px;
+    margin: 15px 0;
+  }
+
+  .alert-header {
+    flex-wrap: wrap;
+    gap: 8px;
+  }
+
+  .alert-header h3 {
+    flex-basis: 100%;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btn-cancel,
+  .btn-validate {
+    width: 100%;
+  }
+}

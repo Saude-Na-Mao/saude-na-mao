@@ -1,0 +1,230 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teste Socket.io - Saúde na Mão</title>
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <style>
+      body {
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background: #f3f7f5;
+        color: #1f2937;
+        margin: 0;
+        padding: 24px;
+      }
+
+      .container {
+        max-width: 720px;
+        margin: 0 auto;
+        background: #ffffff;
+        border-radius: 16px;
+        padding: 24px;
+        box-shadow: 0 16px 40px rgba(15, 23, 42, 0.08);
+      }
+
+      h1 {
+        margin-top: 0;
+        font-size: 28px;
+      }
+
+      .status {
+        display: inline-block;
+        margin-bottom: 20px;
+        padding: 10px 14px;
+        border-radius: 999px;
+        font-weight: 700;
+      }
+
+      .status.connected {
+        background: #dcfce7;
+        color: #166534;
+      }
+
+      .status.disconnected {
+        background: #fee2e2;
+        color: #991b1b;
+      }
+
+      .grid {
+        display: grid;
+        gap: 16px;
+      }
+
+      label {
+        display: block;
+        margin-bottom: 6px;
+        font-weight: 600;
+      }
+
+      input {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 12px;
+        border: 1px solid #cbd5e1;
+        border-radius: 10px;
+        font-size: 16px;
+      }
+
+      .actions {
+        display: flex;
+        gap: 12px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        border-radius: 10px;
+        padding: 12px 18px;
+        font-size: 15px;
+        font-weight: 700;
+        cursor: pointer;
+      }
+
+      .primary {
+        background: #0f766e;
+        color: #ffffff;
+      }
+
+      .secondary {
+        background: #1d4ed8;
+        color: #ffffff;
+      }
+
+      #events {
+        margin-top: 24px;
+        padding: 16px;
+        min-height: 180px;
+        border-radius: 12px;
+        background: #0f172a;
+        color: #e2e8f0;
+        overflow: auto;
+        white-space: pre-line;
+      }
+
+      .hint {
+        color: #475569;
+        font-size: 14px;
+        margin-top: 8px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <h1>Teste Socket.io</h1>
+      <div id="status" class="status disconnected">Desconectado</div>
+
+      <div class="grid">
+        <div>
+          <label for="productId">Product ID</label>
+          <input id="productId" type="text" placeholder="Digite o productId" />
+        </div>
+
+        <div class="actions">
+          <button id="subscribeButton" class="primary">Inscrever</button>
+        </div>
+
+        <div>
+          <label for="novoEstoque">Novo estoque</label>
+          <input
+            id="novoEstoque"
+            type="number"
+            min="0"
+            placeholder="Digite o novo estoque"
+          />
+        </div>
+
+        <div class="actions">
+          <button id="updateButton" class="secondary">Atualizar Estoque</button>
+        </div>
+      </div>
+
+      <p class="hint">
+        Abra esta página no navegador e mantenha o backend rodando em
+        http://localhost:3000.
+      </p>
+
+      <div id="events"></div>
+    </div>
+
+    <script>
+      const socket = io("http://localhost:3000");
+
+      const statusElement = document.getElementById("status");
+      const eventsElement = document.getElementById("events");
+      const productIdInput = document.getElementById("productId");
+      const novoEstoqueInput = document.getElementById("novoEstoque");
+      const subscribeButton = document.getElementById("subscribeButton");
+      const updateButton = document.getElementById("updateButton");
+
+      function addEvent(message) {
+        const time = new Date().toLocaleTimeString("pt-BR");
+        eventsElement.textContent = `[${time}] ${message}\n${eventsElement.textContent}`;
+      }
+
+      function setStatus(connected) {
+        statusElement.textContent = connected ? "Conectado" : "Desconectado";
+        statusElement.className = `status ${connected ? "connected" : "disconnected"}`;
+      }
+
+      subscribeButton.addEventListener("click", () => {
+        const productId = productIdInput.value.trim();
+
+        if (!productId) {
+          addEvent("Erro: informe um productId antes de se inscrever");
+          return;
+        }
+
+        socket.emit("join:product", { productId });
+      });
+
+      updateButton.addEventListener("click", () => {
+        const productId = productIdInput.value.trim();
+        const novoEstoque = Number(novoEstoqueInput.value);
+
+        if (!productId) {
+          addEvent("Erro: informe um productId antes de atualizar o estoque");
+          return;
+        }
+
+        if (Number.isNaN(novoEstoque) || novoEstoque < 0) {
+          addEvent("Erro: informe um estoque válido");
+          return;
+        }
+
+        socket.emit("stock:update", {
+          productId,
+          novoEstoque,
+          pharmacyId: "teste",
+        });
+      });
+
+      socket.on("connect", () => {
+        setStatus(true);
+        addEvent(`Conectado com socket ID ${socket.id}`);
+      });
+
+      socket.on("disconnect", () => {
+        setStatus(false);
+        addEvent("Conexão encerrada");
+      });
+
+      socket.on("stock:update", (data) => {
+        const horario = new Date(
+          data.atualizadoEm || Date.now(),
+        ).toLocaleTimeString("pt-BR");
+        addEvent(`Estoque atualizado: ${data.estoque} unidades às ${horario}`);
+      });
+
+      socket.on("joined", (data) => {
+        addEvent(`Inscrito no canal: ${data.room}`);
+      });
+
+      socket.on("error", (data) => {
+        const message =
+          data && data.message ? data.message : "Erro desconhecido";
+        addEvent(`Erro: ${message}`);
+      });
+    </script>
+  </body>
+</html>

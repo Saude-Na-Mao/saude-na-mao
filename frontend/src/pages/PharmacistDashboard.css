@@ -1,0 +1,571 @@
+.pharmacist-dashboard {
+  padding: 20px;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
+  min-height: 100vh;
+}
+
+.dashboard-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+  gap: 20px;
+}
+
+.dashboard-header > div:first-child {
+  flex: 1;
+}
+
+.dashboard-header h1 {
+  margin: 0 0 12px 0;
+  font-size: 32px;
+  color: #1f2937;
+}
+
+.error-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 16px;
+  background: #fee2e2;
+  border: 1px solid #fecaca;
+  border-radius: 8px;
+  color: #991b1b;
+  font-size: 14px;
+  margin-bottom: 12px;
+}
+
+.error-banner span {
+  flex: 1;
+}
+
+.retry-btn {
+  padding: 6px 12px;
+  background: #dc2626;
+  color: white;
+  border: none;
+  border-radius: 4px;
+  font-size: 12px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.retry-btn:hover {
+  background: #991b1b;
+}
+
+.status-indicator {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 16px;
+  background: white;
+  border-radius: 20px;
+  border: 2px solid #10b981;
+  white-space: nowrap;
+}
+
+.dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
+}
+
+.dot.online {
+  background: #10b981;
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Stats Grid */
+.stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.stat-card {
+  display: flex;
+  gap: 16px;
+  padding: 20px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  transition: all 0.3s ease;
+}
+
+.stat-card:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.1);
+}
+
+.stat-card .icon {
+  font-size: 32px;
+}
+
+.stat-card.color-orange {
+  border-left: 4px solid #f59e0b;
+}
+
+.stat-card.color-red {
+  border-left: 4px solid #ef4444;
+}
+
+.stat-card.color-green {
+  border-left: 4px solid #10b981;
+}
+
+.stat-card.color-blue {
+  border-left: 4px solid #3b82f6;
+}
+
+.stat-card .content {
+  flex: 1;
+}
+
+.stat-card .label {
+  margin: 0;
+  font-size: 12px;
+  color: #6b7280;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  font-weight: 600;
+}
+
+.stat-card .value {
+  margin: 8px 0 0 0;
+  font-size: 28px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Dashboard Content */
+.dashboard-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+  margin-bottom: 20px;
+}
+
+section h2 {
+  margin: 0 0 20px 0;
+  font-size: 20px;
+  font-weight: 700;
+  color: #1f2937;
+}
+
+/* Validations & Alerts */
+.validations-section,
+.alerts-section {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+.validations-list,
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+}
+
+.empty-state {
+  text-align: center;
+  padding: 60px 20px;
+  color: #9ca3af;
+}
+
+.empty-icon {
+  font-size: 48px;
+  margin-bottom: 12px;
+}
+
+.empty-state p {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 500;
+  color: #6b7280;
+}
+
+.empty-state small {
+  display: block;
+  margin-top: 6px;
+  font-size: 13px;
+  color: #9ca3af;
+}
+
+/* Validation Card */
+.validation-card {
+  border: 2px solid #e5e7eb;
+  border-radius: 10px;
+  padding: 16px;
+  background: #fafafa;
+  transition: all 0.2s ease;
+}
+
+.validation-card:hover {
+  border-color: #3b82f6;
+  background: #eff6ff;
+}
+
+.validation-card .header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 12px;
+}
+
+.validation-card h3 {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.severity {
+  display: inline-block;
+  font-size: 11px;
+  font-weight: 600;
+  padding: 4px 8px;
+  border-radius: 4px;
+}
+
+.severity.LEVE {
+  background: #d1fae5;
+  color: #065f46;
+}
+
+.severity.MODERADA {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.severity.GRAVE {
+  background: #fee2e2;
+  color: #7f1d1d;
+}
+
+.severity.CONTRAINDICADA {
+  background: #ede9fe;
+  color: #5b21b6;
+}
+
+.validation-card h4 {
+  margin: 12px 0 8px 0;
+  font-size: 13px;
+  font-weight: 600;
+  color: #374151;
+}
+
+.medicamentos ul {
+  margin: 0;
+  padding-left: 20px;
+  list-style: none;
+}
+
+.medicamentos li {
+  padding: 4px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.medicamentos li:before {
+  content: '💊 ';
+  margin-right: 6px;
+}
+
+.interacoes {
+  margin: 12px 0;
+  padding: 12px;
+  background: #fee2e2;
+  border-radius: 6px;
+}
+
+.interacao {
+  margin: 6px 0;
+}
+
+.interacao p {
+  margin: 0;
+  font-size: 13px;
+  color: #7f1d1d;
+}
+
+.interacao .efeito {
+  font-size: 12px;
+  color: #991b1b;
+  margin-top: 2px;
+}
+
+.cliente-info {
+  margin: 12px 0;
+  padding-top: 12px;
+  border-top: 1px solid #e5e7eb;
+}
+
+.cliente-info p {
+  margin: 6px 0;
+  font-size: 13px;
+  color: #4b5563;
+}
+
+.actions {
+  display: flex;
+  gap: 10px;
+  margin-top: 12px;
+}
+
+.btn-approve,
+.btn-reject {
+  flex: 1;
+  padding: 10px;
+  border: none;
+  border-radius: 6px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.btn-approve {
+  background: #10b981;
+  color: white;
+}
+
+.btn-approve:hover:not(:disabled) {
+  background: #059669;
+  box-shadow: 0 4px 12px rgba(16, 185, 129, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-approve:disabled {
+  background: #d1fae5;
+  color: #065f46;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+.btn-reject {
+  background: #ef4444;
+  color: white;
+}
+
+.btn-reject:hover:not(:disabled) {
+  background: #dc2626;
+  box-shadow: 0 4px 12px rgba(239, 68, 68, 0.3);
+  transform: translateY(-2px);
+}
+
+.btn-reject:disabled {
+  background: #fee2e2;
+  color: #7f1d1d;
+  cursor: not-allowed;
+  opacity: 0.7;
+}
+
+/* Alert Card */
+.alert-card {
+  display: flex;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
+  overflow: hidden;
+  transition: all 0.2s ease;
+}
+
+.alert-card:hover {
+  border-color: #3b82f6;
+  box-shadow: 0 4px 12px rgba(59, 130, 246, 0.1);
+}
+
+.alert-card .left-border {
+  width: 4px;
+  flex-shrink: 0;
+}
+
+.alert-card .content {
+  flex: 1;
+  padding: 12px 16px;
+}
+
+.alert-card h4 {
+  margin: 0 0 6px 0;
+  font-size: 14px;
+  font-weight: 600;
+  color: #1f2937;
+}
+
+.alert-card p {
+  margin: 0 0 8px 0;
+  font-size: 13px;
+  color: #6b7280;
+  line-height: 1.4;
+}
+
+.alert-card .time {
+  display: inline-block;
+  font-size: 11px;
+  color: #9ca3af;
+}
+
+/* Refresh Indicator */
+.refresh-indicator {
+  text-align: center;
+  font-size: 12px;
+  color: #9ca3af;
+  padding: 12px;
+  animation: pulse-text 1s infinite;
+}
+
+@keyframes pulse-text {
+  0%, 100% { opacity: 0.6; }
+  50% { opacity: 1; }
+}
+
+/* Skeleton Loaders */
+.skeleton-header,
+.skeleton-stats-grid,
+.skeleton-content {
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-header {
+  margin-bottom: 30px;
+  padding-bottom: 20px;
+  border-bottom: 2px solid #e5e7eb;
+}
+
+.skeleton-text {
+  background: linear-gradient(90deg, #e5e7eb 25%, #f3f4f6 50%, #e5e7eb 75%);
+  background-size: 200% 100%;
+  border-radius: 6px;
+  animation: shimmer 1.5s infinite;
+}
+
+.skeleton-title {
+  height: 32px;
+  width: 300px;
+  margin-bottom: 12px;
+}
+
+.skeleton-heading {
+  height: 20px;
+  width: 150px;
+  margin-bottom: 20px;
+}
+
+.skeleton-stats-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 20px;
+  margin-bottom: 30px;
+}
+
+.skeleton-card {
+  height: 100px;
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  animation: skeleton-loading 1.5s infinite;
+}
+
+.skeleton-validation {
+  height: 180px;
+}
+
+.skeleton-alert {
+  height: 80px;
+}
+
+.skeleton-content {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 30px;
+}
+
+.skeleton-section {
+  background: white;
+  border-radius: 12px;
+  padding: 25px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+}
+
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+
+@keyframes skeleton-loading {
+  0% { opacity: 0.8; }
+  50% { opacity: 0.4; }
+  100% { opacity: 0.8; }
+}
+
+/* Responsive Design */
+@media (max-width: 1024px) {
+  .dashboard-content {
+    grid-template-columns: 1fr;
+  }
+
+  .skeleton-content {
+    grid-template-columns: 1fr;
+  }
+}
+
+@media (max-width: 768px) {
+  .pharmacist-dashboard {
+    padding: 15px;
+  }
+
+  .dashboard-header {
+    flex-direction: column;
+    gap: 15px;
+    align-items: flex-start;
+  }
+
+  .dashboard-header h1 {
+    font-size: 24px;
+  }
+
+  .status-indicator {
+    align-self: flex-start;
+  }
+
+  .stats-grid {
+    grid-template-columns: 1fr 1fr;
+  }
+
+  .validation-card {
+    padding: 12px;
+  }
+
+  .actions {
+    flex-direction: column;
+  }
+
+  .btn-approve,
+  .btn-reject {
+    width: 100%;
+  }
+
+  .error-banner {
+    flex-direction: column;
+    text-align: center;
+  }
+
+  .retry-btn {
+    width: 100%;
+  }
+}

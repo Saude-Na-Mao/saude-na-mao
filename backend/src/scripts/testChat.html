@@ -1,0 +1,594 @@
+<!doctype html>
+<html lang="pt-BR">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Teste de Chat de Suporte</title>
+    <style>
+      :root {
+        --bg: #0b1220;
+        --panel: #131d2b;
+        --panel-soft: #1a2635;
+        --border: #2a394d;
+        --text: #edf4fb;
+        --muted: #93a7bb;
+        --success: #22c55e;
+        --danger: #ef4444;
+        --accent-user: #2563eb;
+        --accent-pharm: #0f766e;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        font-family: "Segoe UI", Tahoma, Geneva, Verdana, sans-serif;
+        background:
+          radial-gradient(
+            circle at top left,
+            rgba(37, 99, 235, 0.14),
+            transparent 30%
+          ),
+          radial-gradient(
+            circle at top right,
+            rgba(15, 118, 110, 0.16),
+            transparent 34%
+          ),
+          linear-gradient(180deg, #08101b 0%, var(--bg) 100%);
+        color: var(--text);
+      }
+
+      .container {
+        width: min(1200px, calc(100% - 32px));
+        margin: 24px auto;
+      }
+
+      .topbar {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 16px;
+        margin-bottom: 20px;
+      }
+
+      h1 {
+        margin: 0;
+        font-size: 28px;
+      }
+
+      .subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+      }
+
+      .status {
+        display: inline-flex;
+        align-items: center;
+        gap: 10px;
+        padding: 10px 14px;
+        border: 1px solid var(--border);
+        border-radius: 999px;
+        background: rgba(19, 29, 43, 0.88);
+      }
+
+      .dot {
+        width: 12px;
+        height: 12px;
+        border-radius: 50%;
+        background: var(--danger);
+        box-shadow: 0 0 12px rgba(239, 68, 68, 0.4);
+      }
+
+      .dot.connected {
+        background: var(--success);
+        box-shadow: 0 0 12px rgba(34, 197, 94, 0.45);
+      }
+
+      .columns {
+        display: flex;
+        gap: 18px;
+      }
+
+      .panel {
+        flex: 1;
+        display: flex;
+        flex-direction: column;
+        min-height: 640px;
+        background: rgba(19, 29, 43, 0.92);
+        border: 1px solid var(--border);
+        border-radius: 18px;
+        overflow: hidden;
+      }
+
+      .panel-header {
+        padding: 18px 18px 12px;
+        border-bottom: 1px solid var(--border);
+      }
+
+      .panel.user .panel-header {
+        background: linear-gradient(
+          180deg,
+          rgba(37, 99, 235, 0.16),
+          transparent
+        );
+      }
+
+      .panel.farm .panel-header {
+        background: linear-gradient(
+          180deg,
+          rgba(15, 118, 110, 0.18),
+          transparent
+        );
+      }
+
+      .panel-title {
+        margin: 0;
+        font-size: 19px;
+      }
+
+      .panel-subtitle {
+        margin: 6px 0 0;
+        color: var(--muted);
+        font-size: 14px;
+      }
+
+      .panel-body {
+        display: flex;
+        flex-direction: column;
+        gap: 14px;
+        padding: 16px 18px 18px;
+        flex: 1;
+      }
+
+      label {
+        display: block;
+        color: var(--muted);
+        font-size: 13px;
+        margin-bottom: 6px;
+      }
+
+      input,
+      textarea {
+        width: 100%;
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        background: var(--panel-soft);
+        color: var(--text);
+        padding: 12px 14px;
+        outline: none;
+      }
+
+      textarea {
+        min-height: 94px;
+        resize: vertical;
+      }
+
+      input:focus,
+      textarea:focus {
+        border-color: #5fa3ff;
+        box-shadow: 0 0 0 3px rgba(95, 163, 255, 0.12);
+      }
+
+      .actions {
+        display: flex;
+        gap: 10px;
+        flex-wrap: wrap;
+      }
+
+      button {
+        border: 0;
+        border-radius: 12px;
+        padding: 12px 16px;
+        font-weight: 600;
+        color: white;
+        cursor: pointer;
+      }
+
+      .user button {
+        background: linear-gradient(135deg, #2563eb, #1d4ed8);
+      }
+
+      .farm button {
+        background: linear-gradient(135deg, #0f766e, #115e59);
+      }
+
+      .messages {
+        flex: 1;
+        min-height: 280px;
+        overflow-y: auto;
+        background: #0a1019;
+        border: 1px solid var(--border);
+        border-radius: 14px;
+        padding: 12px;
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+      }
+
+      .message {
+        padding: 10px 12px;
+        border-radius: 12px;
+        background: rgba(26, 38, 53, 0.9);
+        border: 1px solid rgba(42, 57, 77, 0.8);
+      }
+
+      .message-header {
+        display: flex;
+        justify-content: space-between;
+        gap: 12px;
+        margin-bottom: 6px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+
+      .message-name {
+        font-weight: 700;
+        color: var(--text);
+      }
+
+      .typing {
+        min-height: 20px;
+        font-size: 13px;
+        color: #7dd3fc;
+      }
+
+      .hint {
+        color: var(--muted);
+        font-size: 13px;
+      }
+
+      @media (max-width: 900px) {
+        .columns {
+          flex-direction: column;
+        }
+
+        .topbar {
+          flex-direction: column;
+          align-items: flex-start;
+        }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="container">
+      <div class="topbar">
+        <div>
+          <h1>Chat de Suporte em Tempo Real</h1>
+          <p class="subtitle">
+            Página de teste com usuário e farmacêutico no mesmo cliente
+            Socket.IO.
+          </p>
+        </div>
+        <div class="status">
+          <span id="connectionDot" class="dot"></span>
+          <span id="connectionText">Desconectado</span>
+        </div>
+      </div>
+
+      <div class="columns">
+        <section class="panel user">
+          <div class="panel-header">
+            <h2 class="panel-title">Usuário</h2>
+            <p class="panel-subtitle">
+              Simula o cliente abrindo e acompanhando o ticket.
+            </p>
+          </div>
+          <div class="panel-body">
+            <div>
+              <label for="ticketIdUser">Ticket ID</label>
+              <input
+                id="ticketIdUser"
+                type="text"
+                placeholder="Cole o ticketId"
+              />
+            </div>
+
+            <div class="actions">
+              <button id="joinUserButton" type="button">Entrar no chat</button>
+            </div>
+
+            <div id="userMessages" class="messages">
+              <div class="hint">Nenhuma mensagem recebida ainda.</div>
+            </div>
+
+            <div id="userTyping" class="typing"></div>
+
+            <div>
+              <label for="userText">Mensagem</label>
+              <textarea
+                id="userText"
+                placeholder="Digite como usuário..."
+              ></textarea>
+            </div>
+
+            <div class="actions">
+              <button id="sendUserButton" type="button">
+                Enviar como Usuário
+              </button>
+            </div>
+          </div>
+        </section>
+
+        <section class="panel farm">
+          <div class="panel-header">
+            <h2 class="panel-title">Farmacêutico</h2>
+            <p class="panel-subtitle">
+              Simula o atendimento do outro lado do ticket.
+            </p>
+          </div>
+          <div class="panel-body">
+            <div>
+              <label for="ticketIdFarm">Ticket ID</label>
+              <input
+                id="ticketIdFarm"
+                type="text"
+                placeholder="Mesmo ticketId da esquerda"
+              />
+            </div>
+
+            <div class="actions">
+              <button id="joinFarmButton" type="button">
+                Entrar como Farmacêutico
+              </button>
+            </div>
+
+            <div id="farmMessages" class="messages">
+              <div class="hint">Nenhuma mensagem recebida ainda.</div>
+            </div>
+
+            <div id="farmTyping" class="typing"></div>
+
+            <div>
+              <label for="farmText">Mensagem</label>
+              <textarea
+                id="farmText"
+                placeholder="Digite como farmacêutico..."
+              ></textarea>
+            </div>
+
+            <div class="actions">
+              <button id="sendFarmButton" type="button">
+                Enviar como Farmacêutico
+              </button>
+            </div>
+          </div>
+        </section>
+      </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script>
+      const socket = io("http://localhost:3000");
+
+      const elements = {
+        connectionDot: document.getElementById("connectionDot"),
+        connectionText: document.getElementById("connectionText"),
+        ticketIdUser: document.getElementById("ticketIdUser"),
+        ticketIdFarm: document.getElementById("ticketIdFarm"),
+        joinUserButton: document.getElementById("joinUserButton"),
+        joinFarmButton: document.getElementById("joinFarmButton"),
+        userMessages: document.getElementById("userMessages"),
+        farmMessages: document.getElementById("farmMessages"),
+        userText: document.getElementById("userText"),
+        farmText: document.getElementById("farmText"),
+        sendUserButton: document.getElementById("sendUserButton"),
+        sendFarmButton: document.getElementById("sendFarmButton"),
+        userTyping: document.getElementById("userTyping"),
+        farmTyping: document.getElementById("farmTyping"),
+      };
+
+      const typingTimers = {
+        user: null,
+        farm: null,
+      };
+
+      function setConnected(connected) {
+        elements.connectionDot.classList.toggle("connected", connected);
+        elements.connectionText.textContent = connected
+          ? "Conectado"
+          : "Desconectado";
+      }
+
+      function getNow() {
+        return new Date().toLocaleTimeString("pt-BR");
+      }
+
+      function syncTicketIds(source, target) {
+        target.value = source.value;
+      }
+
+      elements.ticketIdUser.addEventListener("input", () => {
+        syncTicketIds(elements.ticketIdUser, elements.ticketIdFarm);
+      });
+
+      elements.ticketIdFarm.addEventListener("input", () => {
+        syncTicketIds(elements.ticketIdFarm, elements.ticketIdUser);
+      });
+
+      function clearHint(container) {
+        const hint = container.querySelector(".hint");
+        if (hint) {
+          hint.remove();
+        }
+      }
+
+      function appendMessage(container, remetente, texto, horario) {
+        clearHint(container);
+
+        const item = document.createElement("div");
+        item.className = "message";
+        item.innerHTML = `
+					<div class="message-header">
+						<span class="message-name">${remetente}</span>
+						<span>${horario}</span>
+					</div>
+					<div>${texto}</div>
+				`;
+
+        container.appendChild(item);
+        container.scrollTop = container.scrollHeight;
+      }
+
+      function renderTyping(target, text) {
+        target.textContent = text || "";
+      }
+
+      function getTicketId() {
+        return (
+          elements.ticketIdUser.value.trim() ||
+          elements.ticketIdFarm.value.trim()
+        );
+      }
+
+      function joinSupport(userId) {
+        const ticketId = getTicketId();
+
+        if (!ticketId) {
+          return;
+        }
+
+        socket.emit("join:support", { ticketId, userId });
+      }
+
+      function emitTyping(role, userId) {
+        const ticketId = getTicketId();
+
+        if (!ticketId) {
+          return;
+        }
+
+        socket.emit("support:typing", { ticketId, userId, isTyping: true });
+
+        if (typingTimers[role]) {
+          clearTimeout(typingTimers[role]);
+        }
+
+        typingTimers[role] = setTimeout(() => {
+          socket.emit("support:typing", { ticketId, userId, isTyping: false });
+        }, 1000);
+      }
+
+      function emitMessage(tipo, texto) {
+        const ticketId = getTicketId();
+
+        if (!ticketId || !texto.trim()) {
+          return;
+        }
+
+        socket.emit("support:message_send", { ticketId, texto, tipo });
+
+        const remetente = tipo === "usuario" ? "Usuário" : "Farmacêutico";
+        const horario = getNow();
+
+        appendMessage(elements.userMessages, remetente, texto, horario);
+        appendMessage(elements.farmMessages, remetente, texto, horario);
+      }
+
+      elements.joinUserButton.addEventListener("click", () => {
+        joinSupport("user");
+      });
+
+      elements.joinFarmButton.addEventListener("click", () => {
+        joinSupport("farm");
+      });
+
+      elements.sendUserButton.addEventListener("click", () => {
+        emitMessage("usuario", elements.userText.value);
+        elements.userText.value = "";
+      });
+
+      elements.sendFarmButton.addEventListener("click", () => {
+        emitMessage("farmaceutico", elements.farmText.value);
+        elements.farmText.value = "";
+      });
+
+      elements.userText.addEventListener("input", () => {
+        emitTyping("user", "user");
+      });
+
+      elements.farmText.addEventListener("input", () => {
+        emitTyping("farm", "farm");
+      });
+
+      socket.on("connect", () => {
+        setConnected(true);
+      });
+
+      socket.on("disconnect", () => {
+        setConnected(false);
+      });
+
+      socket.on("connect_error", () => {
+        setConnected(false);
+      });
+
+      socket.on("joined", ({ room }) => {
+        appendMessage(
+          elements.userMessages,
+          "Sistema",
+          `Entrou na sala ${room}`,
+          getNow(),
+        );
+        appendMessage(
+          elements.farmMessages,
+          "Sistema",
+          `Entrou na sala ${room}`,
+          getNow(),
+        );
+      });
+
+      socket.on("support:message", ({ mensagem }) => {
+        const remetenteMap = {
+          usuario: "Usuário",
+          farmaceutico: "Farmacêutico",
+          admin: "Admin",
+          sistema: "Sistema",
+        };
+
+        const remetente =
+          remetenteMap[mensagem.tipoRemetente] ||
+          remetenteMap[mensagem.tipo_remetente] ||
+          "Atendimento";
+        const horario = mensagem.enviado_em
+          ? new Date(mensagem.enviado_em).toLocaleTimeString("pt-BR")
+          : getNow();
+        const texto = mensagem.texto || "[mensagem sem texto]";
+
+        appendMessage(elements.userMessages, remetente, texto, horario);
+        appendMessage(elements.farmMessages, remetente, texto, horario);
+      });
+
+      socket.on("support:typing", ({ userId, isTyping }) => {
+        if (userId === "user") {
+          renderTyping(
+            elements.farmTyping,
+            isTyping ? "Usuário está digitando..." : "",
+          );
+          return;
+        }
+
+        if (userId === "farm") {
+          renderTyping(
+            elements.userTyping,
+            isTyping ? "Farmacêutico está digitando..." : "",
+          );
+        }
+      });
+
+      socket.on("support:messages_read", ({ userId }) => {
+        const texto = `${userId} marcou as mensagens como lidas.`;
+        appendMessage(elements.userMessages, "Sistema", texto, getNow());
+        appendMessage(elements.farmMessages, "Sistema", texto, getNow());
+      });
+
+      socket.on("error", ({ message }) => {
+        const texto = message || "Erro desconhecido no socket";
+        appendMessage(elements.userMessages, "Erro", texto, getNow());
+        appendMessage(elements.farmMessages, "Erro", texto, getNow());
+      });
+    </script>
+  </body>
+</html>

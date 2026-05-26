@@ -1,0 +1,357 @@
+import axios from 'axios'
+import { useAuthStore } from '../stores/store'
+import Logger from '../utils/logger'
+import { ERROR_MESSAGES, HTTP_STATUS } from '../constants'
+import { getApiBaseUrl } from '../config/env'
+
+const logger = new Logger('ApiClient')
+
+const API_URL = getApiBaseUrl()
+
+/** 401 em login/register é credencial inválida, não sessão expirada — não redirecionar. */
+function isPublicAuthCredentialRequest(config) {
+  const path = String(config?.url || '')
+    .split('?')[0]
+    .replace(/\/+$/, '') || ''
+  const normalized = path.startsWith('/') ? path.slice(1) : path
+  return normalized === 'auth/login' || normalized === 'auth/register'
+}
+
+const api = axios.create({
+  baseURL: API_URL,
+  timeout: 30000,
+})
+
+function authRequestTimeoutMs(config) {
+  return isPublicAuthCredentialRequest(config) ? 125000 : 30000
+}
+
+api.interceptors.request.use(
+  (config) => {
+    config.timeout = authRequestTimeoutMs(config)
+
+    if (!isPublicAuthCredentialRequest(config)) {
+      const token = useAuthStore.getState().token
+      if (token) {
+        config.headers.Authorization = `Bearer ${token}`
+      }
+    }
+
+    logger.debug(`${config.method.toUpperCase()} ${config.url}`)
+    return config
+  },
+  (error) => {
+    logger.error('Request interceptor error', error)
+    return Promise.reject(error)
+  }
+)
+
+api.interceptors.response.use(
+  (response) => {
+    const { config } = response
+    const duration = response.duration || 0
+    logger.logApiCall(
+      config.method.toUpperCase(),
+      config.url,
+      response.status,
+      duration
+    )
+    return response
+  },
+  async (error) => {
+    const { response, message, config } = error
+
+    if (!response) {
+      logger.error('Network error', {
+        url: error.config?.url,
+        message,
+      })
+      const isAuth = isPublicAuthCredentialRequest(config)
+      const timedOut = error.code === 'ECONNABORTED'
+      return Promise.reject({
+        status: 'NETWORK_ERROR',
+        message: isAuth
+          ? 'Conectando ao servidor… Se acabou de iniciar o backend, aguarde até 1 minuto (MongoDB Atlas) e tente de novo.'
+          : timedOut
+            ? 'Servidor demorou a responder. Aguarde "MongoDB conectado" no terminal do backend e recarregue a página.'
+            : ERROR_MESSAGES.NETWORK,
+      })
+    }
+
+    const status = response.status
+    const authStore = useAuthStore.getState()
+
+    if (status === HTTP_STATUS.UNAUTHORIZED && !isPublicAuthCredentialRequest(config)) {
+      logger.warn('Unauthorized - Token invalid or expired')
+      authStore.logout()
+      window.location.href = '/login'
+      return Promise.reject({
+        status,
+        message: 'Sessão expirada. Faça login novamente.',
+      })
+    }
+
+    const retryableStatuses = [408, 429, 500, 502, 504]
+    const retryCount = (config.__retryCount || 0)
+    const maxRetries = 3
+    const isMongo503 =
+      status === 503 &&
+      (response?.data?.mongo === 'connecting' ||
+        response?.data?.mongo === 'disconnected')
+
+    if (
+      retryableStatuses.includes(status) &&
+      retryCount < maxRetries &&
+      !isPublicAuthCredentialRequest(config) &&
+      !isMongo503
+    ) {
+      config.__retryCount = retryCount + 1
+      
+      const delayMs = Math.pow(2, retryCount) * 1000
+      logger.debug(`Retrying request after ${delayMs}ms`, { url: config.url, attempt: retryCount + 1 })
+      
+      await new Promise(resolve => setTimeout(resolve, delayMs))
+      return api(config)
+    }
+
+    logger.error(`API Error ${status || 'No Status'}`, {
+      url: error.config?.url,
+      status,
+      message: response?.data?.message || message,
+      data: response?.data,
+    })
+
+    const formattedError = {
+      status,
+      message: response?.data?.message || ERROR_MESSAGES.GENERIC,
+      data: response?.data,
+    }
+
+    return Promise.reject(formattedError)
+  }
+)
+
+export const authService = {
+  register: (data) => api.post('/auth/register', data),
+  login: (email, senha) => api.post('/auth/login', { email, senha }),
+  logout: () => api.post('/auth/logout'),
+  getCurrentUser: () => api.get('/users/me'),
+}
+
+export const productService = {
+  getAll: (params) => api.get('/produtos', { params }),
+  getById: (id) => api.get(`/produtos/${id}`),
+  search: (query) => api.get('/produtos', { params: { q: query } }),
+  getCategories: () => api.get('/produtos/categorias'),
+  getFeatured: () => api.get('/produtos/destaque'),
+  uploadProductImage: (file) => {
+    const formData = new FormData()
+    formData.append('imagem', file)
+    return api.post('/produtos/upload-imagem', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+}
+
+export const cartService = {
+  get: () => api.get('/carrinho'),
+  add: (productId, quantity) => api.post('/carrinho', { productId, quantity }),
+  remove: (productId) => api.delete(`/carrinho/${productId}`),
+  update: (productId, quantity) => api.put(`/carrinho/${productId}`, { quantity }),
+  clear: () => api.delete('/carrinho'),
+}
+
+export const orderService = {
+  getAll: (params = {}) => {
+    const keys = Object.keys(params || {})
+    return keys.length ? api.get('/pedidos', { params }) : api.get('/pedidos')
+  },
+  getById: (id) => api.get(`/pedidos/${id}`),
+  create: (data) => api.post('/pedidos', data),
+  updateStatus: (id, status) => api.put(`/pedidos/${id}/status`, { status }),
+  track: (id) => api.get(`/pedidos/${id}/rastreamento`),
+  getPharmacyOrders: (pharmacyId, params = {}) =>
+    api.get(`/pedidos/pharmacy/${pharmacyId}`, { params }),
+  approveByPharmacist: (orderId, pharmacyId) =>
+    api.post(`/pedidos/${orderId}/pharmacist-approve`, { pharmacyId }),
+  rejectByPharmacist: (orderId, pharmacyId, motivo) =>
+    api.post(`/pedidos/${orderId}/reject`, { pharmacyId, motivo }),
+  completePharmacyPickup: (orderId, { pharmacyId, observacao, codigo } = {}) =>
+    api.post(`/pedidos/${orderId}/pickup-complete`, {
+      pharmacyId,
+      observacao,
+      codigo,
+    }),
+  confirmReceiptReturnAtPharmacy: (orderId, { pharmacyId, codigo } = {}) =>
+    api.post(`/pedidos/${orderId}/receipt-return-confirm`, { pharmacyId, codigo }),
+  generateQR: (orderId) => api.post(`/pedidos/${orderId}/qr-code`),
+  confirmQR: (orderId, token) =>
+    api.post(`/pedidos/${orderId}/confirm-qr`, { token }),
+}
+
+export const paymentService = {
+  process: (data) => api.post('/pagamentos/initiate', data),
+  getStatus: (orderId) => api.get(`/pagamentos/order/${orderId}`),
+  confirmTest: (orderId) => api.post(`/pagamentos/order/${orderId}/test-confirm`),
+}
+
+export const prescriptionService = {
+  upload: (file, pharmacyId = null, modoValidacao = 'assincrono', productId = null) => {
+    const formData = new FormData()
+    formData.append('receita', file)
+    if (pharmacyId) {
+      formData.append('pharmacyId', pharmacyId)
+    }
+    if (productId) {
+      formData.append('productId', productId)
+    }
+    if (modoValidacao) {
+      formData.append('modo_validacao', modoValidacao)
+    }
+    return api.post('/receitas/upload', formData, {
+      headers: { 'Content-Type': 'multipart/form-data' }
+    })
+  },
+  getAll: (params = {}) => api.get('/receitas', { params }),
+  getById: (id) => api.get(`/receitas/${id}`),
+  getPending: () => api.get('/receitas/admin/pending'),
+  getAllForPharmacist: (params = {}) =>
+    api.get('/receitas/admin/all', { params }),
+  validate: (id, data) => api.patch(`/receitas/admin/${id}/validate`, data),
+  getForChat: (id) => api.get(`/receitas/${id}/chat`),
+  sendChatMessage: (id, texto) =>
+    api.post(`/receitas/${id}/chat/message`, { texto }),
+  closeChat: (id, data = {}) => api.post(`/receitas/${id}/chat/close`, data),
+  reuploadChatImage: (prescriptionId, file) => {
+    const formData = new FormData()
+    formData.append('receita', file)
+    return api.post(`/receitas/${prescriptionId}/chat/reupload`, formData, {
+      headers: { 'Content-Type': 'multipart/form-data' },
+    })
+  },
+  checkAvailability: (prescriptionId) =>
+    api.get(`/receitas/check-availability/${prescriptionId}`),
+}
+
+export const pharmacyService = {
+  getAll: (params) => api.get('/farmacias', { params }),
+  getById: (id) => api.get(`/farmacias/${id}`),
+  getPharmacists: (id) => api.get(`/farmacias/${id}/pharmacists`),
+  getProducts: (id, params) => api.get(`/farmacias/${id}/products`, { params }),
+  updateAddress: (id, data) => api.patch(`/farmacias/${id}/endereco`, data),
+  search: (lat, lng, radius = 5000) => 
+    api.get('/geo/farmacias', { params: { lat, lng, radius } }),
+}
+
+export const couponService = {
+  getActive: () => api.get('/cupons/ativos'),
+  validate: (codigo, subtotal) => api.post('/cupons/validar', { codigo, subtotal }),
+}
+
+export const supportService = {
+  send: (data) => api.post('/suporte', data),
+  getById: (id) => api.get(`/suporte/${id}`),
+  getUnread: () => api.get('/suporte/unread'),
+  getHistory: () => api.get('/suporte'),
+  getAllTickets: (params) => api.get('/suporte/admin/all', { params }),
+  assignTicket: (id) => api.post(`/suporte/admin/${id}/assign`),
+  sendMessage: (id, data) => api.post(`/suporte/${id}/message`, data),
+  closeTicket: (id) => api.post(`/suporte/${id}/close`),
+}
+
+export const userService = {
+  getProfile: () => api.get('/users/profile'),
+  updateProfile: (data) => api.patch('/users/profile', data),
+  updatePassword: (senhaAtual, novaSenha) => 
+    api.put('/users/senha', { senhaAtual, novaSenha }),
+  addAddress: (data) => api.post('/users/addresses', data),
+  getAddresses: () => api.get('/users/addresses'),
+  deleteAddress: (id) => api.delete(`/users/addresses/${id}`),
+  setDefaultAddress: (id) => api.patch(`/users/addresses/${id}/default`),
+}
+
+export const interactionService = {
+  check: (data) => api.post('/produtos/interactions', data),
+}
+
+export const geoService = {
+  geocodeCep: (cep) => api.get(`/geo/cep/${cep}`),
+}
+
+export const reviewService = {
+  create: (pharmacyId, data) => api.post(`/avaliacoes/pharmacy/${pharmacyId}`, data),
+  list: (pharmacyId, params) => api.get(`/avaliacoes/pharmacy/${pharmacyId}`, { params }),
+  reply: (pharmacyId, reviewId, texto) =>
+    api.patch(`/avaliacoes/pharmacy/${pharmacyId}/reviews/${reviewId}/reply`, {
+      texto,
+    }),
+}
+
+export const adminService = {
+  getDashboard: () => api.get('/admin/dashboard'),
+  listUsers: (params) => api.get('/admin/users', { params }),
+  toggleUserStatus: (id) => api.patch(`/admin/users/${id}/toggle-status`),
+  getUserDetails: (id) => api.get(`/admin/users/${id}`),
+  listProducts: (params) => api.get('/admin/produtos', { params }),
+  toggleProductStatus: (id) => api.patch(`/admin/produtos/${id}/toggle-status`),
+  listPharmacies: (params) => api.get('/admin/farmacias', { params }),
+  togglePharmacyStatus: (id) => api.patch(`/admin/farmacias/${id}/toggle-status`),
+  getAuditLogs: (params) => api.get('/admin/audit-logs', { params }),
+  listMedicineCatalog: (params) => api.get('/admin/medicine-catalog', { params }),
+  createMedicineCatalog: (data) => api.post('/admin/medicine-catalog', data),
+  updateMedicineCatalog: (id, data) => api.patch(`/admin/medicine-catalog/${id}`, data),
+}
+
+export const medicineCatalogService = {
+  search: (params) => api.get('/medicine-catalog', { params }),
+}
+
+export const pharmacyOwnerService = {
+  getPharmacy: (id) => api.get(`/farmacias/${id}`),
+  getOrders: (id, params) => api.get(`/pedidos/pharmacy/${id}`, { params }),
+  updateOrderStatus: (orderId, status) => api.patch(`/pedidos/${orderId}/status`, { status }),
+  getOrderStats: (id) => api.get(`/pedidos/pharmacy/${id}/stats`),
+  getOwnerDashboard: (pharmacyId, params) =>
+    api.get(`/farmacias/${pharmacyId}/owner-dashboard`, { params }),
+  activateCatalogProduct: (pharmacyId, data) =>
+    api.post(`/farmacias/${pharmacyId}/products/activate-catalog`, data),
+  createProduct: (data) => api.post('/produtos', data),
+  updateProduct: (id, data) => api.patch(`/produtos/${id}`, data),
+}
+
+export const pharmacistService = {
+  getMe: () => api.get('/pharmacists/me'),
+  setPresence: (online) => api.patch('/pharmacists/me/presence', { online }),
+  getByPharmacy: (pharmacyId) => api.get(`/pharmacists/pharmacy/${pharmacyId}`),
+  create: (data) => api.post('/pharmacists', data),
+  update: (id, data) => api.put(`/pharmacists/${id}`, data),
+  remove: (id) => api.delete(`/pharmacists/${id}`),
+}
+
+export const deliveryService = {
+  getAvailable: (params = {}) => api.get('/deliveries/available', { params }),
+  getMy: (params = {}) => api.get('/deliveries/my', { params }),
+  getById: (id) => api.get(`/deliveries/${id}`),
+  accept: (id) => api.post(`/deliveries/${id}/accept`),
+  updateStatus: (id, data) => api.patch(`/deliveries/${id}/status`, data),
+  updateLocation: (id, data) => api.patch(`/deliveries/${id}/location`, data),
+  confirm: (id, data) => api.post(`/deliveries/${id}/confirm`, data),
+  cancel: (id, data) => api.post(`/deliveries/${id}/cancel`, data),
+  rateByClient: (id, data) => api.post(`/deliveries/${id}/rate/client`, data),
+  rateByDriver: (id, data) => api.post(`/deliveries/${id}/rate/driver`, data),
+
+  // Aliases para telas antigas em PT-BR.
+  listarDisponiveisPedidos: (params = {}) => api.get('/deliveries/available', { params }),
+  aceitarPedido: (deliveryId) => api.post(`/deliveries/${deliveryId}/accept`),
+  toggleDisponibilidade: (disponivel) => api.patch('/deliveries/me/availability', { disponivel }),
+  getGanhos: (periodo = 'hoje') => api.get('/deliveries/me/earnings', { params: { periodo } }),
+  getHistorico: (params = {}) => api.get('/deliveries/me/history', { params }),
+  coletarNaFarmacia: (deliveryId) => api.post(`/deliveries/${deliveryId}/collect`),
+  entregarAoCliente: (deliveryId, data = {}) =>
+    api.post(`/deliveries/${deliveryId}/confirm`, {
+      codigo: data.codigo_confirmacao || data.codigo,
+      foto_comprovante: data.foto_comprovante,
+    }),
+}
+
+export default api

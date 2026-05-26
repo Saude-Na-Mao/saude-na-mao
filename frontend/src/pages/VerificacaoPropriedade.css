@@ -1,0 +1,381 @@
+/* VerificacaoPropriedade.css */
+
+.verification-container {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.verification-card {
+  background: white;
+  border-radius: 12px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+  max-width: 600px;
+  width: 100%;
+  padding: 40px;
+}
+
+.verification-header {
+  text-align: center;
+  margin-bottom: 30px;
+}
+
+.verification-header h1 {
+  font-size: 28px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.verification-header p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+/* Status Badge */
+.status-badge {
+  display: inline-block;
+  padding: 10px 16px;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 13px;
+  margin: 20px auto;
+  display: block;
+  text-align: center;
+  width: fit-content;
+}
+
+.status-not_submitted {
+  background: #f0f0f0;
+  color: #666;
+}
+
+.status-pending {
+  background: #fff3cd;
+  color: #856404;
+}
+
+.status-approved {
+  background: #d4edda;
+  color: #155724;
+}
+
+.status-rejected {
+  background: #f8d7da;
+  color: #721c24;
+}
+
+/* Alerts */
+.alert {
+  padding: 12px 16px;
+  border-radius: 6px;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.alert-success {
+  background: #d4edda;
+  color: #155724;
+  border: 1px solid #c3e6cb;
+}
+
+.alert-error {
+  background: #f8d7da;
+  color: #721c24;
+  border: 1px solid #f5c6cb;
+}
+
+/* Form */
+.verification-form {
+  margin: 30px 0;
+}
+
+.form-group {
+  margin-bottom: 25px;
+}
+
+.form-group label {
+  display: block;
+  font-weight: 600;
+  color: #333;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+
+.form-group select {
+  width: 100%;
+  padding: 12px;
+  border: 1px solid #ddd;
+  border-radius: 6px;
+  font-size: 14px;
+  font-family: inherit;
+  transition: border-color 0.3s;
+}
+
+.form-group select:focus {
+  outline: none;
+  border-color: #667eea;
+  box-shadow: 0 0 0 3px rgba(102, 126, 234, 0.1);
+}
+
+/* File Input */
+.file-input-wrapper {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.file-input-wrapper input[type="file"] {
+  display: none;
+}
+
+.file-input-placeholder {
+  border: 2px dashed #ddd;
+  border-radius: 8px;
+  padding: 30px;
+  text-align: center;
+  cursor: pointer;
+  transition: all 0.3s;
+  background: #f9f9f9;
+}
+
+.file-input-wrapper:hover .file-input-placeholder {
+  border-color: #667eea;
+  background: #f0f4ff;
+}
+
+.file-input-placeholder .upload-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.file-input-placeholder .file-icon {
+  font-size: 32px;
+  display: block;
+  margin-bottom: 10px;
+}
+
+.file-input-placeholder span {
+  display: block;
+  font-size: 14px;
+  color: #333;
+}
+
+.file-hint {
+  font-size: 12px;
+  color: #999;
+  margin-top: 5px;
+}
+
+.file-name {
+  font-weight: 600;
+  color: #667eea;
+  word-break: break-all;
+}
+
+/* Buttons */
+.submit-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 20px;
+}
+
+.submit-btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+.submit-btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.action-btn {
+  width: 100%;
+  padding: 12px;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-weight: 600;
+  font-size: 14px;
+  cursor: pointer;
+  transition: all 0.3s;
+  margin-top: 20px;
+}
+
+.action-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 5px 15px rgba(102, 126, 234, 0.4);
+}
+
+/* Status Sections */
+.pending-section,
+.approved-section,
+.rejected-section {
+  text-align: center;
+  padding: 30px 0;
+  margin: 30px 0;
+}
+
+.pending-icon,
+.approved-icon,
+.rejected-icon {
+  font-size: 48px;
+  margin-bottom: 15px;
+}
+
+.pending-section h2,
+.approved-section h2,
+.rejected-section h2 {
+  font-size: 20px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.pending-section p,
+.approved-section p,
+.rejected-section p {
+  color: #666;
+  font-size: 14px;
+  line-height: 1.6;
+  margin-bottom: 10px;
+}
+
+.small-text {
+  font-size: 12px !important;
+  color: #999 !important;
+}
+
+.rejection-reason {
+  background: #f8d7da;
+  padding: 12px;
+  border-radius: 6px;
+  margin: 15px 0 !important;
+  border-left: 4px solid #721c24;
+}
+
+/* Help Section */
+.help-section {
+  background: #f9f9f9;
+  padding: 20px;
+  border-radius: 8px;
+  margin-top: 30px;
+}
+
+.help-section h3 {
+  font-size: 14px;
+  color: #333;
+  margin-bottom: 12px;
+  font-weight: 600;
+}
+
+.help-section ul {
+  list-style: none;
+  padding: 0;
+  margin: 0 0 15px 0;
+}
+
+.help-section li {
+  font-size: 13px;
+  color: #666;
+  padding: 6px 0;
+  padding-left: 20px;
+  position: relative;
+}
+
+.help-section li:before {
+  content: "✓";
+  position: absolute;
+  left: 0;
+  color: #667eea;
+  font-weight: bold;
+}
+
+.privacy-note {
+  font-size: 12px;
+  color: #666;
+  background: #f0f4ff;
+  padding: 12px;
+  border-radius: 4px;
+  margin: 15px 0 0 0;
+  line-height: 1.5;
+}
+
+/* Error Page */
+.verification-error {
+  min-height: 100vh;
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+}
+
+.verification-error > div {
+  background: white;
+  border-radius: 12px;
+  padding: 40px;
+  text-align: center;
+  max-width: 400px;
+  box-shadow: 0 10px 40px rgba(0, 0, 0, 0.1);
+}
+
+.verification-error h1 {
+  font-size: 24px;
+  color: #333;
+  margin-bottom: 10px;
+}
+
+.verification-error p {
+  color: #666;
+  margin-bottom: 20px;
+  font-size: 14px;
+}
+
+.verification-error button {
+  padding: 10px 20px;
+  background: #667eea;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s;
+}
+
+.verification-error button:hover {
+  background: #764ba2;
+}
+
+/* Responsive */
+@media (max-width: 600px) {
+  .verification-card {
+    padding: 25px;
+  }
+
+  .verification-header h1 {
+    font-size: 22px;
+  }
+
+  .file-input-placeholder {
+    padding: 20px;
+  }
+
+  .pending-icon,
+  .approved-icon,
+  .rejected-icon {
+    font-size: 40px;
+  }
+}

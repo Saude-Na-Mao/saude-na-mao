@@ -1,0 +1,40 @@
+# dependencies
+node_modules/
+*/node_modules/
+
+# environment
+.env
+.env.*
+!.env.example
+backend/.env
+frontend/.env
+
+# builds
+dist/
+build/
+coverage/
+*/dist/
+*/build/
+*/coverage/
+
+# logs
+*.log
+backend-start.log
+backend-error.log
+frontend-start.log
+frontend-error.log
+
+# uploads and local runtime files
+backend/uploads/
+uploads/
+
+# system/editor
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
+
+# test/runtime artifacts
+playwright-report/
+test-results/
+.cache/
