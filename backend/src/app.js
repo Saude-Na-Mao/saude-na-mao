@@ -60,6 +60,32 @@ app.use((req, res, next) => {
 
 app.use(cookieParser());
 
+const PUBLIC_CACHE_PREFIXES = [
+  "/api/v1/farmacias",
+  "/api/v1/pharmacies",
+  "/api/v1/produtos",
+  "/api/v1/products",
+  "/api/v1/cupons",
+  "/api/v1/coupons",
+  "/api/v1/avaliacoes",
+  "/api/v1/reviews",
+  "/api/v1/catalogo-medicamentos",
+  "/api/v1/medicine-catalog",
+];
+
+app.use((req, res, next) => {
+  const isPublicGet =
+    req.method === "GET" &&
+    !req.headers.authorization &&
+    PUBLIC_CACHE_PREFIXES.some((prefix) => req.path.startsWith(prefix));
+
+  if (isPublicGet) {
+    res.set("Cache-Control", "public, max-age=60, stale-while-revalidate=300");
+  }
+
+  next();
+});
+
 app.get("/api/v1/health", (_req, res) => {
   const status = getMongoStatus();
   const ok = status === "connected";

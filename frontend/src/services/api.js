@@ -22,6 +22,67 @@ const api = axios.create({
   timeout: 30000,
 })
 
+const PUBLIC_GET_CACHE_TTL_MS = 90 * 1000
+const publicGetCache = new Map()
+
+function normalizeParams(params = {}) {
+  return Object.fromEntries(
+    Object.entries(params || {})
+      .filter(([, value]) => value !== undefined && value !== null && value !== '')
+      .sort(([a], [b]) => a.localeCompare(b))
+  )
+}
+
+function getPublicCacheKey(url, config = {}) {
+  return `snm:api:${url}:${JSON.stringify(normalizeParams(config.params))}`
+}
+
+function readPublicCache(key) {
+  const now = Date.now()
+  const memoryEntry = publicGetCache.get(key)
+  if (memoryEntry?.expiresAt > now) return memoryEntry.data
+
+  try {
+    const raw = sessionStorage.getItem(key)
+    if (!raw) return null
+    const entry = JSON.parse(raw)
+    if (entry?.expiresAt > now) {
+      publicGetCache.set(key, entry)
+      return entry.data
+    }
+    sessionStorage.removeItem(key)
+  } catch {
+    return null
+  }
+
+  return null
+}
+
+function writePublicCache(key, data, ttlMs = PUBLIC_GET_CACHE_TTL_MS) {
+  const entry = { data, expiresAt: Date.now() + ttlMs }
+  publicGetCache.set(key, entry)
+
+  try {
+    sessionStorage.setItem(key, JSON.stringify(entry))
+  } catch {
+    // Cache is optional; ignore quota/private-mode failures.
+  }
+}
+
+function cachedGet(url, config = {}, ttlMs = PUBLIC_GET_CACHE_TTL_MS) {
+  const key = getPublicCacheKey(url, config)
+  const cachedData = readPublicCache(key)
+
+  if (cachedData) {
+    return Promise.resolve({ data: cachedData })
+  }
+
+  return api.get(url, config).then((response) => {
+    writePublicCache(key, response.data, ttlMs)
+    return response
+  })
+}
+
 function authRequestTimeoutMs(config) {
   return isPublicAuthCredentialRequest(config) ? 125000 : 30000
 }
@@ -139,11 +200,11 @@ export const authService = {
 }
 
 export const productService = {
-  getAll: (params) => api.get('/produtos', { params }),
-  getById: (id) => api.get(`/produtos/${id}`),
-  search: (query) => api.get('/produtos', { params: { q: query } }),
-  getCategories: () => api.get('/produtos/categorias'),
-  getFeatured: () => api.get('/produtos/destaque'),
+  getAll: (params) => cachedGet('/produtos', { params }),
+  getById: (id) => cachedGet(`/produtos/${id}`),
+  search: (query) => cachedGet('/produtos', { params: { q: query } }),
+  getCategories: () => cachedGet('/produtos/categorias'),
+  getFeatured: () => cachedGet('/produtos/destaque'),
   uploadProductImage: (file) => {
     const formData = new FormData()
     formData.append('imagem', file)
@@ -234,17 +295,17 @@ export const prescriptionService = {
 }
 
 export const pharmacyService = {
-  getAll: (params) => api.get('/farmacias', { params }),
-  getById: (id) => api.get(`/farmacias/${id}`),
+  getAll: (params) => cachedGet('/farmacias', { params }),
+  getById: (id) => cachedGet(`/farmacias/${id}`),
   getPharmacists: (id) => api.get(`/farmacias/${id}/pharmacists`),
-  getProducts: (id, params) => api.get(`/farmacias/${id}/products`, { params }),
+  getProducts: (id, params) => cachedGet(`/farmacias/${id}/products`, { params }),
   updateAddress: (id, data) => api.patch(`/farmacias/${id}/endereco`, data),
   search: (lat, lng, radius = 5000) => 
     api.get('/geo/farmacias', { params: { lat, lng, radius } }),
 }
 
 export const couponService = {
-  getActive: () => api.get('/cupons/ativos'),
+  getActive: () => cachedGet('/cupons/ativos'),
   validate: (codigo, subtotal) => api.post('/cupons/validar', { codigo, subtotal }),
 }
 

@@ -3,11 +3,9 @@ import { Link } from 'react-router-dom'
 import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { pharmacyService } from '../services/api'
-import api from '../services/api'
 
 export default function Farmacias() {
   const [pharmacies, setPharmacies] = useState([])
-  const [reviewsByPharmacy, setReviewsByPharmacy] = useState({})
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('avaliacao')
@@ -23,27 +21,6 @@ export default function Farmacias() {
       const payload = response.data?.data
       const data = Array.isArray(payload) ? payload : payload?.docs ?? []
       setPharmacies(data)
-
-      const reviewEntries = await Promise.all(
-        data.map(async (pharmacy) => {
-          try {
-            const res = await api.get(`/avaliacoes/pharmacy/${pharmacy._id}`, {
-              params: { page: 1, limit: 1 },
-            })
-            const rd = res.data?.data
-            return [
-              pharmacy._id,
-              {
-                avgRating: typeof rd?.avgRating === 'number' ? rd.avgRating : null,
-                total: typeof rd?.total === 'number' ? rd.total : 0,
-              },
-            ]
-          } catch {
-            return [pharmacy._id, { avgRating: null, total: 0 }]
-          }
-        }),
-      )
-      setReviewsByPharmacy(Object.fromEntries(reviewEntries))
     } catch (err) {
       console.error('Erro ao carregar farmácias:', err)
       setPharmacies([])
@@ -58,10 +35,7 @@ export default function Farmacias() {
   )
 
   const getDisplayRating = (pharmacy) => {
-    const reviewSummary = reviewsByPharmacy[pharmacy._id]
-    return typeof reviewSummary?.avgRating === 'number'
-      ? reviewSummary.avgRating
-      : (pharmacy.avaliacao || 0)
+    return pharmacy.avaliacao || 0
   }
 
   const sorted = [...filtered].sort((a, b) => {
@@ -123,7 +97,6 @@ export default function Farmacias() {
             <PharmacyCard
               key={pharmacy._id}
               pharmacy={pharmacy}
-              reviewSummary={reviewsByPharmacy[pharmacy._id]}
             />
           ))}
         </div>
@@ -132,15 +105,9 @@ export default function Farmacias() {
   )
 }
 
-function PharmacyCard({ pharmacy, reviewSummary }) {
-  const displayRating =
-    typeof reviewSummary?.avgRating === 'number'
-      ? reviewSummary.avgRating
-      : (pharmacy.avaliacao || 0)
-  const displayTotal =
-    typeof reviewSummary?.avgRating === 'number'
-      ? reviewSummary.total
-      : (pharmacy.total_avaliacoes || 0)
+function PharmacyCard({ pharmacy }) {
+  const displayRating = pharmacy.avaliacao || 0
+  const displayTotal = pharmacy.total_avaliacoes || 0
   const initial = pharmacy.nome?.charAt(0) || 'F'
   const colors = [
     'from-blue-500 to-blue-600',

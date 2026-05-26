@@ -1,8 +1,7 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
 import { ShoppingCart, MapPin, Clock, Shield, Zap, ArrowRight, Star, Truck, CreditCard, Headphones, Tag, ChevronRight, Search, Percent } from 'lucide-react'
-import { pharmacyService, productService } from '../services/api'
-import api from '../services/api'
+import { couponService, pharmacyService, productService } from '../services/api'
 import { useAuthStore } from '../stores/store'
 import ProductCard from '../components/ProductCard'
 import { PharmacyCardSkeleton, ProductCardSkeleton } from '../components/Skeleton'
@@ -31,7 +30,7 @@ export default function Home() {
       .catch(() => {})
       .finally(() => setLoadingPharmacies(false))
 
-    api.get('/cupons/ativos')
+    couponService.getActive()
       .then((res) => {
         setCoupons(res.data?.data?.cupons || [])
       })
