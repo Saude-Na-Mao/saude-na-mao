@@ -1,6 +1,9 @@
 const DEFAULT_API_BASE_URL = '/api'
 const DEFAULT_GOOGLE_CLIENT_ID =
   '884559887672-dame54l9h1rm6dpj3mcdjhfrm1cbfqse.apps.googleusercontent.com'
+const LEGACY_GOOGLE_CLIENT_IDS = new Set([
+  '884559887672-inou94ddfh737nk84msnemt1hdkfme94.apps.googleusercontent.com',
+])
 
 const requiredEnvVars = []
 
@@ -34,7 +37,11 @@ export const getConfig = () => {
 }
 
 export function getGoogleClientId() {
-  return import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID
+  const configured = import.meta.env.VITE_GOOGLE_CLIENT_ID
+  if (!configured || LEGACY_GOOGLE_CLIENT_IDS.has(configured)) {
+    return DEFAULT_GOOGLE_CLIENT_ID
+  }
+  return configured
 }
 
 export function getApiBaseUrl() {
