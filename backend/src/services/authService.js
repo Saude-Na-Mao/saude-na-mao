@@ -31,7 +31,7 @@ function generateRefreshToken(userId) {
 const EMAIL_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
 const EMAIL_LOGIN_CODE_RESEND_MS = 60 * 1000;
 const DEFAULT_GOOGLE_CLIENT_ID =
-  "884559887672-inou94ddfh737nk84msnemt1hdkfme94.apps.googleusercontent.com";
+  "884559887672-dame54l9h1rm6dpj3mcdjhfrm1cbfqse.apps.googleusercontent.com";
 
 function hashEmailLoginCode(code) {
   const { JWT_SECRET } = getJwtSecrets();
@@ -123,12 +123,13 @@ async function registerUser({
     lgpd_consentimento: lgpd_consentimento || undefined,
   };
 
-  if (tipo === "entregador" && dados_entregador) {
-    if (!dados_entregador.tipo_veiculo || !dados_entregador.cnh) {
-      const err = new Error("Tipo de veículo e CNH são obrigatórios para entregadores");
-      err.statusCode = 400;
-      throw err;
-    }
+  if (tipo === "entregador" && (!dados_entregador?.tipo_veiculo || !dados_entregador?.cnh)) {
+    const err = new Error("Tipo de veículo e CNH são obrigatórios para entregadores");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (tipo === "entregador") {
     userData.dados_entregador = {
       tipo_veiculo: dados_entregador.tipo_veiculo,
       placa: dados_entregador.placa,
@@ -137,7 +138,13 @@ async function registerUser({
     };
   }
 
-  if (tipo === "dono_farmacia" && dados_farmacia) {
+  if (tipo === "dono_farmacia") {
+    if (!dados_farmacia) {
+      const err = new Error("Dados da farmácia são obrigatórios");
+      err.statusCode = 400;
+      throw err;
+    }
+
     if (!dados_farmacia.cnpj || !dados_farmacia.nome) {
       const err = new Error("CNPJ e nome da farmácia são obrigatórios");
       err.statusCode = 400;
@@ -218,19 +225,21 @@ async function loginUser({ email, senha }) {
 }
 
 async function googleAuth(credential) {
-  const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
-  if (!clientId) {
+  const clientIds = Array.from(
+    new Set([process.env.GOOGLE_CLIENT_ID, DEFAULT_GOOGLE_CLIENT_ID].filter(Boolean)),
+  );
+  if (clientIds.length === 0) {
     const err = new Error("Login com Google não está configurado");
     err.statusCode = 503;
     throw err;
   }
 
-  const client = new OAuth2Client(clientId);
+  const client = new OAuth2Client(clientIds[0]);
   let ticket;
   try {
     ticket = await client.verifyIdToken({
       idToken: credential,
-      audience: clientId,
+      audience: clientIds,
     });
   } catch {
     const err = new Error("Token do Google inválido");

@@ -1,6 +1,6 @@
 const DEFAULT_API_BASE_URL = '/api'
 const DEFAULT_GOOGLE_CLIENT_ID =
-  '884559887672-inou94ddfh737nk84msnemt1hdkfme94.apps.googleusercontent.com'
+  '884559887672-dame54l9h1rm6dpj3mcdjhfrm1cbfqse.apps.googleusercontent.com'
 
 const requiredEnvVars = []
 

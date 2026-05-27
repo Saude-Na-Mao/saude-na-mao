@@ -35,7 +35,17 @@ function setRefreshTokenCookie(res, refreshToken) {
 
 exports.register = async (req, res, next) => {
   try {
-    const { nome, email, telefone, cpf, senha, tipo_usuario } = req.body;
+    const {
+      nome,
+      email,
+      telefone,
+      cpf,
+      senha,
+      tipo_usuario,
+      dados_entregador,
+      dados_farmacia,
+      lgpd_consentimento,
+    } = req.body;
     const { accessToken, refreshToken, user } = await authService.registerUser({
       nome,
       email,
@@ -43,6 +53,9 @@ exports.register = async (req, res, next) => {
       cpf,
       senha,
       tipo_usuario,
+      dados_entregador,
+      dados_farmacia,
+      lgpd_consentimento,
     });
     setRefreshTokenCookie(res, refreshToken);
     return res.status(201).json({

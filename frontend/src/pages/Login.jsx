@@ -145,7 +145,7 @@ export default function Login() {
         size: 'large',
         text: 'continue_with',
         shape: 'rectangular',
-        width: 360,
+        width: Math.min(360, googleButtonRef.current.offsetWidth || 320),
         locale: 'pt-BR',
       })
     }
@@ -260,14 +260,10 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[calc(100vh-4rem)] flex">
-      <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-primary via-primary-600 to-secondary relative overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-20 left-20 w-64 h-64 bg-white rounded-full blur-3xl" />
-          <div className="absolute bottom-20 right-20 w-96 h-96 bg-white rounded-full blur-3xl" />
-        </div>
+    <div className="min-h-[calc(100svh-4rem)] flex flex-col lg:flex-row">
+      <div className="hidden lg:flex lg:w-[48%] bg-gradient-to-br from-emerald-700 via-teal-700 to-slate-900 relative overflow-hidden">
         <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
-          <div className="w-14 h-14 bg-white/20 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
+          <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
             <Heart className="w-7 h-7" />
           </div>
           <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
@@ -276,26 +272,26 @@ export default function Login() {
           <p className="text-lg text-white/80 mb-8 max-w-md">
             Compre medicamentos com segurança e receba em casa com rapidez e praticidade.
           </p>
-          <div className="space-y-4">
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+          <div className="space-y-3 max-w-md">
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
+              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
               <span className="text-white/90">Entrega em até 4 horas</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
+              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
               <span className="text-white/90">Preços competitivos e transparentes</span>
             </div>
-            <div className="flex items-center gap-3">
-              <div className="w-8 h-8 bg-white/20 rounded-lg flex items-center justify-center text-sm">✓</div>
+            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
+              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
               <span className="text-white/90">Pagamento seguro e protegido</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-1/2 flex items-center justify-center px-4 sm:px-8 py-12 bg-gray-50">
+      <div className="w-full lg:w-[52%] flex items-center justify-center px-4 sm:px-8 py-8 sm:py-10 lg:py-12 bg-gray-50">
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-8">
+          <div className="lg:hidden text-center mb-6">
             <div className="inline-flex items-center gap-2.5 mb-2">
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-sm">
                 <span className="text-white text-xl font-bold">S</span>
@@ -304,7 +300,7 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="bg-white rounded-2xl shadow-card p-8 sm:p-10">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-card p-5 sm:p-8 lg:p-10">
             <div className="mb-6">
               <h1 className="text-2xl font-bold text-gray-900">Bem-vindo de volta</h1>
               <p className="text-gray-500 text-sm mt-1.5">
@@ -472,7 +468,7 @@ export default function Login() {
                     <label className="block text-sm font-medium text-gray-700 mb-2">
                       Código de acesso
                     </label>
-                    <div className="grid grid-cols-6 gap-2">
+                    <div className="grid grid-cols-6 gap-1.5 sm:gap-2">
                       {otpDigits.map((digit, index) => (
                         <input
                           key={index}
@@ -486,7 +482,7 @@ export default function Login() {
                           onChange={(event) => updateOtpDigit(index, event.target.value)}
                           onKeyDown={(event) => handleOtpKeyDown(index, event)}
                           onPaste={handleOtpPaste}
-                          className="h-12 rounded-xl border border-gray-200 text-center text-lg font-bold text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
+                          className="h-11 sm:h-12 rounded-xl border border-gray-200 text-center text-lg font-bold text-gray-900 outline-none transition focus:border-primary focus:ring-2 focus:ring-primary/30"
                           aria-label={`Dígito ${index + 1}`}
                         />
                       ))}
