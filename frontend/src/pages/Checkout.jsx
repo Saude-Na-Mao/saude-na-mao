@@ -110,7 +110,7 @@ export default function Checkout() {
   }, [token, items, navigate, orderCreated])
 
   const precisaReceitaNoPedido = items.some((i) => itemExigeReceita(i))
-  const temBloqueioRemoto = items.some((i) => isRemoteCheckoutBlocked(i))
+  const temBloqueioRemoto = false // Bloqueio removido para checkout remoto de controlados no TCC
   const pharmacyIdCart = items[0]?.id_farmacia || null
 
   const receitaSig = items
