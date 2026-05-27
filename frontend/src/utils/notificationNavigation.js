@@ -22,16 +22,14 @@ export function resolveNotificationPath(action) {
     case NOTIFICATION_ACTION.SUPPORT:
       if (action.ticketId) {
         return {
-          pathname: ROUTES.PROFILE,
+          pathname: ROUTES.CHATS,
           state: {
-            tab: 'chats',
             openTicketId: String(action.ticketId),
           },
         }
       }
       return {
-        pathname: ROUTES.PROFILE,
-        state: { tab: 'chats' },
+        pathname: ROUTES.CHATS,
       }
 
     case NOTIFICATION_ACTION.PRESCRIPTION:

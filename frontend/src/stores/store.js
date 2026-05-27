@@ -351,6 +351,7 @@ export const useFavoritesStore = create(
         },
 
         clearFavorites: () => set({ items: [] }),
+        setFavorites: (items) => set({ items: Array.isArray(items) ? items : [] }),
       }),
       {
         name: STORAGE_KEYS.FAVORITES,

@@ -3,6 +3,7 @@ const mongoose = require("mongoose");
 const User = require("./src/models/User");
 const Pharmacy = require("./src/models/Pharmacy");
 const Pharmacist = require("./src/models/Pharmacist");
+const Address = require("./src/models/Address");
 
 const DEFAULT_MONGO_URI = "mongodb://localhost:27017/saude-na-mao";
 
@@ -37,6 +38,15 @@ const USERS = [
 
   // ADMIN
   { nome: "Administrador", email: "admin@saudenamao.com", senha: "Admin@123", tipo_usuario: "administrador" },
+];
+
+const DEMO_ADDRESSES = [
+  { logradouro: "Avenida Jamel Cecílio", numero: "3300", bairro: "Jardim Goiás", cidade: "Goiânia", estado: "GO", cep: "74810100", apelido: "Demo Jardim Goiás" },
+  { logradouro: "Avenida T-63", numero: "1296", bairro: "Setor Bueno", cidade: "Goiânia", estado: "GO", cep: "74230090", apelido: "Demo Setor Bueno" },
+  { logradouro: "Rua 9", numero: "1855", bairro: "Setor Marista", cidade: "Goiânia", estado: "GO", cep: "74150130", apelido: "Demo Marista" },
+  { logradouro: "Avenida Assis Chateaubriand", numero: "1650", bairro: "Setor Oeste", cidade: "Goiânia", estado: "GO", cep: "74130110", apelido: "Demo Setor Oeste" },
+  { logradouro: "Avenida Olinda", numero: "960", bairro: "Park Lozandes", cidade: "Goiânia", estado: "GO", cep: "74884120", apelido: "Demo Park Lozandes" },
+  { logradouro: "Avenida Goiás", numero: "1001", bairro: "Setor Central", cidade: "Goiânia", estado: "GO", cep: "74063010", apelido: "Demo Centro" },
 ];
 
 async function resolvePharmacy(nomeFarmacia) {
@@ -152,6 +162,31 @@ async function syncSeedDemoPasswordsAndUnlock() {
   );
 }
 
+async function ensureDemoUserAddresses() {
+  let n = 0;
+  for (let index = 0; index < USERS.length; index += 1) {
+    const row = USERS[index];
+    const user = await User.findOne({ email: row.email.toLowerCase().trim() }).select("_id");
+    if (!user) continue;
+
+    const address = DEMO_ADDRESSES[index % DEMO_ADDRESSES.length];
+    await Address.updateOne(
+      { id_usuario: user._id, apelido: address.apelido },
+      {
+        $set: {
+          ...address,
+          id_usuario: user._id,
+          padrao: true,
+          ativo: true,
+        },
+      },
+      { upsert: true },
+    );
+    n += 1;
+  }
+  console.log(`\n📍 ${n} usuários demo com endereço realista em Goiânia.`);
+}
+
 /**
  * @param {{ disconnectAfter?: boolean }} [opts]
  */
@@ -217,6 +252,7 @@ async function seedUsers(opts = {}) {
   }
 
   await syncSeedDemoPasswordsAndUnlock();
+  await ensureDemoUserAddresses();
 
   console.log(`\n🎉 SEED DE USUÁRIOS CONCLUÍDO — ${criados} criados, ${existentes} já existiam.`);
   if (disconnectAfter) {

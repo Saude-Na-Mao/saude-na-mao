@@ -41,6 +41,12 @@ function isSameDay(dateA, dateB) {
   );
 }
 
+function sortTicketsByUpdatedDesc(tickets = []) {
+  return [...tickets].sort(
+    (a, b) => new Date(b.updatedAt || b.createdAt || 0) - new Date(a.updatedAt || a.createdAt || 0),
+  );
+}
+
 function getLastStatusChangeAt(receita, targetStatuses = []) {
   const historico = Array.isArray(receita?.historico_status)
     ? [...receita.historico_status]
@@ -336,6 +342,10 @@ export function PharmacistDashboard() {
 
   const supportOpenTickets = supportTickets.filter(
     (t) => t?.status && !['encerrada'].includes(String(t.status)),
+  );
+  const supportTicketsToAnswer = sortTicketsByUpdatedDesc(supportOpenTickets);
+  const supportTicketsPast = sortTicketsByUpdatedDesc(
+    supportTickets.filter((t) => String(t?.status) === 'encerrada'),
   );
   const suporteAlertasFiltrados = supportOpenTickets.filter((t) => {
     if (!termoAlertas) return true;
@@ -1294,7 +1304,7 @@ export function PharmacistDashboard() {
       ) : activeTab === 'chats' ? (
         <div className="mt-6 bg-white border border-gray-100 rounded-xl p-4 sm:p-6">
           <div className="flex items-center justify-between mb-4">
-            <h2 className="text-lg font-bold text-gray-900">Chats atribuídos a você</h2>
+            <h2 className="text-lg font-bold text-gray-900">Chats da farmácia</h2>
             <button
               type="button"
               onClick={() => fetchSupportTickets({ silent: false })}
@@ -1311,42 +1321,44 @@ export function PharmacistDashboard() {
               Nenhum chat aberto para seu atendimento no momento.
             </div>
           ) : (
-            <div className="space-y-3">
-              {supportTickets.map((ticket) => {
-                const ultimaMensagem = Array.isArray(ticket.mensagens) && ticket.mensagens.length > 0
-                  ? ticket.mensagens[ticket.mensagens.length - 1]
-                  : null;
-                return (
-                  <div
-                    key={ticket._id}
-                    className="border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3"
-                  >
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-semibold text-gray-900 truncate">
-                        {ticket.assunto || 'Ticket sem assunto'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Cliente: {ticket.id_usuario?.nome || 'Não informado'}
-                      </p>
-                      <p className="text-xs text-gray-500">
-                        Status: {ticket.status}
-                        {ticket.categoria ? ` · ${ticket.categoria}` : ''}
-                      </p>
-                      {ultimaMensagem?.texto && (
-                        <p className="text-xs text-gray-600 mt-1 line-clamp-1">
-                          Última mensagem: {ultimaMensagem.texto}
-                        </p>
-                      )}
-                    </div>
-                    <button
-                      onClick={() => openSupportTicket(ticket._id)}
-                      className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-secondary"
-                    >
-                      Abrir chat
-                    </button>
+            <div className="space-y-6">
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 mb-3">Chats para responder</h3>
+                {supportTicketsToAnswer.length === 0 ? (
+                  <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+                    Nenhum chat aguardando resposta.
                   </div>
-                );
-              })}
+                ) : (
+                  <div className="space-y-3">
+                    {supportTicketsToAnswer.map((ticket) => (
+                      <SupportTicketCard
+                        key={ticket._id}
+                        ticket={ticket}
+                        onOpen={openSupportTicket}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
+
+              <div>
+                <h3 className="text-sm font-bold text-gray-800 mb-3">Atendimentos passados</h3>
+                {supportTicketsPast.length === 0 ? (
+                  <div className="text-sm text-gray-500 bg-gray-50 rounded-lg p-4">
+                    Nenhum atendimento encerrado ainda.
+                  </div>
+                ) : (
+                  <div className="space-y-3">
+                    {supportTicketsPast.map((ticket) => (
+                      <SupportTicketCard
+                        key={ticket._id}
+                        ticket={ticket}
+                        onOpen={openSupportTicket}
+                      />
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -1746,9 +1758,8 @@ export function PharmacistDashboard() {
             {(selectedReceita.status === 'Aprovada' ||
               selectedReceita.status === 'Rejeitada') && (
               <div className="text-xs bg-amber-50 border border-amber-200 text-amber-800 rounded p-2">
-                ⚠️ Esta receita já foi {selectedReceita.status.toLowerCase()}.
-                Alterar o status só é permitido enquanto o pedido ainda não foi
-                entregue ou cancelado.
+                Esta receita já foi {selectedReceita.status.toLowerCase()} e está
+                bloqueada para alteração.
               </div>
             )}
 
@@ -1767,38 +1778,34 @@ export function PharmacistDashboard() {
             </div>
 
             {/* Botões de ação — variam conforme status atual e intenção */}
-            <div className="flex gap-3 justify-end flex-wrap">
-              {/* Mostrar Aprovar quando: ainda não aprovada OU intenção é aprovar */}
-              {selectedReceita.status !== 'Aprovada' && (
-                <button
-                  onClick={() => handleValidation(selectedReceita._id, true)}
-                  className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 inline-flex items-center gap-2"
-                  disabled={validatingId === selectedReceita._id}
-                >
-                  <CheckCircle className="w-4 h-4" />
-                  {selectedReceita.status === 'Rejeitada'
-                    ? 'Aprovar mesmo assim'
-                    : 'Aprovar receita'}
-                </button>
-              )}
+            {['Pendente', 'Em Análise'].includes(selectedReceita.status) ? (
+              <div className="flex gap-3 justify-end flex-wrap">
+                  <button
+                    onClick={() => handleValidation(selectedReceita._id, true)}
+                    className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 inline-flex items-center gap-2"
+                    disabled={validatingId === selectedReceita._id}
+                  >
+                    <CheckCircle className="w-4 h-4" />
+                    Aprovar receita
+                  </button>
 
-              {/* Mostrar Rejeitar quando: ainda não rejeitada OU intenção é rejeitar */}
-              {selectedReceita.status !== 'Rejeitada' && (
-                <button
-                  onClick={() => handleValidation(selectedReceita._id, false)}
-                  className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
-                  disabled={
-                    !observacoes.trim() ||
-                    validatingId === selectedReceita._id
-                  }
-                >
-                  <XCircle className="w-4 h-4" />
-                  {selectedReceita.status === 'Aprovada'
-                    ? 'Revogar aprovação'
-                    : 'Rejeitar receita'}
-                </button>
-              )}
-            </div>
+                  <button
+                    onClick={() => handleValidation(selectedReceita._id, false)}
+                    className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
+                    disabled={
+                      !observacoes.trim() ||
+                      validatingId === selectedReceita._id
+                    }
+                  >
+                    <XCircle className="w-4 h-4" />
+                    Rejeitar receita
+                  </button>
+              </div>
+            ) : (
+              <p className="text-xs text-gray-500 text-right">
+                Receita finalizada: disponível apenas para consulta.
+              </p>
+            )}
 
             {intencao === 'rejeitar' && !observacoes.trim() && (
               <p className="text-xs text-red-600">
@@ -2059,6 +2066,41 @@ const STATUS_BADGE_STYLES = {
   Cancelada: { bg: 'bg-gray-100', text: 'text-gray-500', icon: '🚫' },
 };
 
+function SupportTicketCard({ ticket, onOpen }) {
+  const ultimaMensagem =
+    Array.isArray(ticket.mensagens) && ticket.mensagens.length > 0
+      ? ticket.mensagens[ticket.mensagens.length - 1]
+      : null;
+
+  return (
+    <div className="border border-gray-200 rounded-lg p-4 flex flex-col sm:flex-row sm:items-center gap-3">
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-semibold text-gray-900 truncate">
+          {ticket.assunto || 'Ticket sem assunto'}
+        </p>
+        <p className="text-xs text-gray-500">
+          Cliente: {ticket.id_usuario?.nome || 'Não informado'}
+        </p>
+        <p className="text-xs text-gray-500">
+          Status: {ticket.status}
+          {ticket.categoria ? ` · ${ticket.categoria}` : ''}
+        </p>
+        {ultimaMensagem?.texto && (
+          <p className="text-xs text-gray-600 mt-1 line-clamp-1">
+            Última mensagem: {ultimaMensagem.texto}
+          </p>
+        )}
+      </div>
+      <button
+        onClick={() => onOpen(ticket._id)}
+        className="px-3 py-2 bg-primary text-white rounded-lg text-sm font-medium hover:bg-secondary"
+      >
+        Abrir chat
+      </button>
+    </div>
+  );
+}
+
 function ValidationCard({ validation, onOpen }) {
   const cliente = validation?.id_usuario || {}
   const farmacia = validation?.id_farmacia || {}
@@ -2069,7 +2111,6 @@ function ValidationCard({ validation, onOpen }) {
   const badge = STATUS_BADGE_STYLES[status] || STATUS_BADGE_STYLES.Pendente
 
   const isPendente = status === 'Pendente' || status === 'Em Análise'
-  const isAprovada = status === 'Aprovada'
   const isRejeitada = status === 'Rejeitada'
 
   return (
@@ -2142,24 +2183,6 @@ function ValidationCard({ validation, onOpen }) {
               ❌ Rejeitar
             </button>
           </>
-        )}
-        {isAprovada && (
-          <button
-            className="btn-reject"
-            onClick={() => onOpen(validation, 'rejeitar')}
-            title="Reverter aprovação e rejeitar"
-          >
-            ↺ Revogar aprovação
-          </button>
-        )}
-        {isRejeitada && (
-          <button
-            className="btn-approve"
-            onClick={() => onOpen(validation, 'aprovar')}
-            title="Aprovar mesmo após rejeição"
-          >
-            ↺ Aprovar mesmo assim
-          </button>
         )}
         <button
           className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100"

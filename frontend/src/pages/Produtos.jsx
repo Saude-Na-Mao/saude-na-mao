@@ -68,6 +68,14 @@ export default function Produtos() {
     loadData()
   }, [query, sortBy])
 
+  useEffect(() => {
+    if (!onlyOnlinePharmacist) return undefined
+
+    refreshPharmaciesStatus()
+    const interval = setInterval(refreshPharmaciesStatus, 15000)
+    return () => clearInterval(interval)
+  }, [onlyOnlinePharmacist])
+
   const loadData = async () => {
     try {
       setLoading(true)
@@ -101,6 +109,23 @@ export default function Produtos() {
       console.error('Erro ao carregar produtos:', err)
     } finally {
       setLoading(false)
+    }
+  }
+
+  async function refreshPharmaciesStatus() {
+    try {
+      const response = await pharmacyService.getAll({ limit: 50 })
+      const payload = response.data?.data
+      const list = Array.isArray(payload)
+        ? payload
+        : payload?.docs ?? payload?.farmacias ?? []
+      const nextMap = {}
+      list.forEach((pharmacy) => {
+        nextMap[pharmacy._id] = pharmacy
+      })
+      setPharmacies((current) => ({ ...current, ...nextMap }))
+    } catch {
+      /* status online é complementar */
     }
   }
 
@@ -305,7 +330,11 @@ export default function Produtos() {
             <div className="text-center py-16 bg-gray-50 rounded-2xl">
               <div className="text-5xl mb-4">💊</div>
               <p className="text-gray-500 text-lg mb-2">Nenhum produto encontrado</p>
-              <p className="text-gray-400 text-sm">Tente ajustar os filtros ou faça outra busca</p>
+              <p className="text-gray-400 text-sm">
+                {onlyOnlinePharmacist
+                  ? 'Nenhuma farmácia com suporte online tem este produto agora.'
+                  : 'Tente ajustar os filtros ou faça outra busca'}
+              </p>
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
@@ -345,6 +374,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
   const tarja = TARJA_CONFIG[product.classificacao_receita] || null
 
   const pharmacyName = pharmacy?.nome || 'Farmácia'
+  const supportOnline = Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
   const productImage = resolveMediaUrl(product.imagens?.[0] || product.imagem_url)
   const hideProductImage = shouldHideProductImage(product)
 
@@ -427,10 +457,14 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
         >
           {pharmacy?.nome || 'Farmácia'}
         </Link>
-        {(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0) && (
-          <span className="inline-flex items-center gap-1 rounded-full bg-emerald-50 px-2 py-0.5 text-[10px] font-semibold text-emerald-700">
-            <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            online
+        {pharmacy && (
+          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+            supportOnline
+              ? 'bg-emerald-50 text-emerald-700'
+              : 'bg-gray-100 text-gray-500'
+          }`}>
+            <span className={`h-1.5 w-1.5 rounded-full ${supportOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+            {supportOnline ? 'suporte online' : 'sem suporte agora'}
           </span>
         )}
         {pharmacy?.bairro && (

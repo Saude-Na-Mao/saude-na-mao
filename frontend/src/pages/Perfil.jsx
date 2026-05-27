@@ -228,8 +228,8 @@ export default function Perfil() {
       : isDriver
       ? { id: 'entregas', label: 'Painel do Entregador', icon: Package, link: '/entregas', color: 'text-blue-500' }
       : { id: 'pedidos', label: 'Meus Pedidos', icon: Package, link: '/pedidos', color: 'text-blue-500' },
-    { id: 'chats', label: 'Meus Chats', icon: MessageSquare, color: 'text-indigo-500' },
-    isClientOnly && { id: 'receitas', label: 'Minhas Receitas', icon: FileText, color: 'text-amber-500' },
+    isClientOnly && { id: 'chats', label: 'Meus Chats', icon: MessageSquare, link: '/chats', color: 'text-indigo-500' },
+    isClientOnly && { id: 'receitas', label: 'Minhas Receitas', icon: FileText, link: '/minhas-receitas', color: 'text-amber-500' },
     isClientOnly && { id: 'enderecos', label: 'Endereços', icon: MapPin, color: 'text-emerald-500' },
     isClientOnly && { id: 'pagamentos', label: 'Pagamentos', icon: CreditCard, color: 'text-violet-500' },
   ].filter(Boolean)
@@ -975,7 +975,7 @@ function EnderecosTab() {
 }
 
 /* ────────── Chats Tab ────────── */
-function ChatsTab({ initialOpenTicketId, onConsumedOpenTicket }) {
+export function ChatsTab({ initialOpenTicketId, onConsumedOpenTicket }) {
   const { token, user } = useAuthStore()
   const userId = user?.id || user?._id
   const [tickets, setTickets] = useState([])
@@ -1279,7 +1279,7 @@ function ChatsTab({ initialOpenTicketId, onConsumedOpenTicket }) {
   )
 }
 
-function ReceitasTab() {
+export function ReceitasTab() {
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
 

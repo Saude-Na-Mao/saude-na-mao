@@ -14,13 +14,16 @@ export default function Navbar() {
   const { user, logout, isAuthenticated } = useAuthStore()
   const { getItemCount } = useCartStore()
   const { isMobileMenuOpen, toggleMobileMenu, closeMobileMenu } = useUiStore()
+  const favoriteCount = useFavoritesStore((state) => state.items.length)
 
   const cartCount = getItemCount()
   const isAuth = isAuthenticated()
-  const isPharmacist = isAuth && user?.role === 'farmaceutico'
-  const isPharmacyOwner = isAuth && user?.role === 'dono_farmacia'
-  const isDriver = isAuth && user?.role === 'entregador'
-  const isClient = isAuth && user?.role === 'cliente'
+  const role = user?.tipo_usuario || user?.role
+  const isPharmacist = isAuth && role === 'farmaceutico'
+  const isPharmacyOwner = isAuth && role === 'dono_farmacia'
+  const isDriver = isAuth && role === 'entregador'
+  const isClient = isAuth && role === 'cliente'
+  const isAdmin = isAuth && (role === 'administrador' || role === 'admin')
 
   const handleLogout = async () => {
     try {
@@ -152,7 +155,7 @@ export default function Navbar() {
                 className="relative p-2 text-gray-500 hover:text-red-500 hover:bg-red-50 rounded-xl transition-all duration-200"
                 aria-label="Favoritos"
               >
-                <Heart className={`w-5 h-5 ${useFavoritesStore.getState().items.length > 0 ? 'fill-red-500 text-red-500' : ''}`} />
+                <Heart className={`w-5 h-5 ${favoriteCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
               </Link>
             )}
 
@@ -191,7 +194,7 @@ export default function Navbar() {
                       </div>
                       <span className="font-medium">{user.nome?.split(' ')[0] || 'Perfil'}</span>
                     </Link>
-                    {user.role === 'administrador' && (
+                    {isAdmin && (
                       <Link
                         to="/admin"
                         className="flex items-center gap-1.5 px-3 py-2 text-red-600 hover:text-red-700 hover:bg-red-50 rounded-xl transition-all text-sm font-medium"
@@ -245,6 +248,17 @@ export default function Navbar() {
                     {cartCount}
                   </span>
                 )}
+              </Link>
+            )}
+
+            {isClient && (
+              <Link
+                to="/favoritos"
+                className="relative p-2 text-gray-600 hover:text-red-500 transition"
+                onClick={() => closeMobileMenu()}
+                aria-label="Favoritos"
+              >
+                <Heart className={`w-5 h-5 ${favoriteCount > 0 ? 'fill-red-500 text-red-500' : ''}`} />
               </Link>
             )}
 
@@ -377,7 +391,7 @@ export default function Navbar() {
                     <User className="w-4 h-4" /> Meu Perfil
                   </button>
                 )}
-                {user.role === 'administrador' && (
+                {isAdmin && (
                   <button
                     onClick={() => handleNavClick('/admin')}
                     className="flex items-center gap-3 w-full text-left px-4 py-2.5 rounded-xl text-sm text-gray-600 hover:bg-gray-50 transition"

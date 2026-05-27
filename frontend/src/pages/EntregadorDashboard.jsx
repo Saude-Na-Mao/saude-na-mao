@@ -1,6 +1,6 @@
 import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import { useAuthStore } from "../stores/store";
-import api, {
+import {
   deliveryService,
   userService,
   orderService,
@@ -326,13 +326,13 @@ export default function EntregadorDashboard() {
   }, [loadAll]);
 
   useEffect(() => {
-    if (!emEntrega) return;
+    if (!emEntrega || !activeDelivery?._id) return;
 
     const intervalo = setInterval(() => {
       navigator.geolocation.getCurrentPosition(
         (pos) => {
-          api
-            .patch("/deliveries/localizacao", {
+          deliveryService
+            .updateLocation(activeDelivery._id, {
               latitude: pos.coords.latitude,
               longitude: pos.coords.longitude,
             })
@@ -344,7 +344,7 @@ export default function EntregadorDashboard() {
     }, 15000);
 
     return () => clearInterval(intervalo);
-  }, [emEntrega]);
+  }, [emEntrega, activeDelivery?._id]);
 
   const toggleDisponibilidade = async () => {
     if (busy) return;

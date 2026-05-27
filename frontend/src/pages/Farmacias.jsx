@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal } from 'lucide-react'
+import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { pharmacyService } from '../services/api'
 
@@ -9,14 +9,22 @@ export default function Farmacias() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [sortBy, setSortBy] = useState('avaliacao')
+  const [onlyOnlinePharmacist, setOnlyOnlinePharmacist] = useState(false)
 
   useEffect(() => {
     loadPharmacies()
   }, [])
 
-  const loadPharmacies = async () => {
+  useEffect(() => {
+    if (!onlyOnlinePharmacist) return undefined
+    loadPharmacies({ silent: true })
+    const interval = setInterval(() => loadPharmacies({ silent: true }), 15000)
+    return () => clearInterval(interval)
+  }, [onlyOnlinePharmacist])
+
+  const loadPharmacies = async (opts = {}) => {
     try {
-      setLoading(true)
+      if (!opts.silent) setLoading(true)
       const response = await pharmacyService.getAll()
       const payload = response.data?.data
       const data = Array.isArray(payload) ? payload : payload?.docs ?? []
@@ -29,10 +37,14 @@ export default function Farmacias() {
     }
   }
 
-  const filtered = pharmacies.filter((p) =>
-    p.nome?.toLowerCase().includes(search.toLowerCase()) ||
-    p.bairro?.toLowerCase().includes(search.toLowerCase())
-  )
+  const filtered = pharmacies.filter((p) => {
+    const matchesSearch =
+      p.nome?.toLowerCase().includes(search.toLowerCase()) ||
+      p.bairro?.toLowerCase().includes(search.toLowerCase())
+    if (!matchesSearch) return false
+    if (!onlyOnlinePharmacist) return true
+    return isPharmacistOnline(p)
+  })
 
   const getDisplayRating = (pharmacy) => {
     return pharmacy.avaliacao || 0
@@ -65,31 +77,49 @@ export default function Farmacias() {
       </div>
 
       {/* Sort options */}
-      <div className="flex items-center gap-3 mb-6">
+      <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <SlidersHorizontal className="w-4 h-4 text-gray-400" />
         <span className="text-sm text-gray-500">Ordenar por:</span>
-        {[
-          { value: 'avaliacao', label: 'Mais Bem Avaliadas' },
-          { value: 'frete', label: 'Menor Frete' },
-        ].map((opt) => (
+        <div className="flex flex-wrap gap-2">
+          {[
+            { value: 'avaliacao', label: 'Mais Bem Avaliadas' },
+            { value: 'frete', label: 'Menor Frete' },
+          ].map((opt) => (
+            <button
+              key={opt.value}
+              onClick={() => setSortBy(opt.value)}
+              className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
+                sortBy === opt.value
+                  ? 'bg-primary text-white'
+                  : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
+              }`}
+            >
+              {opt.label}
+            </button>
+          ))}
           <button
-            key={opt.value}
-            onClick={() => setSortBy(opt.value)}
-            className={`px-4 py-1.5 rounded-full text-sm font-medium transition ${
-              sortBy === opt.value
-                ? 'bg-primary text-white'
+            type="button"
+            onClick={() => setOnlyOnlinePharmacist((value) => !value)}
+            className={`inline-flex items-center gap-1.5 px-4 py-1.5 rounded-full text-sm font-medium transition ${
+              onlyOnlinePharmacist
+                ? 'bg-emerald-600 text-white'
                 : 'bg-gray-100 text-gray-600 hover:bg-gray-200'
             }`}
           >
-            {opt.label}
+            <MessageCircle className="w-4 h-4" />
+            Com farmacêutico online
           </button>
-        ))}
+        </div>
       </div>
 
       {sorted.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-2xl">
           <div className="text-5xl mb-4">🏪</div>
-          <p className="text-gray-500 text-lg">Nenhuma farmácia encontrada</p>
+          <p className="text-gray-500 text-lg">
+            {onlyOnlinePharmacist
+              ? 'Nenhuma farmácia com farmacêutico online agora'
+              : 'Nenhuma farmácia encontrada'}
+          </p>
         </div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
@@ -105,6 +135,10 @@ export default function Farmacias() {
   )
 }
 
+function isPharmacistOnline(pharmacy) {
+  return Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
+}
+
 function PharmacyCard({ pharmacy }) {
   const displayRating = pharmacy.avaliacao || 0
   const displayTotal = pharmacy.total_avaliacoes || 0
@@ -118,6 +152,7 @@ function PharmacyCard({ pharmacy }) {
     'from-cyan-500 to-cyan-600',
   ]
   const colorIndex = pharmacy.nome?.length % colors.length || 0
+  const supportOnline = isPharmacistOnline(pharmacy)
 
   return (
     <Link
@@ -133,6 +168,14 @@ function PharmacyCard({ pharmacy }) {
             <Star className="w-3 h-3 fill-current" /> Top
           </div>
         )}
+        <div className={`absolute left-3 top-3 inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-bold ${
+          supportOnline
+            ? 'bg-emerald-50 text-emerald-700'
+            : 'bg-white/85 text-gray-600'
+        }`}>
+          <span className={`h-1.5 w-1.5 rounded-full ${supportOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+          {supportOnline ? 'Suporte online' : 'Sem suporte'}
+        </div>
       </div>
 
       <div className="p-5">

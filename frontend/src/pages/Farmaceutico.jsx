@@ -1092,6 +1092,12 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
     else setLoading(false)
   }, [pharmacyId])
 
+  useEffect(() => {
+    if (pharmacyId && subTab === 'catalogo' && catalogResults.length === 0) {
+      loadCatalogDefaults()
+    }
+  }, [pharmacyId, subTab])
+
   const loadProducts = async () => {
     try {
       setLoading(true)
@@ -1119,12 +1125,24 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
   const searchCatalog = async () => {
     const q = catalogQuery.trim()
     if (q.length < 2) {
-      setCatalogResults([])
+      loadCatalogDefaults()
       return
     }
     try {
       setCatalogSearching(true)
       const res = await medicineCatalogService.search({ q, limit: 20 })
+      setCatalogResults(res.data?.data?.itens || [])
+    } catch {
+      setCatalogResults([])
+    } finally {
+      setCatalogSearching(false)
+    }
+  }
+
+  async function loadCatalogDefaults() {
+    try {
+      setCatalogSearching(true)
+      const res = await medicineCatalogService.search({ limit: 20 })
       setCatalogResults(res.data?.data?.itens || [])
     } catch {
       setCatalogResults([])
@@ -1444,7 +1462,7 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
       {subTab === 'catalogo' && (
         <div className="p-5 space-y-4 border-b border-gray-100">
           <p className="text-xs text-gray-500">
-            Medicamentos com receita só podem ser ativados a partir do catálogo oficial. Após a ativação, apenas o estoque pode ser alterado.
+            Medicamentos com receita entram pelo catálogo oficial. Busque por nome, princípio ativo ou tarja. Após ativar, só estoque e preço da loja são ajustados.
           </p>
           <div className="flex gap-2">
             <div className="relative flex-1">
@@ -1454,7 +1472,7 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
                 value={catalogQuery}
                 onChange={(e) => setCatalogQuery(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), searchCatalog())}
-                placeholder="Buscar no catálogo (mín. 2 caracteres)..."
+                placeholder="Ex: amoxicilina, clonazepam, azitromicina..."
                 className="w-full pl-9 pr-3 py-2 border border-gray-200 rounded-lg text-sm"
               />
             </div>
@@ -1486,6 +1504,11 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
               ))}
             </ul>
           )}
+          {!catalogSearching && catalogResults.length === 0 && (
+            <p className="text-xs text-gray-400">
+              Nenhum item no catálogo. Tente nome do medicamento, princípio ativo ou classificação da receita.
+            </p>
+          )}
         </div>
       )}
 
@@ -1494,7 +1517,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               type="text"
-              placeholder="Nome do item *"
+              placeholder="Nome do item * (ex: fralda geriátrica G)"
+              aria-label="Nome do item"
               value={outroForm.nome}
               onChange={(e) => setOutroForm({ ...outroForm, nome: e.target.value })}
               required
@@ -1514,7 +1538,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
           </div>
           <textarea
             rows={2}
-            placeholder="Descrição"
+            placeholder="Descrição/composição (ex: pacote com 8 unidades)"
+            aria-label="Descrição ou composição do item"
             value={outroForm.descricao}
             onChange={(e) => setOutroForm({ ...outroForm, descricao: e.target.value })}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm"
@@ -1524,7 +1549,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
               type="number"
               step="0.01"
               min="0"
-              placeholder="Preço (R$) *"
+              placeholder="Preço em reais * (ex: 19.90)"
+              aria-label="Preço em reais"
               value={outroForm.preco}
               onChange={(e) => setOutroForm({ ...outroForm, preco: e.target.value })}
               required
@@ -1533,7 +1559,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
             <input
               type="number"
               min="0"
-              placeholder="Estoque *"
+              placeholder="Estoque em unidades * (ex: 30)"
+              aria-label="Estoque em unidades"
               value={outroForm.estoque}
               onChange={(e) => setOutroForm({ ...outroForm, estoque: e.target.value })}
               required
@@ -1567,7 +1594,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               type="text"
-              placeholder="Nome *"
+              placeholder="Nome * (ex: Dipirona 500mg)"
+              aria-label="Nome do medicamento"
               value={otcForm.nome}
               onChange={(e) => setOtcForm({ ...otcForm, nome: e.target.value })}
               required
@@ -1587,7 +1615,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
           </div>
           <input
             type="text"
-            placeholder="Princípio ativo *"
+            placeholder="Princípio ativo/composição * (ex: dipirona sódica 500mg)"
+            aria-label="Princípio ativo ou composição"
             value={otcForm.principio_ativo}
             onChange={(e) => setOtcForm({ ...otcForm, principio_ativo: e.target.value })}
             required
@@ -1595,7 +1624,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
           />
           <textarea
             rows={2}
-            placeholder="Descrição (opcional)"
+            placeholder="Descrição (ex: analgésico e antitérmico de venda livre)"
+            aria-label="Descrição do medicamento"
             value={otcForm.descricao}
             onChange={(e) => setOtcForm({ ...otcForm, descricao: e.target.value })}
             className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm resize-none"
@@ -1610,7 +1640,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
             <input
               type="number"
               step="0.01"
-              placeholder="Preço *"
+              placeholder="Preço em reais * (ex: 12.90)"
+              aria-label="Preço em reais"
               value={otcForm.preco}
               onChange={(e) => setOtcForm({ ...otcForm, preco: e.target.value })}
               required
@@ -1619,7 +1650,8 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
             <input
               type="number"
               min="0"
-              placeholder="Estoque *"
+              placeholder="Estoque em unidades * (ex: 50)"
+              aria-label="Estoque em unidades"
               value={otcForm.estoque}
               onChange={(e) => setOtcForm({ ...otcForm, estoque: e.target.value })}
               required

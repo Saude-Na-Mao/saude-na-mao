@@ -557,6 +557,40 @@ async function createSupportTickets({ cliente, admin, farmaceuticoUser, pharmacy
         [cliente, "usuario", "Recebido, obrigado."],
       ],
     },
+    {
+      assunto: "DEMO: orientacao sobre receita enviada",
+      categoria: "receita",
+      origem: "receita",
+      status: "em_atendimento",
+      prioridade: "alta",
+      id_atendente: farmaceuticoUser._id,
+      id_farmacia: pharmacy._id,
+      aberta_em: addMinutes(now, -90),
+      primeira_resposta_em: addMinutes(now, -82),
+      mensagens: [
+        [cliente, "usuario", "Enviei a receita, mas fiquei em duvida sobre a dosagem."],
+        [farmaceuticoUser, "farmaceutico", "Recebi. Vou conferir os dados da receita e te respondo por aqui."],
+      ],
+    },
+    {
+      assunto: "DEMO: produto indisponivel substituido",
+      categoria: "pedido",
+      origem: "pedido",
+      status: "encerrada",
+      prioridade: "normal",
+      id_atendente: farmaceuticoUser._id,
+      id_farmacia: pharmacy._id,
+      aberta_em: addMinutes(now, -720),
+      primeira_resposta_em: addMinutes(now, -710),
+      encerrada_em: addMinutes(now, -690),
+      avaliacao_atendimento: 5,
+      comentario_avaliacao: "Farmaceutico resolveu rapido.",
+      mensagens: [
+        [cliente, "usuario", "O produto do pedido aparece indisponivel. Tem alternativa?"],
+        [farmaceuticoUser, "farmaceutico", "Temos uma opcao equivalente de venda livre. Atualizei a sugestao no pedido."],
+        [cliente, "usuario", "Perfeito, pode seguir."],
+      ],
+    },
   ];
 
   for (const ticketData of tickets) {
@@ -816,7 +850,7 @@ async function run() {
   console.log(`- ${Object.keys(orders).length} pedidos demo`);
   console.log("- entregas com rota, historico e valores entre R$ 6,50 e R$ 8,20");
   console.log("- 3 receitas: aprovada, rejeitada e em analise");
-  console.log("- 2 chats de suporte visiveis no cliente/farmaceutico");
+  console.log("- 4 chats de suporte visiveis no cliente/farmaceutico");
 
   await mongoose.disconnect();
   console.log("\nConcluido.");

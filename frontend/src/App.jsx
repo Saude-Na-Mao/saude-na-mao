@@ -20,6 +20,9 @@ import SecurityAuditDashboard from './pages/SecurityAuditDashboard'
 import Login from './pages/Login'
 import Registro from './pages/Registro'
 import Perfil from './pages/Perfil'
+import Favoritos from './pages/Favoritos'
+import ClienteChats from './pages/ClienteChats'
+import ClienteReceitas from './pages/ClienteReceitas'
 import Pedidos from './pages/Pedidos'
 import Rastreamento from './pages/Rastreamento'
 import MedicineTracking from './pages/MedicineTracking'
@@ -87,6 +90,30 @@ function AppContent() {
             element={
               <PrivateRoute>
                 <Perfil />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/favoritos"
+            element={
+              <PrivateRoute requiredRole="cliente">
+                <Favoritos />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/chats"
+            element={
+              <PrivateRoute requiredRole="cliente">
+                <ClienteChats />
+              </PrivateRoute>
+            }
+          />
+          <Route
+            path="/minhas-receitas"
+            element={
+              <PrivateRoute requiredRole="cliente">
+                <ClienteReceitas />
               </PrivateRoute>
             }
           />

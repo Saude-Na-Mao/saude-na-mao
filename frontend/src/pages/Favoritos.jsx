@@ -1,13 +1,58 @@
 import { Link, useNavigate } from 'react-router-dom'
-import { useFavoritesStore, useCartStore, useUiStore } from '../stores/store'
+import { useEffect, useState } from 'react'
+import { useFavoritesStore, useCartStore, useUiStore, useAuthStore } from '../stores/store'
+import { productService } from '../services/api'
 import { Heart, ShoppingCart, Trash2 } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 
 export default function Favoritos() {
-  const { items, toggleFavorite, clearFavorites } = useFavoritesStore()
+  const { items, toggleFavorite, clearFavorites, setFavorites } = useFavoritesStore()
   const { addItem } = useCartStore()
   const { addNotification } = useUiStore()
+  const { user } = useAuthStore()
+  const [loadingDemo, setLoadingDemo] = useState(false)
+  const [attemptedDemo, setAttemptedDemo] = useState(false)
   const navigate = useNavigate()
+
+  useEffect(() => {
+    const isTestClient = String(user?.email || '').toLowerCase() === 'teste@teste.com'
+    if (!isTestClient || items.length > 0 || loadingDemo || attemptedDemo) return
+
+    let cancelled = false
+    async function loadDemoFavorites() {
+      try {
+        setAttemptedDemo(true)
+        setLoadingDemo(true)
+        const res = await productService.getAll({ limit: 8 })
+        const data = res.data?.data
+        const list = Array.isArray(data) ? data : data?.docs || data?.produtos || []
+        const favorites = list.slice(0, 4).map((product) => ({
+          id: product._id || product.id,
+          nome: product.nome,
+          preco: product.preco_final || product.preco || 0,
+          imagem_url: product.imagem_url || product.imagens?.[0],
+          id_farmacia:
+            typeof product.id_farmacia === 'object'
+              ? product.id_farmacia?._id
+              : product.id_farmacia,
+          nome_farmacia:
+            typeof product.id_farmacia === 'object'
+              ? product.id_farmacia?.nome
+              : product.nome_farmacia,
+        })).filter((product) => product.id)
+        if (!cancelled && favorites.length > 0) setFavorites(favorites)
+      } catch {
+        /* demo fallback opcional */
+      } finally {
+        if (!cancelled) setLoadingDemo(false)
+      }
+    }
+
+    loadDemoFavorites()
+    return () => {
+      cancelled = true
+    }
+  }, [user?.email, items.length, loadingDemo, attemptedDemo, setFavorites])
 
   const handleToggleFavorite = (product) => {
     const result = toggleFavorite(product)
@@ -21,7 +66,9 @@ export default function Favoritos() {
     return (
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-        <h1 className="text-2xl font-bold mb-2">Nenhum favorito ainda</h1>
+        <h1 className="text-2xl font-bold mb-2">
+          {loadingDemo ? 'Carregando favoritos...' : 'Nenhum favorito ainda'}
+        </h1>
         <p className="text-gray-500 mb-6">Salve seus medicamentos preferidos para encontrá-los rapidamente</p>
         <Link to="/produtos" className="inline-block bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-secondary transition">
           Explorar Produtos
