@@ -275,15 +275,6 @@ function assertPrescriptionClassCompatible(product, receita) {
     );
   }
 
-  if (
-    compliance.isControlledMedication(product) &&
-    !["especial_c1", "especial_b"].includes(prescriptionType)
-  ) {
-    throw createError(
-      `Medicamento "${product.nome}" exige receita especial validada.`,
-      400,
-    );
-  }
 }
 
 async function validateOrderItemsPrescriptions(userId, idFarmacia, itens) {
