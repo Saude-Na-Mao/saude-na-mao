@@ -299,12 +299,6 @@ async function validateOrderItemsPrescriptions(userId, idFarmacia, itens) {
       throw createError(`Produto não encontrado`, 404);
     }
 
-    if (compliance.isRemoteControlledSaleBlocked(product)) {
-      throw createError(
-        `No modo TCC, medicamento controlado "${product.nome}" não pode ser finalizado por checkout remoto.`,
-        403,
-      );
-    }
 
     const precisaReceita = compliance.requiresPrescription(product);
     if (!precisaReceita) continue;
