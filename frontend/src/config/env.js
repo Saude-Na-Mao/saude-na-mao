@@ -1,4 +1,6 @@
 const DEFAULT_API_BASE_URL = '/api'
+const DEFAULT_GOOGLE_CLIENT_ID =
+  '884559887672-inou94ddfh737nk84msnemt1hdkfme94.apps.googleusercontent.com'
 
 const requiredEnvVars = []
 
@@ -23,11 +25,16 @@ export const validateEnv = () => {
 export const getConfig = () => {
   return {
     apiBaseUrl: getApiBaseUrl(),
+    googleClientId: getGoogleClientId(),
     appName: import.meta.env.VITE_APP_NAME || 'Saúde na Mão',
     logLevel: import.meta.env.VITE_LOG_LEVEL || 'info',
     isDev: import.meta.env.DEV,
     isProd: import.meta.env.PROD,
   }
+}
+
+export function getGoogleClientId() {
+  return import.meta.env.VITE_GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID
 }
 
 export function getApiBaseUrl() {

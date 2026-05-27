@@ -80,6 +80,23 @@ const UserSchema = new mongoose.Schema({
     type: Date,
     select: false,
   },
+  emailLoginCodeHash: {
+    type: String,
+    select: false,
+  },
+  emailLoginCodeExpiresAt: {
+    type: Date,
+    select: false,
+  },
+  emailLoginCodeAttempts: {
+    type: Number,
+    default: 0,
+    select: false,
+  },
+  emailLoginCodeLastSentAt: {
+    type: Date,
+    select: false,
+  },
   ativo: {
     type: Boolean,
     default: true,

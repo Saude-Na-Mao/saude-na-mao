@@ -1,7 +1,7 @@
 const nodemailer = require("nodemailer");
 
 const sendEmail = async ({ to, subject, text, html }) => {
-  console.log("\n📧 === EMAIL DE RECUPERAÇÃO ===");
+  console.log("\n📧 === EMAIL TRANSACIONAL ===");
   console.log(`Para: ${to}`);
   console.log(`Assunto: ${subject}`);
   console.log(`Conteúdo: ${text}`);

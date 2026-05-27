@@ -14,7 +14,13 @@ function isPublicAuthCredentialRequest(config) {
     .split('?')[0]
     .replace(/\/+$/, '') || ''
   const normalized = path.startsWith('/') ? path.slice(1) : path
-  return normalized === 'auth/login' || normalized === 'auth/register'
+  return [
+    'auth/login',
+    'auth/register',
+    'auth/google',
+    'auth/email-code/request',
+    'auth/email-code/verify',
+  ].includes(normalized)
 }
 
 const api = axios.create({
@@ -195,6 +201,9 @@ api.interceptors.response.use(
 export const authService = {
   register: (data) => api.post('/auth/register', data),
   login: (email, senha) => api.post('/auth/login', { email, senha }),
+  google: (credential) => api.post('/auth/google', { credential }),
+  requestEmailCode: (email) => api.post('/auth/email-code/request', { email }),
+  verifyEmailCode: (email, code) => api.post('/auth/email-code/verify', { email, code }),
   logout: () => api.post('/auth/logout'),
   getCurrentUser: () => api.get('/users/me'),
 }

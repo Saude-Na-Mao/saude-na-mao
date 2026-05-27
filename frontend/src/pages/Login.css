@@ -1,0 +1,7 @@
+.google-login-slot > div {
+  min-height: 44px;
+}
+
+.google-login-slot iframe {
+  margin: 0 auto !important;
+}

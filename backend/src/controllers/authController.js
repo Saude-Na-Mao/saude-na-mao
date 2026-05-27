@@ -26,6 +26,13 @@ function normalizeUser(user) {
   return normalized;
 }
 
+function setRefreshTokenCookie(res, refreshToken) {
+  res.cookie("refreshToken", refreshToken, {
+    httpOnly: true,
+    maxAge: 7 * 24 * 60 * 60 * 1000,
+  });
+}
+
 exports.register = async (req, res, next) => {
   try {
     const { nome, email, telefone, cpf, senha, tipo_usuario } = req.body;
@@ -37,10 +44,7 @@ exports.register = async (req, res, next) => {
       senha,
       tipo_usuario,
     });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshTokenCookie(res, refreshToken);
     return res.status(201).json({
       success: true,
       message: "Cadastro realizado com sucesso",
@@ -58,10 +62,7 @@ exports.login = async (req, res, next) => {
       email,
       senha,
     });
-    res.cookie("refreshToken", refreshToken, {
-      httpOnly: true,
-      maxAge: 7 * 24 * 60 * 60 * 1000,
-    });
+    setRefreshTokenCookie(res, refreshToken);
     return res.json({
       success: true,
       data: { accessToken, user: normalizeUser(user) },
@@ -146,12 +147,60 @@ exports.googleAuth = async (req, res, next) => {
         message: "Token do Google é obrigatório",
       });
     }
-    
-    // Placeholder for Google auth logic
-    // This would typically verify the token with Google OAuth library
-    return res.status(501).json({
-      success: false,
-      message: "Google authentication não está implementado",
+    const { accessToken, refreshToken, user } = await authService.googleAuth(credential);
+    setRefreshTokenCookie(res, refreshToken);
+
+    return res.json({
+      success: true,
+      data: { accessToken, user: normalizeUser(user) },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.requestEmailLoginCode = async (req, res, next) => {
+  try {
+    const { email } = req.body;
+    const { code, expiresInMinutes } = await authService.requestEmailLoginCode(email);
+
+    if (code) {
+      await sendEmail({
+        to: email,
+        subject: "Código de acesso - Saúde Na Mão",
+        text: `Seu código de acesso é: ${code}. Ele expira em ${expiresInMinutes} minutos.`,
+        html: `
+          <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+            <h2 style="margin: 0 0 12px; color: #059669;">Saúde na Mão</h2>
+            <p>Use o código abaixo para acessar sua conta:</p>
+            <p style="font-size: 28px; font-weight: 700; letter-spacing: 8px; margin: 20px 0;">${code}</p>
+            <p>Este código expira em ${expiresInMinutes} minutos. Se você não solicitou o acesso, ignore este e-mail.</p>
+          </div>
+        `,
+      });
+    }
+
+    return res.json({
+      success: true,
+      message: "Se o e-mail estiver cadastrado, enviaremos um código de acesso.",
+      data: { expiresInMinutes },
+    });
+  } catch (error) {
+    next(error);
+  }
+};
+
+exports.verifyEmailLoginCode = async (req, res, next) => {
+  try {
+    const { email, code } = req.body;
+    const { accessToken, refreshToken, user } =
+      await authService.verifyEmailLoginCode({ email, code });
+
+    setRefreshTokenCookie(res, refreshToken);
+
+    return res.json({
+      success: true,
+      data: { accessToken, user: normalizeUser(user) },
     });
   } catch (error) {
     next(error);

@@ -66,6 +66,15 @@ const loginValidators = [
 ];
 
 const googleValidators = [body("credential").notEmpty().withMessage("Token do Google é obrigatório")];
+const emailCodeRequestValidators = [
+  body("email").isEmail().withMessage("E-mail inválido").normalizeEmail(),
+];
+const emailCodeVerifyValidators = [
+  body("email").isEmail().withMessage("E-mail inválido").normalizeEmail(),
+  body("code")
+    .matches(/^\d{6}$/)
+    .withMessage("Código deve conter 6 números"),
+];
 
 router.post(
   "/register",
@@ -96,6 +105,23 @@ router.post(
   validateRequest,
   audit("GOOGLE_LOGIN", "User"),
   authController.googleAuth
+);
+
+router.post(
+  "/email-code/request",
+  authLimiter,
+  ...emailCodeRequestValidators,
+  validateRequest,
+  authController.requestEmailLoginCode,
+);
+
+router.post(
+  "/email-code/verify",
+  authLimiter,
+  ...emailCodeVerifyValidators,
+  validateRequest,
+  audit("EMAIL_CODE_LOGIN", "User"),
+  authController.verifyEmailLoginCode,
 );
 
 router.post(

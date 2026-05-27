@@ -28,6 +28,59 @@ function generateRefreshToken(userId) {
   });
 }
 
+const EMAIL_LOGIN_CODE_TTL_MS = 10 * 60 * 1000;
+const EMAIL_LOGIN_CODE_RESEND_MS = 60 * 1000;
+const DEFAULT_GOOGLE_CLIENT_ID =
+  "884559887672-inou94ddfh737nk84msnemt1hdkfme94.apps.googleusercontent.com";
+
+function hashEmailLoginCode(code) {
+  const { JWT_SECRET } = getJwtSecrets();
+  return crypto
+    .createHash("sha256")
+    .update(`${String(code)}:${JWT_SECRET}`)
+    .digest("hex");
+}
+
+function clearEmailLoginCode(user) {
+  user.emailLoginCodeHash = undefined;
+  user.emailLoginCodeExpiresAt = undefined;
+  user.emailLoginCodeAttempts = 0;
+}
+
+async function markPharmacistOnline(user) {
+  const tipo = user.tipo_usuario || user.role;
+  if (tipo !== "farmaceutico" && tipo !== "dono_farmacia") return;
+
+  const ph = await Pharmacist.findOne({ id_usuario: user._id, ativo: true });
+  if (!ph) return;
+
+  ph.logado = true;
+  if (ph.disponivel_chat !== false) {
+    ph.disponivel_chat = true;
+    ph.status_motivo = "online";
+  }
+  ph.ultima_atividade = new Date();
+  await ph.save();
+}
+
+async function issueSessionForUser(user) {
+  const accessToken = generateAccessToken(user._id, user.tipo_usuario, user.role);
+  const refreshToken = generateRefreshToken(user._id);
+  user.refreshToken = refreshToken;
+  await user.save();
+
+  await markPharmacistOnline(user);
+
+  const userObj = user.toObject();
+  delete userObj.senha;
+  delete userObj.refreshToken;
+  delete userObj.emailLoginCodeHash;
+  delete userObj.emailLoginCodeExpiresAt;
+  delete userObj.emailLoginCodeAttempts;
+  delete userObj.emailLoginCodeLastSentAt;
+  return { accessToken, refreshToken, user: userObj };
+}
+
 async function registerUser({
   nome,
   email,
@@ -161,33 +214,11 @@ async function loginUser({ email, senha }) {
     throw err;
   }
   await user.resetLoginAttempts();
-  const accessToken = generateAccessToken(user._id, user.tipo_usuario, user.role);
-  const refreshToken = generateRefreshToken(user._id);
-  user.refreshToken = refreshToken;
-  await user.save();
-
-  const tipo = user.tipo_usuario || user.role;
-  if (tipo === "farmaceutico" || tipo === "dono_farmacia") {
-    const ph = await Pharmacist.findOne({ id_usuario: user._id, ativo: true });
-    if (ph) {
-      ph.logado = true;
-      if (ph.disponivel_chat !== false) {
-        ph.disponivel_chat = true;
-        ph.status_motivo = "online";
-      }
-      ph.ultima_atividade = new Date();
-      await ph.save();
-    }
-  }
-
-  const userObj = user.toObject();
-  delete userObj.senha;
-  delete userObj.refreshToken;
-  return { accessToken, refreshToken, user: userObj };
+  return issueSessionForUser(user);
 }
 
 async function googleAuth(credential) {
-  const clientId = process.env.GOOGLE_CLIENT_ID;
+  const clientId = process.env.GOOGLE_CLIENT_ID || DEFAULT_GOOGLE_CLIENT_ID;
   if (!clientId) {
     const err = new Error("Login com Google não está configurado");
     err.statusCode = 503;
@@ -208,11 +239,16 @@ async function googleAuth(credential) {
   }
 
   const payload = ticket.getPayload();
-  const { sub: googleId, email, name, picture } = payload;
+  const { sub: googleId, email, email_verified: emailVerified, name, picture } = payload;
 
   if (!email) {
     const err = new Error("Conta Google sem e-mail associado");
     err.statusCode = 400;
+    throw err;
+  }
+  if (emailVerified === false) {
+    const err = new Error("E-mail Google não verificado");
+    err.statusCode = 401;
     throw err;
   }
 
@@ -243,15 +279,100 @@ async function googleAuth(credential) {
     });
   }
 
-  const accessToken = generateAccessToken(user._id, user.tipo_usuario);
-  const refreshToken = generateRefreshToken(user._id);
-  user.refreshToken = refreshToken;
+  return issueSessionForUser(user);
+}
+
+async function requestEmailLoginCode(email) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+emailLoginCodeHash +emailLoginCodeExpiresAt +emailLoginCodeAttempts +emailLoginCodeLastSentAt",
+  );
+
+  if (!user) {
+    return { code: null, expiresInMinutes: 10 };
+  }
+
+  const now = Date.now();
+  if (
+    user.emailLoginCodeLastSentAt &&
+    now - user.emailLoginCodeLastSentAt.getTime() < EMAIL_LOGIN_CODE_RESEND_MS
+  ) {
+    const err = new Error("Aguarde 1 minuto antes de solicitar outro código");
+    err.statusCode = 429;
+    throw err;
+  }
+
+  const code = crypto.randomInt(100000, 1000000).toString();
+  user.emailLoginCodeHash = hashEmailLoginCode(code);
+  user.emailLoginCodeExpiresAt = new Date(now + EMAIL_LOGIN_CODE_TTL_MS);
+  user.emailLoginCodeAttempts = 0;
+  user.emailLoginCodeLastSentAt = new Date(now);
   await user.save();
 
-  const userObj = user.toObject();
-  delete userObj.senha;
-  delete userObj.refreshToken;
-  return { accessToken, refreshToken, user: userObj };
+  return { code, expiresInMinutes: 10 };
+}
+
+async function verifyEmailLoginCode({ email, code }) {
+  const normalizedEmail = String(email || "").trim().toLowerCase();
+  const normalizedCode = String(code || "").replace(/\D/g, "");
+
+  if (!/^\d{6}$/.test(normalizedCode)) {
+    const err = new Error("Código inválido");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  const user = await User.findOne({ email: normalizedEmail }).select(
+    "+refreshToken +loginAttempts +lockUntil +emailLoginCodeHash +emailLoginCodeExpiresAt +emailLoginCodeAttempts +emailLoginCodeLastSentAt",
+  );
+
+  if (
+    !user ||
+    !user.emailLoginCodeHash ||
+    !user.emailLoginCodeExpiresAt ||
+    user.emailLoginCodeExpiresAt.getTime() < Date.now()
+  ) {
+    if (user) {
+      clearEmailLoginCode(user);
+      await user.save();
+    }
+    const err = new Error("Código inválido ou expirado");
+    err.statusCode = 400;
+    throw err;
+  }
+
+  if (user.isLocked) {
+    const err = new Error("Conta bloqueada por 15 minutos");
+    err.statusCode = 429;
+    throw err;
+  }
+
+  if (user.emailLoginCodeAttempts >= 5) {
+    clearEmailLoginCode(user);
+    await user.save();
+    const err = new Error("Muitas tentativas. Solicite um novo código");
+    err.statusCode = 429;
+    throw err;
+  }
+
+  const matches = user.emailLoginCodeHash === hashEmailLoginCode(normalizedCode);
+  if (!matches) {
+    const nextAttempts = (user.emailLoginCodeAttempts || 0) + 1;
+    user.emailLoginCodeAttempts = nextAttempts;
+    if (nextAttempts >= 5) {
+      clearEmailLoginCode(user);
+    }
+    await user.save();
+    const err = new Error(
+      nextAttempts >= 5 ? "Muitas tentativas. Solicite um novo código" : "Código inválido",
+    );
+    err.statusCode = nextAttempts >= 5 ? 429 : 401;
+    throw err;
+  }
+
+  clearEmailLoginCode(user);
+  await user.resetLoginAttempts();
+  return issueSessionForUser(user);
 }
 
 async function refreshAccessToken(refreshToken) {
@@ -314,6 +435,8 @@ module.exports = {
   registerUser,
   loginUser,
   googleAuth,
+  requestEmailLoginCode,
+  verifyEmailLoginCode,
   refreshAccessToken,
   forgotPassword,
   resetPassword,
