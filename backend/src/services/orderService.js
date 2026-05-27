@@ -19,7 +19,8 @@ const { isOrderEligibleForDispatch } = require("../utils/deliveryEligibility");
 
 const DRIVER_READY_NOTIFICATION_TAG = "entregadores_notificados_pedido_pronto";
 
-const ENTREGA_CLIENT_POPULATE_SELECT = "codigo_confirmacao status avaliacao_cliente";
+const ENTREGA_CLIENT_POPULATE_SELECT =
+  "codigo_confirmacao status avaliacao_cliente endereco_coleta endereco_entrega historico_status valor_entrega tempo_estimado_min id_entregador";
 
 function pharmacyIdStringFromOrderDoc(order) {
   const f = order?.id_farmacia;

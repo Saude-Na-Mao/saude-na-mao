@@ -1,9 +1,10 @@
 import { useEffect, useCallback } from 'react'
 import { useNavigate } from 'react-router-dom'
-import { useUiStore, useAuthStore, usePrescriptionStore } from '../stores/store'
+import { useUiStore, useAuthStore, usePrescriptionStore, useCartStore } from '../stores/store'
 import { CheckCircle, XCircle, AlertTriangle, Info, X } from 'lucide-react'
 import { io } from 'socket.io-client'
 import { getSocketUrl, SOCKET_TRANSPORTS } from '../config/env'
+import { productService } from '../services/api'
 import { getClientOrderStatusPresentation } from '../utils/orderStatusDisplay'
 import {
   buildSupportToastMessage,
@@ -31,12 +32,43 @@ const COLOR_MAP = {
   info: 'bg-blue-50 border-blue-400 text-blue-800',
 }
 
+function getPharmacyId(pharmacyOrId) {
+  return pharmacyOrId?._id || pharmacyOrId?.id || pharmacyOrId || null
+}
+
+function normalizePrescriptionCartProduct(produto, fallbackPharmacyId) {
+  if (!produto) return null
+  const pharmacy = produto.id_farmacia
+  const precoBase = Number(produto.preco || 0)
+  const precoPromo = Number(produto.preco_promocional)
+  const preco =
+    Number.isFinite(precoPromo) && precoPromo > 0 && precoPromo < precoBase
+      ? precoPromo
+      : precoBase
+
+  return {
+    id: produto._id || produto.id,
+    nome: produto.nome,
+    preco,
+    imagem: produto.imagem || produto.imagem_url || produto.imagens?.[0],
+    controlado: produto.controlado,
+    receita_obrigatoria: produto.receita_obrigatoria,
+    classificacao_receita: produto.classificacao_receita || 'sem_receita',
+    id_farmacia: getPharmacyId(pharmacy) || fallbackPharmacyId,
+    nome_farmacia: pharmacy?.nome || 'Farmácia',
+    quantity: 1,
+  }
+}
+
 export default function NotificationToast() {
   const navigate = useNavigate()
   const { notifications, removeNotification, addNotification } = useUiStore()
   const { token, user } = useAuthStore()
   const atualizarStatusPorId = usePrescriptionStore(
     (s) => s.atualizarStatusPorId,
+  )
+  const setPrescricaoFarmacia = usePrescriptionStore(
+    (s) => s.setPrescricaoFarmacia,
   )
 
   const onToastClick = useCallback(
@@ -84,6 +116,32 @@ export default function NotificationToast() {
       const { prescriptionId, novoStatus, observacoes, validade } = data || {}
 
       if (novoStatus === 'Aprovada') {
+        if (data?.id_produto) {
+          productService
+            .getById(data.id_produto)
+            .then((response) => {
+              const produto =
+                response?.data?.data?.produto || response?.data?.data || response?.data
+              const cartProduct = normalizePrescriptionCartProduct(
+                produto,
+                data?.id_farmacia,
+              )
+              if (!cartProduct?.id) return
+
+              const cartState = useCartStore.getState()
+              const alreadyInCart = cartState.items.some(
+                (item) => String(item.id) === String(cartProduct.id),
+              )
+              if (alreadyInCart) return
+
+              const result = cartState.addItem(cartProduct)
+              if (result?.pharmacyConflict) {
+                cartState.replaceCartWithItem(cartProduct)
+              }
+            })
+            .catch(() => {})
+        }
+
         addNotification({
           type: 'success',
           title: '✅ Receita aprovada!',
@@ -115,6 +173,18 @@ export default function NotificationToast() {
           status: novoStatus,
           observacoes,
           validade,
+        })
+      }
+      if (data?.id_farmacia && prescriptionId) {
+        setPrescricaoFarmacia(data.id_farmacia, {
+          _id: prescriptionId,
+          status: novoStatus,
+          observacoes,
+          validade,
+          id_farmacia: data.id_farmacia,
+          id_produto: data?.id_produto || null,
+          disponivel_para_novo_pedido:
+            data?.disponivel_para_novo_pedido !== false,
         })
       }
     })
@@ -151,7 +221,13 @@ export default function NotificationToast() {
     return () => {
       socket.disconnect()
     }
-  }, [token, user?.id, addNotification, atualizarStatusPorId])
+  }, [
+    token,
+    user?.id,
+    addNotification,
+    atualizarStatusPorId,
+    setPrescricaoFarmacia,
+  ])
 
   if (notifications.length === 0) return null
 

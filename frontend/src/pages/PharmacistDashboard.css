@@ -4,6 +4,7 @@
   margin: 0 auto;
   background: linear-gradient(135deg, #f3f4f6 0%, #ffffff 100%);
   min-height: 100vh;
+  overflow-x: hidden;
 }
 
 .dashboard-header {
@@ -567,5 +568,47 @@ section h2 {
 
   .retry-btn {
     width: 100%;
+  }
+}
+
+@media (max-width: 520px) {
+  .pharmacist-dashboard {
+    padding: 10px;
+  }
+
+  .dashboard-header h1 {
+    font-size: 22px;
+  }
+
+  .status-indicator {
+    width: 100%;
+    border-radius: 12px;
+    white-space: normal;
+  }
+
+  .stats-grid,
+  .skeleton-stats-grid {
+    grid-template-columns: 1fr;
+    gap: 12px;
+  }
+
+  .stat-card {
+    padding: 16px;
+  }
+
+  .stat-card .value {
+    font-size: 24px;
+  }
+
+  .validations-section,
+  .alerts-section,
+  .skeleton-section {
+    padding: 16px;
+  }
+
+  .validation-card .header {
+    align-items: flex-start;
+    flex-direction: column;
+    gap: 8px;
   }
 }

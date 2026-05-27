@@ -9,12 +9,13 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import Alert from '../components/Alert'
 import ReviewModal from '../components/ReviewModal'
 import DeliveryReviewModal from '../components/DeliveryReviewModal'
-import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, FlaskConical } from 'lucide-react'
+import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, FlaskConical, CheckCircle, Clock } from 'lucide-react'
 import {
   PEDIDOS_TAB,
   orderMatchesPedidosTab,
   getClientOrderStatusPresentation,
   getOrderCancellationReason,
+  getOrderProgressSteps,
 } from '../utils/orderStatusDisplay'
 
 const REFRESH_INTERVAL_MS = 30000
@@ -403,6 +404,35 @@ export default function Pedidos() {
                 </div>
               </div>
 
+              {!['cancelado', 'rejeitado'].includes(String(order.status || '').trim()) && (
+                <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
+                  <p className="text-sm font-semibold text-gray-900 mb-3">Status do pedido</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+                    {getOrderProgressSteps(order).map((step) => (
+                      <div
+                        key={step.id}
+                        className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                          step.state === 'completed'
+                            ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                            : step.state === 'current'
+                            ? 'bg-primary/10 border-primary/20 text-primary'
+                            : 'bg-white border-gray-200 text-gray-500'
+                        }`}
+                      >
+                        <div className="flex items-center gap-1.5">
+                          {step.state === 'completed' ? (
+                            <CheckCircle className="w-3.5 h-3.5" />
+                          ) : (
+                            <Clock className="w-3.5 h-3.5" />
+                          )}
+                          <span>{step.label}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+
               {isPedidoRetiradaOuDriveThru(order) &&
                 order.status === 'em_processamento' &&
                 order.status_pagamento === 'aprovado' && (
@@ -457,7 +487,7 @@ export default function Pedidos() {
                         key={idx}
                         className="text-xs bg-gray-100 px-2 py-1 rounded truncate max-w-xs"
                       >
-                        {item.nome || `Item ${idx + 1}`}
+                        {item.nome_produto || item.nome || `Item ${idx + 1}`}
                       </span>
                     ))}
                     {order.itens.length > 3 && (

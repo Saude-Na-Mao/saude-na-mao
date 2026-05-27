@@ -24,6 +24,7 @@ const USERS = [
 
   // ENTREGADOR
   { nome: "Entregador Teste", email: "entregador@saudenamao.com", senha: "Entrega@123", tipo_usuario: "entregador" },
+  { nome: "Juliana Entregas", email: "entregadora.demo@gyn.local", senha: "Entrega@123", tipo_usuario: "entregador" },
 
   // DONO DE FARMÁCIA GENÉRICO
   { nome: "Dono Genérico", email: "dono@farmacia.com", senha: "Dono@123", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Rosário - Jardim Goiás" },

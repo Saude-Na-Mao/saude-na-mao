@@ -373,7 +373,16 @@ async function getOwnerDashboardStats(pharmacyId, { periodo = "mes" } = {}) {
     orderPeriodMatch.createdAt = { $gte: periodStart };
   }
 
-  const [faturamentoAgg, pedidosEntregues, pedidosHoje, reviewStats, pedidosPorStatusAgg] =
+  const [
+    faturamentoAgg,
+    pedidosEntregues,
+    pedidosHoje,
+    reviewStats,
+    pedidosPorStatusAgg,
+    pedidosPorTipoAgg,
+    faturamentoPorMesAgg,
+    itensPorClassificacaoAgg,
+  ] =
     await Promise.all([
       Order.aggregate([
         { $match: periodMatch },
@@ -400,6 +409,32 @@ async function getOwnerDashboardStats(pharmacyId, { periodo = "mes" } = {}) {
         { $match: orderPeriodMatch },
         { $group: { _id: "$status", total: { $sum: 1 } } },
       ]),
+      Order.aggregate([
+        { $match: orderPeriodMatch },
+        { $group: { _id: "$tipo_entrega", total: { $sum: 1 } } },
+      ]),
+      Order.aggregate([
+        { $match: { ...baseMatch, createdAt: { $gte: new Date(new Date().getFullYear(), 0, 1) } } },
+        {
+          $group: {
+            _id: { ano: { $year: "$createdAt" }, mes: { $month: "$createdAt" } },
+            total: { $sum: "$total" },
+            pedidos: { $sum: 1 },
+          },
+        },
+        { $sort: { "_id.ano": 1, "_id.mes": 1 } },
+      ]),
+      Order.aggregate([
+        { $match: orderPeriodMatch },
+        { $unwind: "$itens" },
+        {
+          $group: {
+            _id: "$itens.classificacao_receita",
+            quantidade: { $sum: "$itens.quantidade" },
+            total: { $sum: "$itens.subtotal" },
+          },
+        },
+      ]),
     ]);
 
   const faturamentoTotalAgg = await Order.aggregate([
@@ -421,6 +456,28 @@ async function getOwnerDashboardStats(pharmacyId, { periodo = "mes" } = {}) {
     return acc;
   }, {});
 
+  const pedidos_por_tipo_entrega = pedidosPorTipoAgg.reduce((acc, item) => {
+    if (item._id) acc[item._id] = item.total;
+    return acc;
+  }, {});
+
+  const faturamento_por_mes = faturamentoPorMesAgg.map((item) => ({
+    ano: item._id.ano,
+    mes: item._id.mes,
+    label: `${String(item._id.mes).padStart(2, "0")}/${item._id.ano}`,
+    total: Math.round((item.total || 0) * 100) / 100,
+    pedidos: item.pedidos || 0,
+  }));
+
+  const itens_por_classificacao = itensPorClassificacaoAgg.reduce((acc, item) => {
+    const key = item._id || "sem_receita";
+    acc[key] = {
+      quantidade: item.quantidade || 0,
+      total: Math.round((item.total || 0) * 100) / 100,
+    };
+    return acc;
+  }, {});
+
   const total_pedidos_periodo = Object.values(pedidos_por_status).reduce(
     (sum, n) => sum + n,
     0,
@@ -439,6 +496,9 @@ async function getOwnerDashboardStats(pharmacyId, { periodo = "mes" } = {}) {
     avaliacao_media,
     total_avaliacoes,
     pedidos_por_status,
+    pedidos_por_tipo_entrega,
+    faturamento_por_mes,
+    itens_por_classificacao,
     total_pedidos_periodo,
     ticket_medio_periodo,
     periodo,

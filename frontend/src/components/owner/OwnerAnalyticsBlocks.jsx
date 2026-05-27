@@ -1,4 +1,4 @@
-import { Activity, TrendingUp } from 'lucide-react'
+import { Activity, TrendingUp, BarChart3 } from 'lucide-react'
 import { ORDER_STATUS_LABELS } from '../../constants'
 
 /** Labels extras além do enum em constants (status reais do modelo Order). */
@@ -105,5 +105,91 @@ export function ConversionFunnelCard({ pedidosPorStatus, totalPedidosPeriodo }) 
         </div>
       </div>
     </div>
+  )
+}
+
+function money(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+    maximumFractionDigits: 0,
+  }).format(Number(value || 0))
+}
+
+function SimpleBarList({ title, subtitle, entries, valueFormatter = (v) => v }) {
+  const normalized = entries.filter(([, value]) => Number(value) > 0)
+  if (normalized.length === 0) return null
+  const max = Math.max(...normalized.map(([, value]) => Number(value)), 1)
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <h3 className="font-semibold text-lg mb-2 flex items-center gap-2">
+        <BarChart3 className="w-5 h-5 text-emerald-600" />
+        {title}
+      </h3>
+      {subtitle && <p className="text-xs text-gray-500 mb-4">{subtitle}</p>}
+      <div className="space-y-3">
+        {normalized.map(([label, value]) => (
+          <div key={label} className="flex items-center gap-3">
+            <span className="text-xs text-gray-600 w-32 text-right truncate">{label}</span>
+            <div className="flex-1 bg-gray-100 rounded-full h-6 overflow-hidden">
+              <div
+                className="h-full rounded-full bg-emerald-400 transition-all duration-700"
+                style={{ width: `${(Number(value) / max) * 100}%`, minWidth: '24px' }}
+              />
+            </div>
+            <span className="text-sm font-bold w-20 text-right">{valueFormatter(value)}</span>
+          </div>
+        ))}
+      </div>
+    </div>
+  )
+}
+
+export function MonthlyRevenueChart({ faturamentoPorMes }) {
+  const entries = (faturamentoPorMes || []).map((item) => [item.label, item.total])
+  return (
+    <SimpleBarList
+      title="Faturamento por mês"
+      subtitle="Pedidos entregues desde janeiro do ano atual."
+      entries={entries}
+      valueFormatter={money}
+    />
+  )
+}
+
+export function DeliveryTypeChart({ pedidosPorTipoEntrega }) {
+  const labels = { moto: 'Moto', drone: 'Drone', retirada: 'Retirada', 'drive-thru': 'Drive-thru' }
+  const entries = Object.entries(pedidosPorTipoEntrega || {}).map(([key, value]) => [
+    labels[key] || key,
+    value,
+  ])
+  return (
+    <SimpleBarList
+      title="Pedidos por entrega"
+      subtitle="Distribuição dos tipos de entrega no período."
+      entries={entries}
+    />
+  )
+}
+
+export function PrescriptionMixChart({ itensPorClassificacao }) {
+  const labels = {
+    sem_receita: 'Sem receita',
+    tarja_vermelha: 'Tarja vermelha',
+    tarja_preta: 'Tarja preta',
+    antimicrobiano: 'Antimicrobiano',
+    controlado_a: 'Controle especial',
+  }
+  const entries = Object.entries(itensPorClassificacao || {}).map(([key, data]) => [
+    labels[key] || statusLabel(key),
+    data?.quantidade || 0,
+  ])
+  return (
+    <SimpleBarList
+      title="Mix por receita"
+      subtitle="Quantidade de itens vendidos por classificação."
+      entries={entries}
+    />
   )
 }

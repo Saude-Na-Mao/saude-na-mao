@@ -21,7 +21,13 @@ import {
   RefreshCw, Package, ShoppingCart, Plus, Edit2, XCircle, Users, AlertTriangle,
   ClipboardList, Eye, MapPin, Star, LayoutDashboard, TrendingUp, DollarSign, Search, Menu, X,
 } from 'lucide-react'
-import { ConversionFunnelCard, OrdersByStatusChart } from '../components/owner/OwnerAnalyticsBlocks'
+import {
+  ConversionFunnelCard,
+  DeliveryTypeChart,
+  MonthlyRevenueChart,
+  OrdersByStatusChart,
+  PrescriptionMixChart,
+} from '../components/owner/OwnerAnalyticsBlocks'
 import {
   CATEGORIAS_MEDICAMENTO,
   CATEGORIAS_OUTROS_ITENS,
@@ -882,6 +888,13 @@ function OwnerDashboardPanel({ pharmacyId, resolvingPharmacy = false }) {
   const [periodo, setPeriodo] = useState('mes')
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
+  const [visibleCharts, setVisibleCharts] = useState({
+    status: true,
+    funil: true,
+    meses: true,
+    entrega: true,
+    receitas: true,
+  })
 
   const loadStats = useCallback(async () => {
     if (!pharmacyId) return
@@ -905,6 +918,10 @@ function OwnerDashboardPanel({ pharmacyId, resolvingPharmacy = false }) {
 
   const formatBRL = (v) =>
     new Intl.NumberFormat('pt-BR', { style: 'currency', currency: 'BRL' }).format(Number(v || 0))
+
+  const toggleChart = (key) => {
+    setVisibleCharts((current) => ({ ...current, [key]: !current[key] }))
+  }
 
   if (resolvingPharmacy) {
     return (
@@ -951,6 +968,29 @@ function OwnerDashboardPanel({ pharmacyId, resolvingPharmacy = false }) {
             <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
           </button>
         </div>
+      </div>
+
+      <div className="flex flex-wrap gap-2">
+        {[
+          ['status', 'Status'],
+          ['funil', 'Funil'],
+          ['meses', 'Meses'],
+          ['entrega', 'Entrega'],
+          ['receitas', 'Receitas'],
+        ].map(([key, label]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => toggleChart(key)}
+            className={`px-3 py-1.5 rounded-lg text-xs font-semibold border transition ${
+              visibleCharts[key]
+                ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+                : 'bg-white border-gray-200 text-gray-500'
+            }`}
+          >
+            {label}
+          </button>
+        ))}
       </div>
 
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
@@ -1020,11 +1060,18 @@ function OwnerDashboardPanel({ pharmacyId, resolvingPharmacy = false }) {
             </div>
           </div>
 
-          <OrdersByStatusChart pedidosPorStatus={stats?.pedidos_por_status} />
-          <ConversionFunnelCard
-            pedidosPorStatus={stats?.pedidos_por_status}
-            totalPedidosPeriodo={stats?.total_pedidos_periodo}
-          />
+          <div className="grid grid-cols-1 xl:grid-cols-2 gap-4">
+            {visibleCharts.status && <OrdersByStatusChart pedidosPorStatus={stats?.pedidos_por_status} />}
+            {visibleCharts.funil && (
+              <ConversionFunnelCard
+                pedidosPorStatus={stats?.pedidos_por_status}
+                totalPedidosPeriodo={stats?.total_pedidos_periodo}
+              />
+            )}
+            {visibleCharts.meses && <MonthlyRevenueChart faturamentoPorMes={stats?.faturamento_por_mes} />}
+            {visibleCharts.entrega && <DeliveryTypeChart pedidosPorTipoEntrega={stats?.pedidos_por_tipo_entrega} />}
+            {visibleCharts.receitas && <PrescriptionMixChart itensPorClassificacao={stats?.itens_por_classificacao} />}
+          </div>
         </>
       )}
     </div>
@@ -1080,6 +1127,7 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
   const [activateForm, setActivateForm] = useState({ estoque: '', preco: '' })
   const [stockEditProduct, setStockEditProduct] = useState(null)
   const [stockValue, setStockValue] = useState('')
+  const [stockPriceValue, setStockPriceValue] = useState('')
 
   const [showOtcForm, setShowOtcForm] = useState(false)
   const [showOutroForm, setShowOutroForm] = useState(false)
@@ -1189,9 +1237,11 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
       setSaving(true)
       await pharmacyOwnerService.updateProduct(stockEditProduct._id, {
         estoque: Number(stockValue),
+        preco: Number(stockPriceValue),
       })
-      setMessage('Estoque atualizado!')
+      setMessage('Estoque e preço atualizados!')
       setStockEditProduct(null)
+      setStockPriceValue('')
       loadProducts()
       setTimeout(() => setMessage(null), 3000)
     } catch (err) {
@@ -1368,11 +1418,12 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
                       onClick={() => {
                         setStockEditProduct(p)
                         setStockValue(String(p.estoque ?? ''))
+                        setStockPriceValue(String(p.preco ?? ''))
                       }}
                       className="text-emerald-600 hover:text-emerald-800"
-                      title="Ajustar estoque"
+                      title="Ajustar estoque e preço"
                     >
-                      <Package className="w-4 h-4" />
+                      <Edit2 className="w-4 h-4" />
                     </button>
                   ) : (
                     <button
@@ -1444,6 +1495,7 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
               setShowOtcForm(false)
               setShowOutroForm(false)
               setActivateItem(null)
+              setEditingId(null)
             }}
             className={`px-4 py-2 rounded-lg text-sm font-medium whitespace-nowrap transition ${
               subTab === t.id
@@ -1512,8 +1564,29 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
         </div>
       )}
 
+      {editingId && (showOutroForm || showOtcForm) && (
+        <div
+          className="fixed inset-0 z-40 bg-black/40"
+          onClick={() => {
+            setShowOutroForm(false)
+            setShowOtcForm(false)
+            setOutroForm(emptyOutroForm())
+            setOtcForm(emptyProductForm())
+            setEditingId(null)
+          }}
+        />
+      )}
+
       {subTab === 'outros' && showOutroForm && (
-        <form onSubmit={handleOutroSubmit} className="p-5 border-b border-gray-100 bg-gray-50/50 space-y-3">
+        <form
+          onSubmit={handleOutroSubmit}
+          className={
+            editingId
+              ? 'fixed left-1/2 top-1/2 z-50 w-[min(92vw,620px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-5 shadow-xl space-y-3 max-h-[86vh] overflow-y-auto'
+              : 'p-5 border-b border-gray-100 bg-gray-50/50 space-y-3'
+          }
+        >
+          {editingId && <h3 className="font-bold text-gray-900">Editar item</h3>}
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
               type="text"
@@ -1589,7 +1662,15 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
       )}
 
       {subTab === 'otc' && showOtcForm && (
-        <form onSubmit={handleOtcSubmit} className="p-5 border-b border-gray-100 bg-gray-50/50 space-y-3 max-h-[70vh] overflow-y-auto">
+        <form
+          onSubmit={handleOtcSubmit}
+          className={
+            editingId
+              ? 'fixed left-1/2 top-1/2 z-50 w-[min(92vw,720px)] -translate-x-1/2 -translate-y-1/2 rounded-xl bg-white p-5 shadow-xl space-y-3 max-h-[86vh] overflow-y-auto'
+              : 'p-5 border-b border-gray-100 bg-gray-50/50 space-y-3 max-h-[70vh] overflow-y-auto'
+          }
+        >
+          {editingId && <h3 className="font-bold text-gray-900">Editar medicamento OTC</h3>}
           <p className="text-xs text-gray-500">Somente medicamentos de venda livre (sem receita).</p>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
             <input
@@ -1748,22 +1829,44 @@ function ProdutosPanel({ pharmacyId, resolvingPharmacy = false }) {
       {stockEditProduct && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 p-4">
           <form onSubmit={submitStockOnly} className="bg-white rounded-xl shadow-lg max-w-sm w-full p-6 space-y-4">
-            <h3 className="font-bold text-gray-900">Ajustar estoque</h3>
+            <h3 className="font-bold text-gray-900">Ajustar estoque e preço</h3>
             <p className="text-sm text-gray-600">{stockEditProduct.nome}</p>
-            <p className="text-xs text-amber-700">Produto do catálogo: nome e classificação não podem ser alterados.</p>
-            <input
-              type="number"
-              min="0"
-              value={stockValue}
-              onChange={(e) => setStockValue(e.target.value)}
-              required
-              className="w-full px-3 py-2 border rounded-lg text-sm"
-            />
+            <p className="text-xs text-amber-700">Produto do catálogo: nome, composição e tarja não podem ser alterados.</p>
+            <div>
+              <label className="text-xs text-gray-500">Preço da loja (R$)</label>
+              <input
+                type="number"
+                min="0"
+                step="0.01"
+                value={stockPriceValue}
+                onChange={(e) => setStockPriceValue(e.target.value)}
+                required
+                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
+            <div>
+              <label className="text-xs text-gray-500">Estoque em unidades</label>
+              <input
+                type="number"
+                min="0"
+                value={stockValue}
+                onChange={(e) => setStockValue(e.target.value)}
+                required
+                className="w-full mt-1 px-3 py-2 border rounded-lg text-sm"
+              />
+            </div>
             <div className="flex gap-2">
               <button type="submit" disabled={saving} className="flex-1 py-2 bg-primary text-white rounded-xl text-sm font-semibold">
                 Salvar
               </button>
-              <button type="button" onClick={() => setStockEditProduct(null)} className="px-4 py-2 bg-gray-200 rounded-xl text-sm">
+              <button
+                type="button"
+                onClick={() => {
+                  setStockEditProduct(null)
+                  setStockPriceValue('')
+                }}
+                className="px-4 py-2 bg-gray-200 rounded-xl text-sm"
+              >
                 Cancelar
               </button>
             </div>
@@ -2182,14 +2285,29 @@ function ReceitasHistoryPanel() {
               {expandedId === rx._id && (
                 <div className="mt-4 ml-14 space-y-4">
                   {/* Prescription image */}
-                  {rx.url_arquivo && (
-                    <div className="rounded-xl overflow-hidden border border-gray-200 max-w-md">
+                  {(rx.url_imagem_publica || rx.url_arquivo) && (
+                    <div className="space-y-2 max-w-md">
+                      <a
+                        href={(rx.url_imagem_publica || rx.url_arquivo).startsWith('http')
+                          ? (rx.url_imagem_publica || rx.url_arquivo)
+                          : `/${(rx.url_imagem_publica || rx.url_arquivo).replace(/\\/g, '/')}`}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-secondary"
+                      >
+                        <Eye className="w-4 h-4" />
+                        Ver imagem da receita
+                      </a>
+                      <div className="rounded-xl overflow-hidden border border-gray-200">
                       <img
-                        src={rx.url_arquivo.startsWith('http') ? rx.url_arquivo : `/${rx.url_arquivo.replace(/\\/g, '/')}`}
+                        src={(rx.url_imagem_publica || rx.url_arquivo).startsWith('http')
+                          ? (rx.url_imagem_publica || rx.url_arquivo)
+                          : `/${(rx.url_imagem_publica || rx.url_arquivo).replace(/\\/g, '/')}`}
                         alt="Receita"
                         className="w-full object-contain max-h-96 bg-gray-50"
                         onError={(e) => { e.target.style.display = 'none' }}
                       />
+                      </div>
                     </div>
                   )}
 

@@ -20,7 +20,7 @@ const CONTROLLED_CLASSES = new Set(["tarja_preta", "controlado_a"]);
 
 const compliance = {
   academicDemoMode: envFlag("TCC_DEMO_MODE", true),
-  allowControlledRemoteSale: envFlag("ALLOW_CONTROLLED_REMOTE_SALE", false),
+  allowControlledRemoteSale: envFlag("ALLOW_CONTROLLED_REMOTE_SALE", true),
   requirePharmacyComplianceDocs: envFlag(
     "REQUIRE_PHARMACY_COMPLIANCE_DOCS",
     false,

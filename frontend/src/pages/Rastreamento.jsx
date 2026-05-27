@@ -6,8 +6,51 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import Alert from '../components/Alert'
 import { Package, MapPin, Truck, CheckCircle, Clock, XCircle, CreditCard } from 'lucide-react'
 import { io } from 'socket.io-client'
+import { getSocketUrl, SOCKET_TRANSPORTS } from '../config/env'
 
 const DeliveryMap = lazy(() => import('../components/DeliveryMap'))
+
+function pointToLatLng(location) {
+  const coords = location?.coordinates
+  if (!Array.isArray(coords) || coords.length !== 2) return null
+  const [lng, lat] = coords.map(Number)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function userLocationToLatLng(userLocation) {
+  const coords = userLocation?.coordinates
+  if (!Array.isArray(coords) || coords.length !== 2) return null
+  const [lng, lat] = coords.map(Number)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function historyPointToLatLng(item) {
+  const lat = Number(item?.localizacao?.latitude)
+  const lng = Number(item?.localizacao?.longitude)
+  if (!Number.isFinite(lat) || !Number.isFinite(lng)) return null
+  return [lat, lng]
+}
+
+function latestRoutePoint(delivery) {
+  const history = Array.isArray(delivery?.historico_status)
+    ? [...delivery.historico_status]
+    : []
+  history.sort((a, b) => new Date(a?.alterado_em || 0) - new Date(b?.alterado_em || 0))
+  for (let i = history.length - 1; i >= 0; i -= 1) {
+    const point = historyPointToLatLng(history[i])
+    if (point) return point
+  }
+  return null
+}
+
+function addressText(address) {
+  if (!address || typeof address !== 'object') return undefined
+  return [address.logradouro, address.numero, address.bairro, address.cidade, address.estado]
+    .filter(Boolean)
+    .join(', ')
+}
 
 export default function Rastreamento() {
   const { id } = useParams()
@@ -34,8 +77,9 @@ export default function Rastreamento() {
     if (!order || !id) return
     if (['cancelado', 'entregue'].includes(order.status)) return
 
-    const socket = io(window.location.origin.replace(':3000', ':5000'), {
-      transports: ['websocket'],
+    const socket = io(getSocketUrl(), {
+      auth: { token },
+      transports: SOCKET_TRANSPORTS,
     })
     socket.emit('join:order', { orderId: id })
     socket.on('delivery:location', (data) => {
@@ -66,8 +110,8 @@ export default function Rastreamento() {
       const codigoEmb = entregaEmb?.codigo_confirmacao
       const entregaId = pedido?.id_entrega?._id || pedido?.id_entrega
 
-      if (codigoEmb) {
-        setDeliveryDetail({ codigo_confirmacao: codigoEmb })
+      if (entregaEmb) {
+        setDeliveryDetail(entregaEmb)
       } else if (entregaId) {
         try {
           const dr = await deliveryService.getById(String(entregaId))
@@ -101,6 +145,23 @@ export default function Rastreamento() {
   const codigoParaEntregador =
     (typeof order.id_entrega === 'object' && order.id_entrega?.codigo_confirmacao) ||
     deliveryDetail?.codigo_confirmacao
+
+  const pharmacyLocation =
+    pointToLatLng(deliveryDetail?.endereco_coleta?.location) ||
+    pointToLatLng(order.id_farmacia?.location)
+  const destinationLocation =
+    pointToLatLng(deliveryDetail?.endereco_entrega?.location) ||
+    pointToLatLng(order.endereco_entrega?.location) ||
+    (order.endereco_entrega?.coordenadas
+      ? [order.endereco_entrega.coordenadas.lat, order.endereco_entrega.coordenadas.lng]
+      : null)
+  const fallbackDriverLocation =
+    latestRoutePoint(deliveryDetail) ||
+    userLocationToLatLng(deliveryDetail?.id_entregador?.dados_entregador?.localizacao_atual) ||
+    (order.entregador?.localizacao_atual?.latitude && order.entregador?.localizacao_atual?.longitude
+      ? [order.entregador.localizacao_atual.latitude, order.entregador.localizacao_atual.longitude]
+      : null)
+  const mapDriverLocation = driverLocation || fallbackDriverLocation
 
   const getStepStatus = (step, currentStatus) => {
     const steps = ['confirmado', 'enviado', 'a_caminho', 'entregue']
@@ -285,19 +346,14 @@ export default function Rastreamento() {
               </div>
             }>
               <DeliveryMap
-                driverLocation={driverLocation || (order.entregador?.localizacao_atual?.coordinates
-                  ? [order.entregador.localizacao_atual.coordinates[1], order.entregador.localizacao_atual.coordinates[0]]
-                  : null)}
-                pharmacyLocation={order.farmacia?.location?.coordinates
-                  ? [order.farmacia.location.coordinates[1], order.farmacia.location.coordinates[0]]
-                  : null}
-                destinationLocation={order.endereco_entrega?.coordenadas
-                  ? [order.endereco_entrega.coordenadas.lat, order.endereco_entrega.coordenadas.lng]
-                  : null}
-                pharmacyName={order.farmacia?.nome || order.nome_farmacia}
-                destinationAddress={order.endereco_entrega?.logradouro
-                  ? `${order.endereco_entrega.logradouro}, ${order.endereco_entrega.numero}`
-                  : undefined}
+                driverLocation={mapDriverLocation}
+                pharmacyLocation={pharmacyLocation}
+                destinationLocation={destinationLocation}
+                pharmacyName={order.id_farmacia?.nome || order.farmacia?.nome || order.nome_farmacia}
+                destinationAddress={
+                  addressText(deliveryDetail?.endereco_entrega) ||
+                  addressText(order.endereco_entrega)
+                }
                 status={order.status}
                 className="h-[350px]"
               />

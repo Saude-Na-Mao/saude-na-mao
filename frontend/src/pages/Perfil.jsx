@@ -303,7 +303,11 @@ export default function Perfil() {
           </div>
 
           <div className="mt-4 space-y-2">
-            <button className="w-full flex items-center gap-3 px-5 py-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 transition text-sm text-gray-600">
+            <button
+              type="button"
+              onClick={() => navigate('/suporte')}
+              className="w-full flex items-center gap-3 px-5 py-3 bg-white rounded-xl border border-gray-100 hover:bg-gray-50 transition text-sm text-gray-600"
+            >
               <HelpCircle className="w-4 h-4 text-gray-400" />
               <span>Ajuda</span>
             </button>

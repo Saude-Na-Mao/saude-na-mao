@@ -262,12 +262,12 @@ async function updateProduct(productId, dados) {
   const { id_farmacia, ...updateData } = dados;
 
   if (existing.tipo_produto === "medicamento_catalogo") {
-    const allowed = new Set(["estoque", "ativo", "preco_promocional"]);
+    const allowed = new Set(["estoque", "preco", "ativo", "preco_promocional"]);
     const keys = Object.keys(updateData);
     const invalid = keys.filter((k) => !allowed.has(k));
     if (invalid.length > 0) {
       throw createError(
-        "Produtos do catálogo só permitem alterar estoque, status ativo e preço promocional.",
+        "Produtos do catálogo só permitem alterar estoque, preço, status ativo e preço promocional.",
         400,
       );
     }

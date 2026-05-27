@@ -126,6 +126,36 @@ const STATUS_COLORS = {
   rejeitado: 'bg-red-100 text-red-800',
 }
 
+export const ORDER_PROGRESS_STEPS = [
+  { id: 'aprovado', label: 'Aprovado' },
+  { id: 'preparacao', label: 'Em preparação' },
+  { id: 'esperando_entregador', label: 'Esperando entregador' },
+  { id: 'a_caminho', label: 'A caminho' },
+  { id: 'entregue', label: 'Chegou' },
+]
+
+export function getOrderProgressIndex(order) {
+  const st = String(order?.status || '').trim()
+  const payApproved = String(order?.status_pagamento || '').trim() === 'aprovado'
+  const hasDelivery = hasCourierAssigned(order)
+
+  if (st === 'entregue') return 4
+  if (st === 'a_caminho' || st === 'aguardando_confirmacao_receita_farmacia') return 3
+  if (st === 'confirmado') return 2
+  if (st === 'em_processamento') return hasDelivery ? 2 : 1
+  if (payApproved || order?.aprovado_farmaceutico) return 0
+  return -1
+}
+
+export function getOrderProgressSteps(order) {
+  const current = getOrderProgressIndex(order)
+  const terminal = ['cancelado', 'rejeitado'].includes(String(order?.status || '').trim())
+  return ORDER_PROGRESS_STEPS.map((step, index) => ({
+    ...step,
+    state: terminal ? 'pending' : index < current ? 'completed' : index === current ? 'current' : 'pending',
+  }))
+}
+
 /** Cor + rótulo amigável para o cliente (alinhado ao fluxo OTC/receita). */
 export function getClientOrderStatusPresentation(order) {
   const st = order?.status
@@ -141,14 +171,14 @@ export function getClientOrderStatusPresentation(order) {
   if (st === 'em_processamento') {
     return {
       color: STATUS_COLORS.em_processamento,
-      label: 'Confirmado pela farmácia',
+      label: 'Aprovado · em preparação',
     }
   }
 
   if (st === 'confirmado') {
     return {
       color: STATUS_COLORS.confirmado,
-      label: 'Enviado · entregador atribuído',
+      label: 'Esperando entregador',
     }
   }
 
@@ -167,7 +197,7 @@ export function getClientOrderStatusPresentation(order) {
   }
 
   if (st === 'entregue') {
-    return { color: STATUS_COLORS.entregue, label: 'Entregue' }
+    return { color: STATUS_COLORS.entregue, label: 'Chegou' }
   }
 
   if (st === 'cancelado' || st === 'rejeitado') {

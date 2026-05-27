@@ -20,7 +20,11 @@ import {
   replaceOptimisticOrAppend,
 } from '../utils/supportMessageUtils';
 import './PharmacistDashboard.css';
-import { orderHasPrescriptionItem, getOrderCancellationReason } from '../utils/orderStatusDisplay';
+import {
+  getOrderProgressSteps,
+  orderHasPrescriptionItem,
+  getOrderCancellationReason,
+} from '../utils/orderStatusDisplay';
 
 const REFRESH_INTERVAL = 30000; // 30 segundos
 
@@ -31,6 +35,28 @@ const STATUS_OPCOES = [
   { valor: 'Aprovada', label: 'Aprovadas', cor: 'bg-green-100 text-green-700' },
   { valor: 'Rejeitada', label: 'Rejeitadas', cor: 'bg-red-100 text-red-700' },
 ];
+
+function OrderProgressMini({ order }) {
+  if (['cancelado', 'rejeitado'].includes(String(order?.status || '').trim())) return null
+  return (
+    <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
+      {getOrderProgressSteps(order).map((step) => (
+        <div
+          key={step.id}
+          className={`rounded-lg px-2.5 py-2 text-[11px] font-semibold border ${
+            step.state === 'completed'
+              ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
+              : step.state === 'current'
+              ? 'bg-blue-50 border-blue-200 text-blue-800'
+              : 'bg-gray-50 border-gray-200 text-gray-500'
+          }`}
+        >
+          {step.label}
+        </div>
+      ))}
+    </div>
+  )
+}
 
 function isSameDay(dateA, dateB) {
   if (!dateA || !dateB) return false;
@@ -1456,6 +1482,13 @@ export function PharmacistDashboard() {
                           </p>
                         )}
 
+                        {String(order?.status || '').trim() === 'em_processamento' &&
+                          !isRetiradaOuDriveThru(order) && (
+                          <p className="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                            Pedido liberado: aguardando entregador aceitar. Quando ele coletar e sair, o cliente verá “A caminho”.
+                          </p>
+                        )}
+
                         <div className="flex flex-wrap gap-2">
                           {(order.itens || []).slice(0, 4).map((item, idx) => (
                             <span
@@ -1466,6 +1499,8 @@ export function PharmacistDashboard() {
                             </span>
                           ))}
                         </div>
+
+                        <OrderProgressMini order={order} />
 
                         <div className="flex flex-col gap-3">
                           {String(order?.status || '').trim() ===
@@ -1546,7 +1581,7 @@ export function PharmacistDashboard() {
                                 className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-gray-600 disabled:opacity-70 disabled:hover:bg-gray-600"
                                 disabled={submittingOrderAction}
                               >
-                                Confirmar compra / separar pedido
+                                Confirmar e liberar para entregador
                               </button>
                             )}
                           </div>
@@ -1626,6 +1661,7 @@ export function PharmacistDashboard() {
                               {waiting.label}
                             </span>
                           </div>
+                          <OrderProgressMini order={order} />
                           {cancelReason && (
                             <p className="text-xs text-gray-600 bg-gray-50 border border-gray-100 rounded-lg px-2.5 py-2">
                               <span className="font-semibold text-gray-700">Motivo:</span> {cancelReason}

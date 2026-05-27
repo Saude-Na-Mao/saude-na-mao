@@ -810,6 +810,17 @@ async function validatePrescription(
         );
         shouldEnsureDispatch = true;
       }
+      if (
+        pedido &&
+        pedido.status === "em_processamento" &&
+        pedido.status_pagamento === "aprovado"
+      ) {
+        pedido.adicionarHistoricoStatus(
+          "em_processamento",
+          "Receita aprovada e pagamento confirmado — pedido aguardando entregador",
+        );
+        shouldEnsureDispatch = true;
+      }
       if (pedido) {
         await pedido.save();
       }
@@ -846,6 +857,7 @@ async function validatePrescription(
     validade: prescription.validade || null,
     disponivel_para_novo_pedido: prescription.disponivel_para_novo_pedido !== false,
     produtoNome: prescription.nome_arquivo || "",
+    id_produto: prescription.id_produto ? prescription.id_produto.toString() : null,
     id_farmacia: prescription.id_farmacia
       ? prescription.id_farmacia.toString()
       : null,

@@ -18,6 +18,14 @@ const STEPS = [
   "Entregue",
 ];
 
+const EARNINGS_PERIODS = [
+  { id: "hoje", label: "Hoje" },
+  { id: "semana", label: "Semana" },
+  { id: "mes", label: "Mês" },
+  { id: "ano", label: "Ano" },
+  { id: "todos", label: "Total" },
+];
+
 function formatMoney(n) {
   const v = Number(n) || 0;
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
@@ -163,6 +171,7 @@ export default function EntregadorDashboard() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
   const [ganhosHoje, setGanhosHoje] = useState(null);
+  const [earningsPeriod, setEarningsPeriod] = useState("hoje");
   const [disponiveis, setDisponiveis] = useState([]);
   const [historico, setHistorico] = useState([]);
   const [histPage, setHistPage] = useState(1);
@@ -257,10 +266,10 @@ export default function EntregadorDashboard() {
     setDisponiveis(Array.isArray(entregas) ? entregas : []);
   }, []);
 
-  const loadGanhosHoje = useCallback(async () => {
-    const res = await deliveryService.getGanhos("hoje");
+  const loadGanhosHoje = useCallback(async (periodo = earningsPeriod) => {
+    const res = await deliveryService.getGanhos(periodo);
     setGanhosHoje(res.data?.data ?? null);
-  }, []);
+  }, [earningsPeriod]);
 
   const loadHistorico = useCallback(async (page = 1) => {
     const res = await deliveryService.getHistorico({ page, limit: 10 });
@@ -469,6 +478,14 @@ export default function EntregadorDashboard() {
     setExpandedRoutes((current) => ({ ...current, [id]: !current[id] }));
   };
 
+  const selectedEarningsPeriod =
+    EARNINGS_PERIODS.find((p) => p.id === earningsPeriod) || EARNINGS_PERIODS[0];
+
+  const handleEarningsPeriod = async (periodo) => {
+    setEarningsPeriod(periodo);
+    await loadGanhosHoje(periodo);
+  };
+
   const clienteNome =
     activeOrder?.id_usuario?.nome ||
     activeDelivery?.id_cliente?.nome ||
@@ -542,16 +559,38 @@ export default function EntregadorDashboard() {
         </div>
       </div>
 
+      <div className="mb-4 flex flex-wrap items-center gap-2">
+        {EARNINGS_PERIODS.map((period) => (
+          <button
+            key={period.id}
+            type="button"
+            onClick={() => handleEarningsPeriod(period.id)}
+            disabled={busy}
+            className={`px-3 py-1.5 rounded-lg text-sm font-medium transition ${
+              earningsPeriod === period.id
+                ? "bg-emerald-600 text-white"
+                : "bg-white border border-gray-200 text-gray-700 hover:bg-gray-50"
+            }`}
+          >
+            {period.label}
+          </button>
+        ))}
+      </div>
+
       {/* SEÇÃO B */}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-gray-500 text-sm mb-1">Entregas hoje</p>
+          <p className="text-gray-500 text-sm mb-1">
+            Entregas · {selectedEarningsPeriod.label}
+          </p>
           <p className="text-2xl font-bold text-gray-900">
             {ganhosHoje?.total_entregas ?? 0}
           </p>
         </div>
         <div className="rounded-xl border border-gray-200 bg-white p-4 shadow-sm">
-          <p className="text-gray-500 text-sm mb-1">Ganhos hoje</p>
+          <p className="text-gray-500 text-sm mb-1">
+            Ganhos · {selectedEarningsPeriod.label}
+          </p>
           <p className="text-2xl font-bold text-emerald-700">
             {formatMoney(ganhosHoje?.total_ganho ?? 0)}
           </p>

@@ -13,6 +13,8 @@ const Delivery = require("../models/Delivery");
 const Payment = require("../models/Payment");
 const Prescription = require("../models/Prescription");
 const SupportMessage = require("../models/SupportMessage");
+const MedicineCatalog = require("../models/MedicineCatalog");
+const { produtosBase } = require("./seed");
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -76,6 +78,10 @@ function roundMoney(value) {
 
 function addMinutes(date, minutes) {
   return new Date(date.getTime() + minutes * 60000);
+}
+
+function demoDate(monthIndex, day, hour = 10) {
+  return new Date(2026, monthIndex, day, hour, 30, 0, 0);
 }
 
 function pointFromAddress(address) {
@@ -213,15 +219,104 @@ async function cleanupDemoData() {
   await SupportMessage.deleteMany({ assunto: { $regex: "^DEMO:" } });
 }
 
+function suggestedPrice(row) {
+  return (row.precos || []).find((price) => price !== null && price !== undefined) || 19.9;
+}
+
+async function ensureCatalogProductsForPharmacies(pharmacies) {
+  const prescriptionRows = produtosBase.filter(
+    (row) => row.receita_obrigatoria && row.classificacao_receita !== "sem_receita",
+  );
+
+  for (const row of prescriptionRows) {
+    await MedicineCatalog.updateOne(
+      { nome: row.nome, principio_ativo: row.principio_ativo },
+      {
+        $set: {
+          nome: row.nome,
+          principio_ativo: row.principio_ativo,
+          categoria: row.categoria,
+          dosagem: row.dosagem,
+          fabricante: row.fabricante,
+          forma_farmaceutica: row.forma_farmaceutica || "Comprimido",
+          descricao: row.descricao,
+          classificacao_receita: row.classificacao_receita,
+          receita_obrigatoria: true,
+          controlado: row.controlado,
+          validade_receita_dias:
+            row.classificacao_receita === "antimicrobiano" ? 10 : 30,
+          preco_sugerido: suggestedPrice(row),
+          ativo: true,
+        },
+      },
+      { upsert: true },
+    );
+  }
+
+  const catalog = await MedicineCatalog.find({ ativo: true }).sort({ nome: 1 });
+  let updated = 0;
+
+  for (const pharmacy of pharmacies) {
+    for (const [index, item] of catalog.entries()) {
+      const existing = await Product.findOne({
+        id_farmacia: pharmacy._id,
+        nome: item.nome,
+        principio_ativo: item.principio_ativo,
+      });
+      const estoqueMinimo = 18 + ((index + String(pharmacy._id).length) % 6) * 9;
+      const preco = existing?.preco || item.preco_sugerido || 24.9;
+      const estoque = Math.max(Number(existing?.estoque || 0), estoqueMinimo);
+
+      await Product.updateOne(
+        {
+          id_farmacia: pharmacy._id,
+          nome: item.nome,
+          principio_ativo: item.principio_ativo,
+        },
+        {
+          $set: {
+            nome: item.nome,
+            principio_ativo: item.principio_ativo,
+            categoria: item.categoria,
+            dosagem: item.dosagem,
+            fabricante: item.fabricante,
+            forma_farmaceutica: item.forma_farmaceutica,
+            descricao: item.descricao,
+            classificacao_receita: item.classificacao_receita,
+            receita_obrigatoria: true,
+            controlado: item.controlado,
+            validade_receita_dias: item.validade_receita_dias,
+            registro_anvisa: item.registro_anvisa,
+            codigo_ean: item.codigo_ean,
+            imagens: item.imagem_url ? [item.imagem_url] : existing?.imagens || [],
+            preco,
+            estoque,
+            id_farmacia: pharmacy._id,
+            tipo_produto: "medicamento_catalogo",
+            id_catalogo: item._id,
+            ativo: true,
+          },
+        },
+        { upsert: true },
+      );
+      updated += 1;
+    }
+  }
+
+  console.log(`Medicamentos com receita garantidos no estoque: ${updated}`);
+}
+
 async function findRequiredDocs() {
-  const [cliente, entregador, admin, farmaceuticoUser] = await Promise.all([
+  const [cliente, entregador, entregadora, admin, farmaceuticoUser] = await Promise.all([
     User.findOne({ email: "teste@teste.com" }),
     User.findOne({ email: "entregador@saudenamao.com" }),
+    User.findOne({ email: "entregadora.demo@gyn.local" }),
     User.findOne({ email: "admin@saudenamao.com" }),
     User.findOne({ email: "farm.jardim@gyn.local" }),
   ]);
 
   const pharmacies = await Pharmacy.find({ ativa: true }).sort({ nome: 1 });
+  await ensureCatalogProductsForPharmacies(pharmacies);
   const products = await Product.find({ ativo: true }).sort({ nome: 1 });
   const pharmacist = await Pharmacist.findOne({
     email: "farm.jardim@gyn.local",
@@ -230,6 +325,7 @@ async function findRequiredDocs() {
   const missing = [];
   if (!cliente) missing.push("teste@teste.com");
   if (!entregador) missing.push("entregador@saudenamao.com");
+  if (!entregadora) missing.push("entregadora.demo@gyn.local");
   if (!admin) missing.push("admin@saudenamao.com");
   if (!farmaceuticoUser) missing.push("farm.jardim@gyn.local");
   if (!pharmacist) missing.push("Pharmacist farm.jardim@gyn.local");
@@ -239,7 +335,7 @@ async function findRequiredDocs() {
     throw new Error(`Dados base ausentes: ${missing.join(", ")}`);
   }
 
-  return { cliente, entregador, admin, farmaceuticoUser, pharmacist, pharmacies, products };
+  return { cliente, entregador, entregadora, admin, farmaceuticoUser, pharmacist, pharmacies, products };
 }
 
 function productBy(pharmacy, products, predicate) {
@@ -560,7 +656,7 @@ async function createSupportTickets({ cliente, admin, farmaceuticoUser, pharmacy
     {
       assunto: "DEMO: orientacao sobre receita enviada",
       categoria: "receita",
-      origem: "receita",
+      origem: "pedido",
       status: "em_atendimento",
       prioridade: "alta",
       id_atendente: farmaceuticoUser._id,
@@ -574,7 +670,7 @@ async function createSupportTickets({ cliente, admin, farmaceuticoUser, pharmacy
     },
     {
       assunto: "DEMO: produto indisponivel substituido",
-      categoria: "pedido",
+      categoria: "problema_pedido",
       origem: "pedido",
       status: "encerrada",
       prioridade: "normal",
@@ -628,13 +724,20 @@ async function run() {
 
   await cleanupDemoData();
   const docs = await findRequiredDocs();
-  const { cliente, entregador, admin, farmaceuticoUser, pharmacist, pharmacies, products } = docs;
+  const { cliente, entregador, entregadora, admin, farmaceuticoUser, pharmacist, pharmacies, products } = docs;
 
   cliente.role = roleFromTipo(cliente.tipo_usuario);
   entregador.role = roleFromTipo(entregador.tipo_usuario);
+  entregadora.role = roleFromTipo(entregadora.tipo_usuario);
   admin.role = roleFromTipo(admin.tipo_usuario);
   farmaceuticoUser.role = roleFromTipo(farmaceuticoUser.tipo_usuario);
-  await Promise.all([cliente.save(), entregador.save(), admin.save(), farmaceuticoUser.save()]);
+  await Promise.all([
+    cliente.save(),
+    entregador.save(),
+    entregadora.save(),
+    admin.save(),
+    farmaceuticoUser.save(),
+  ]);
 
   const rosario =
     pharmacies.find((p) => p.nome.includes("Rosario") || p.nome.includes("Rosário")) ||
@@ -646,9 +749,11 @@ async function run() {
   const otcRosario = productBy(rosario, products, (p) => !p.receita_obrigatoria) || products[0];
   const rxRosario = productBy(rosario, products, (p) => p.receita_obrigatoria) || otcRosario;
   const otcPacheco = productBy(pacheco, products, (p) => !p.receita_obrigatoria) || otcRosario;
+  const rxPacheco = productBy(pacheco, products, (p) => p.receita_obrigatoria) || rxRosario;
   const otcRaia = productBy(raia, products, (p) => !p.receita_obrigatoria) || otcRosario;
   const rxRaia = productBy(raia, products, (p) => p.receita_obrigatoria) || rxRosario;
   const otcOeste = productBy(oeste, products, (p) => !p.receita_obrigatoria) || otcRosario;
+  const rxOeste = productBy(oeste, products, (p) => p.receita_obrigatoria) || rxRosario;
 
   const now = new Date();
   const driverInfo = {
@@ -656,6 +761,12 @@ async function run() {
     driverName: entregador.nome,
     driverPhone: entregador.telefone || "62999990001",
     vehicle: "Moto Honda CG 160",
+  };
+  const driverInfo2 = {
+    driverId: entregadora._id,
+    driverName: entregadora.nome,
+    driverPhone: entregadora.telefone || "62999990002",
+    vehicle: "Honda Biz 125",
   };
 
   const orders = {};
@@ -792,6 +903,97 @@ async function run() {
     pharmacistUser: farmaceuticoUser,
   });
 
+  const monthlySales = [
+    {
+      tag: "venda-janeiro-controlado",
+      date: demoDate(0, 9, 9),
+      pharmacy: rosario,
+      destination: DESTINATIONS.jardimGoias,
+      products: [
+        { product: rxRosario, quantidade: 1 },
+        { product: otcRosario, quantidade: 1 },
+      ],
+      fee: 6.9,
+      driver: driverInfo2,
+      distancia: 2.4,
+      codigo: "601249",
+    },
+    {
+      tag: "venda-fevereiro-otc",
+      date: demoDate(1, 14, 15),
+      pharmacy: pacheco,
+      destination: DESTINATIONS.bueno,
+      products: [{ product: otcPacheco, quantidade: 3 }],
+      fee: 7.5,
+      driver: driverInfo,
+      distancia: 3.1,
+      codigo: "772035",
+    },
+    {
+      tag: "venda-marco-receita",
+      date: demoDate(2, 6, 11),
+      pharmacy: raia,
+      destination: DESTINATIONS.marista,
+      products: [
+        { product: rxRaia, quantidade: 1 },
+        { product: otcRaia, quantidade: 2 },
+      ],
+      fee: 8.2,
+      driver: driverInfo2,
+      distancia: 4.2,
+      codigo: "883146",
+    },
+    {
+      tag: "venda-abril-controlado",
+      date: demoDate(3, 18, 18),
+      pharmacy: oeste,
+      destination: DESTINATIONS.oeste,
+      products: [{ product: rxOeste, quantidade: 1 }],
+      fee: 6.5,
+      driver: driverInfo2,
+      distancia: 2.9,
+      codigo: "994257",
+    },
+    {
+      tag: "venda-maio-mista",
+      date: demoDate(4, 20, 13),
+      pharmacy: rosario,
+      destination: DESTINATIONS.bueno,
+      products: [
+        { product: otcRosario, quantidade: 2 },
+        { product: rxRosario, quantidade: 1 },
+      ],
+      fee: 7.2,
+      driver: driverInfo,
+      distancia: 3.6,
+      codigo: "115368",
+    },
+  ];
+
+  for (const sale of monthlySales) {
+    orders[sale.tag] = await createOrder({
+      tag: sale.tag,
+      cliente,
+      pharmacy: sale.pharmacy,
+      products: sale.products,
+      deliveryFee: sale.fee,
+      destination: sale.destination,
+      status: "entregue",
+      paymentStatus: "aprovado",
+      createdAt: sale.date,
+      history: ["aguardando_pagamento", "em_processamento", "confirmado", "a_caminho", "entregue"],
+      delivery: {
+        ...sale.driver,
+        status: "entregue",
+        distancia_km: sale.distancia,
+        tempo_estimado_min: 22 + Math.round(sale.distancia * 3),
+        codigo_confirmacao: sale.codigo,
+        history: ["disponivel", "aceita", "coletando", "coletada", "em_transito", "entregue"],
+      },
+      pharmacistUser: farmaceuticoUser,
+    });
+  }
+
   const prescriptions = await createPrescriptions({
     cliente,
     pharmacist,
@@ -826,29 +1028,56 @@ async function run() {
     id_entregador: entregador._id,
     status: "entregue",
   });
-  await User.updateOne(
-    { _id: entregador._id },
-    {
-      $set: {
-        telefone: entregador.telefone || "62999990001",
-        "dados_entregador.tipo_veiculo": "moto",
-        "dados_entregador.placa": "QTN2A45",
-        "dados_entregador.cnh": "12345678901",
-        "dados_entregador.disponivel": true,
-        "dados_entregador.localizacao_atual": {
-          type: "Point",
-          coordinates: DESTINATIONS.bueno.location.coordinates,
+  const deliveredCount2 = await Delivery.countDocuments({
+    id_entregador: entregadora._id,
+    status: "entregue",
+  });
+
+  await Promise.all([
+    User.updateOne(
+      { _id: entregador._id },
+      {
+        $set: {
+          telefone: entregador.telefone || "62999990001",
+          "dados_entregador.tipo_veiculo": "moto",
+          "dados_entregador.placa": "QTN2A45",
+          "dados_entregador.cnh": "12345678901",
+          "dados_entregador.disponivel": true,
+          "dados_entregador.localizacao_atual": {
+            type: "Point",
+            coordinates: DESTINATIONS.bueno.location.coordinates,
+          },
+          "dados_entregador.entregas_realizadas": deliveredCount,
+          "dados_entregador.avaliacao": 4.9,
+          "dados_entregador.total_avaliacoes": Math.max(deliveredCount, 1),
         },
-        "dados_entregador.entregas_realizadas": deliveredCount,
-        "dados_entregador.avaliacao": 4.9,
-        "dados_entregador.total_avaliacoes": Math.max(deliveredCount, 1),
       },
-    },
-  );
+    ),
+    User.updateOne(
+      { _id: entregadora._id },
+      {
+        $set: {
+          telefone: entregadora.telefone || "62999990002",
+          "dados_entregador.tipo_veiculo": "moto",
+          "dados_entregador.placa": "RBN7C21",
+          "dados_entregador.cnh": "98765432100",
+          "dados_entregador.disponivel": true,
+          "dados_entregador.localizacao_atual": {
+            type: "Point",
+            coordinates: DESTINATIONS.marista.location.coordinates,
+          },
+          "dados_entregador.entregas_realizadas": deliveredCount2,
+          "dados_entregador.avaliacao": 4.8,
+          "dados_entregador.total_avaliacoes": Math.max(deliveredCount2, 1),
+        },
+      },
+    ),
+  ]);
 
   console.log("Criado:");
   console.log(`- ${Object.keys(orders).length} pedidos demo`);
-  console.log("- entregas com rota, historico e valores entre R$ 6,50 e R$ 8,20");
+  console.log("- entregas com rota, historico, ganhos e datas de janeiro a maio/2026");
+  console.log("- nova conta entregadora.demo@gyn.local / Entrega@123 com entregas concluídas");
   console.log("- 3 receitas: aprovada, rejeitada e em analise");
   console.log("- 4 chats de suporte visiveis no cliente/farmaceutico");
 

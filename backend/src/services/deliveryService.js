@@ -457,7 +457,7 @@ async function getDeliveryById(deliveryId, userId, userRole) {
     { path: "id_cliente", select: "nome telefone" },
     {
       path: "id_entregador",
-      select: "nome telefone dados_entregador.tipo_veiculo",
+      select: "nome telefone dados_entregador.tipo_veiculo dados_entregador.localizacao_atual",
     },
     { path: "id_pedido", select: "itens total tipo_entrega status" },
   ]);
@@ -914,17 +914,40 @@ async function setDriverAvailability(entregadorId, disponivel) {
   };
 }
 
+function getDriverEarningsRange(periodo = "hoje") {
+  const now = new Date();
+  const start = new Date(now);
+  const end = new Date(now);
+  end.setHours(23, 59, 59, 999);
+
+  if (periodo === "hoje") {
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+  if (periodo === "semana") {
+    const day = start.getDay();
+    const diff = day === 0 ? 6 : day - 1;
+    start.setDate(start.getDate() - diff);
+    start.setHours(0, 0, 0, 0);
+    return { start, end };
+  }
+  if (periodo === "mes") {
+    return { start: new Date(now.getFullYear(), now.getMonth(), 1), end };
+  }
+  if (periodo === "ano") {
+    return { start: new Date(now.getFullYear(), 0, 1), end };
+  }
+  return null;
+}
+
 async function getDriverEarnings(entregadorId, { periodo = "hoje" } = {}) {
   const match = {
     id_entregador: new mongoose.Types.ObjectId(entregadorId),
     status: "entregue",
   };
-  if (periodo === "hoje") {
-    const start = new Date();
-    start.setHours(0, 0, 0, 0);
-    const end = new Date();
-    end.setHours(23, 59, 59, 999);
-    match.entregue_em = { $gte: start, $lte: end };
+  const range = getDriverEarningsRange(periodo);
+  if (range) {
+    match.entregue_em = { $gte: range.start, $lte: range.end };
   }
 
   const stats = await Delivery.aggregate([
@@ -940,6 +963,8 @@ async function getDriverEarnings(entregadorId, { periodo = "hoje" } = {}) {
 
   return {
     periodo,
+    inicio: range?.start || null,
+    fim: range?.end || null,
     total_entregas: stats[0]?.total_entregas || 0,
     total_ganho: Number((stats[0]?.total_ganho || 0).toFixed(2)),
   };
