@@ -31,6 +31,17 @@ function formatMoney(n) {
   return v.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 }
 
+function formatPedidoCodigo(orderOrDelivery) {
+  const raw =
+    orderOrDelivery?._id ||
+    orderOrDelivery?.id ||
+    orderOrDelivery?.id_pedido?._id ||
+    orderOrDelivery?.id_pedido ||
+    null;
+  if (!raw) return "#--------";
+  return `#${String(raw).slice(-8).toUpperCase()}`;
+}
+
 function formatDate(d) {
   if (!d) return "—";
   return new Date(d).toLocaleString("pt-BR", {
@@ -654,6 +665,9 @@ export default function EntregadorDashboard() {
                       <p className="text-gray-600">
                         {addr?.bairro || "—"}, {addr?.cidade || "—"}
                       </p>
+                      <p className="text-xs font-semibold text-gray-500">
+                        Pedido {formatPedidoCodigo(entrega)}
+                      </p>
                       <p className="text-gray-700">
                         Pedido: {formatMoney(total)} · Valor da entrega:{" "}
                         <span className="font-medium text-emerald-700">
@@ -718,6 +732,12 @@ export default function EntregadorDashboard() {
             </div>
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
+              <div className="md:col-span-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2">
+                <p className="text-gray-500 text-xs uppercase">Pedido ativo</p>
+                <p className="font-bold text-emerald-900">
+                  {formatPedidoCodigo(activeOrder || activeDelivery)}
+                </p>
+              </div>
               <div>
                 <p className="text-gray-500 text-xs uppercase">Cliente</p>
                 <p className="font-medium text-gray-900">{clienteNome}</p>

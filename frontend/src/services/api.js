@@ -405,7 +405,11 @@ export const deliveryService = {
   accept: (id) => api.post(`/deliveries/${id}/accept`),
   updateStatus: (id, data) => api.patch(`/deliveries/${id}/status`, data),
   updateLocation: (id, data) => api.patch(`/deliveries/${id}/location`, data),
-  confirm: (id, data) => api.post(`/deliveries/${id}/confirm`, data),
+  confirm: (id, data = {}) =>
+    api.post(`/deliveries/${id}/confirm`, {
+      ...data,
+      codigo: data.codigo || data.codigo_confirmacao || data.codigoConfirmacao,
+    }),
   cancel: (id, data) => api.post(`/deliveries/${id}/cancel`, data),
   rateByClient: (id, data) => api.post(`/deliveries/${id}/rate/client`, data),
   rateByDriver: (id, data) => api.post(`/deliveries/${id}/rate/driver`, data),

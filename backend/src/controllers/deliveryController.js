@@ -116,7 +116,8 @@ async function updateLocation(req, res, next) {
 async function confirmDelivery(req, res, next) {
   try {
     const { id } = req.params;
-    const { codigo } = req.body;
+    const codigo =
+      req.body?.codigo ?? req.body?.codigo_confirmacao ?? req.body?.codigoConfirmacao;
     if (!codigo) throw createError("Código de confirmação é obrigatório", 400);
 
     const result = await deliveryService.confirmDelivery(id, req.user.id, codigo);

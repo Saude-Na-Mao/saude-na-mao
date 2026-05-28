@@ -773,6 +773,33 @@ async function confirmDelivery(deliveryId, entregadorId, codigo) {
   const codigoNorm = String(codigo ?? "").trim();
   const codigoEsperado = String(delivery.codigo_confirmacao ?? "").trim();
   if (!codigoEsperado || codigoEsperado !== codigoNorm) {
+    const entregaDoCodigo = codigoNorm
+      ? await Delivery.findOne({ codigo_confirmacao: codigoNorm })
+          .select("_id id_pedido status id_entregador")
+          .lean()
+      : null;
+    if (entregaDoCodigo && String(entregaDoCodigo._id) !== String(delivery._id)) {
+      const [pedidoAtual, pedidoDoCodigo] = await Promise.all([
+        Order.findById(delivery.id_pedido).select("_id").lean(),
+        Order.findById(entregaDoCodigo.id_pedido).select("_id").lean(),
+      ]);
+      const atual = pedidoAtual?._id
+        ? `#${String(pedidoAtual._id).slice(-8).toUpperCase()}`
+        : "atual";
+      const correto = pedidoDoCodigo?._id
+        ? `#${String(pedidoDoCodigo._id).slice(-8).toUpperCase()}`
+        : "outro pedido";
+      if (entregaDoCodigo.status === "disponivel") {
+        throw createError(
+          `Esse código pertence ao pedido ${correto}, mas esta tela está finalizando o pedido ${atual}. Aceite e colete o pedido ${correto} antes de usar esse código.`,
+          400,
+        );
+      }
+      throw createError(
+        `Esse código pertence ao pedido ${correto}, mas esta tela está finalizando o pedido ${atual}. Confira o pedido ativo no painel do entregador.`,
+        400,
+      );
+    }
     throw createError("Código de confirmação inválido", 400);
   }
 
