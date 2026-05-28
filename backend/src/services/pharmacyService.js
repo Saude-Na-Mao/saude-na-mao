@@ -11,6 +11,12 @@ function createError(message, statusCode) {
   return error;
 }
 
+const ONLINE_PRESENCE_WINDOW_MS = 2 * 60 * 1000;
+
+function getOnlinePresenceCutoff() {
+  return new Date(Date.now() - ONLINE_PRESENCE_WINDOW_MS);
+}
+
 async function listPharmacies({
   page = 1,
   limit = 10,
@@ -38,6 +44,7 @@ async function listPharmacies({
     .map((id) => new mongoose.Types.ObjectId(id));
 
   if (ids.length > 0) {
+    const onlineCutoff = getOnlinePresenceCutoff();
     const [reviewStats, pharmacistStats] = await Promise.all([
       Review.aggregate([
         { $match: { id_farmacia: { $in: ids } } },
@@ -57,6 +64,7 @@ async function listPharmacies({
             logado: true,
             disponivel_chat: { $ne: false },
             bloqueado: { $ne: true },
+            ultima_atividade: { $gte: onlineCutoff },
           },
         },
         {
@@ -310,7 +318,13 @@ async function updatePharmacyAddressStaff(pharmacyId, body) {
 
 function isPharmacistOnline(doc) {
   if (!doc || doc.ativo === false) return false;
-  return Boolean(doc.logado && doc.disponivel_chat !== false);
+  const lastActivity = doc.ultima_atividade ? new Date(doc.ultima_atividade) : null;
+  return Boolean(
+    doc.logado &&
+      doc.disponivel_chat !== false &&
+      lastActivity &&
+      lastActivity >= getOnlinePresenceCutoff(),
+  );
 }
 
 async function getPharmacists(pharmacyId) {

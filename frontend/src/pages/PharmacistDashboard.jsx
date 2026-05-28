@@ -178,6 +178,25 @@ function PharmacistPresenceToggle() {
     };
   }, []);
 
+  useEffect(() => {
+    if (!online) return undefined;
+
+    const refreshPresence = () => {
+      pharmacistService.setPresence(true).catch(() => {});
+    };
+
+    const intervalId = window.setInterval(refreshPresence, 60_000);
+    const onVisibilityChange = () => {
+      if (document.visibilityState === 'visible') refreshPresence();
+    };
+
+    document.addEventListener('visibilitychange', onVisibilityChange);
+    return () => {
+      window.clearInterval(intervalId);
+      document.removeEventListener('visibilitychange', onVisibilityChange);
+    };
+  }, [online]);
+
   const onToggle = async () => {
     const next = !online;
     setSaving(true);

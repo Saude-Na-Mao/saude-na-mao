@@ -56,18 +56,18 @@ export default function Home() {
 
   return (
     <div>
-      <section className="bg-white border-b border-gray-100">
+      <section className="bg-gradient-to-br from-primary-800 via-primary-700 to-secondary border-b border-primary-900/20">
         <div className="page-shell py-8 sm:py-10 lg:py-14">
           <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-12 items-center">
             <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs sm:text-sm px-3 py-1.5 rounded-full mb-5">
+              <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full mb-5">
                 <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                 Compra segura com farmácias locais verificadas
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-950 leading-tight tracking-normal">
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-normal">
                 Medicamentos, farmácias e suporte farmacêutico em um só lugar
               </h1>
-              <p className="text-base sm:text-lg text-gray-600 mt-4 max-w-2xl leading-relaxed">
+              <p className="text-base sm:text-lg text-white/80 mt-4 max-w-2xl leading-relaxed">
                 Compare preços em Goiânia, envie receitas quando necessário e acompanhe a entrega sem sair do app.
               </p>
 
@@ -106,7 +106,7 @@ export default function Home() {
                     key={item.label}
                     type="button"
                     onClick={() => navigate(item.to)}
-                    className="rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition"
+                    className="rounded-full border border-white/20 bg-white/10 px-4 py-2 text-sm font-medium text-white hover:bg-white/20 transition"
                   >
                     {item.label}
                   </button>
@@ -115,11 +115,11 @@ export default function Home() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-sm">
+              <div className="rounded-2xl border border-white/20 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pedido rápido</p>
-                    <h2 className="mt-1 text-xl font-bold text-gray-950">Entrega em até 4 horas</h2>
+                    <h2 className="mt-1 text-xl font-bold text-gray-900">Entrega em até 4 horas</h2>
                   </div>
                   <Truck className="w-9 h-9 text-emerald-600" />
                 </div>
@@ -139,17 +139,17 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-gray-100 bg-gray-950 p-5 text-white shadow-sm">
+              <div className="rounded-2xl border border-white/20 bg-emerald-50 p-5 text-gray-900 shadow-sm">
                 <div className="flex items-start gap-3">
-                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-emerald-300" />
+                  <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
                     <h2 className="font-bold">Receitas e controlados com validação</h2>
-                    <p className="mt-1 text-sm text-white/70">
+                    <p className="mt-1 text-sm text-gray-600">
                       Fluxo pensado para segurança, LGPD e atendimento farmacêutico.
                     </p>
-                    <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200">
+                    <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
                       Enviar receita <ChevronRight className="w-4 h-4" />
                     </Link>
                   </div>
@@ -165,9 +165,9 @@ export default function Home() {
               ['2h', 'Entrega média'],
               ['1000+', 'Produtos'],
             ].map(([value, label]) => (
-              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
-                <div className="text-2xl font-bold text-gray-950">{value}</div>
-                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+              <div key={label} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3">
+                <div className="text-2xl font-bold text-white">{value}</div>
+                <div className="text-xs text-white/70 mt-0.5">{label}</div>
               </div>
             ))}
           </div>

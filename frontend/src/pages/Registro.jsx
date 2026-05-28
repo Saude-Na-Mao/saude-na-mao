@@ -257,9 +257,9 @@ export default function Registro() {
   const typeIcons = { cliente: ShoppingBag, entregador: Truck, dono_farmacia: Store }
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] flex flex-col lg:flex-row lg:items-start">
-      <div className="hidden lg:flex lg:w-[42%] lg:sticky lg:top-16 lg:h-[calc(100svh-4rem)] bg-gradient-to-br from-slate-900 via-teal-800 to-emerald-700">
-        <div className="flex h-full flex-col justify-center px-12 xl:px-16 text-white">
+    <div className="min-h-[calc(100svh-4rem)] flex flex-col lg:flex-row">
+      <div className="hidden lg:flex lg:w-[42%] bg-gradient-to-br from-slate-900 via-teal-800 to-emerald-700">
+        <div className="lg:sticky lg:top-16 flex h-[calc(100svh-4rem)] flex-col justify-center px-12 xl:px-16 text-white">
           <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
             <Shield className="w-7 h-7" />
           </div>
