@@ -4,7 +4,6 @@ import { useCartStore, useAuthStore, usePrescriptionStore } from '../stores/stor
 import { orderService, geoService, userService, prescriptionService } from '../services/api'
 import AddressNumberInput from '../components/AddressNumberInput'
 import { itemExigeReceita, receitaVinculadaAoProduto } from '../utils/receitaCart'
-import { isRemoteCheckoutBlocked } from '../utils/compliance'
 import {
   CreditCard,
   Banknote,
@@ -343,7 +342,7 @@ export default function Checkout() {
 
   if (orderCreated) {
     return (
-      <div className="max-w-2xl mx-auto px-4 py-16 text-center">
+      <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <div className="bg-white rounded-2xl shadow-lg p-10">
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-500" />
@@ -407,12 +406,12 @@ export default function Checkout() {
   }
 
   return (
-    <div className="max-w-4xl mx-auto px-4 py-8">
+    <div className="mx-auto max-w-4xl px-4 py-6 sm:py-8">
       <Link to="/carrinho" className="inline-flex items-center gap-2 text-gray-500 hover:text-primary transition mb-6 text-sm">
         <ArrowLeft className="w-4 h-4" /> Voltar ao carrinho
       </Link>
 
-      <h1 className="text-3xl font-bold mb-1">Finalizar Pedido</h1>
+      <h1 className="section-title mb-1">Finalizar Pedido</h1>
       <p className="text-gray-500 mb-4">{pharmacyName} · {items.length} {items.length === 1 ? 'item' : 'itens'}</p>
 
       {temBloqueioRemoto && (
@@ -687,7 +686,7 @@ export default function Checkout() {
 
         {/* Resumo lateral */}
         <aside className="lg:col-span-2">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 sticky top-20">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 lg:sticky lg:top-20">
             <h2 className="text-lg font-bold mb-4">Resumo do Pedido</h2>
 
             <div className="space-y-2 mb-4">

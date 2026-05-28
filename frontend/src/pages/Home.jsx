@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { ShoppingCart, MapPin, Clock, Shield, Zap, ArrowRight, Star, Truck, CreditCard, Headphones, Tag, ChevronRight, Search, Percent } from 'lucide-react'
+import { MapPin, Clock, Shield, Zap, ArrowRight, Star, Truck, CreditCard, Headphones, Tag, ChevronRight, Search, Percent } from 'lucide-react'
 import { couponService, pharmacyService, productService } from '../services/api'
 import { useAuthStore } from '../stores/store'
 import ProductCard from '../components/ProductCard'
@@ -56,99 +56,120 @@ export default function Home() {
 
   return (
     <div>
-      <section className="relative bg-gradient-to-br from-primary-800 via-primary-700 to-secondary overflow-hidden">
-        <div className="absolute inset-0 opacity-10">
-          <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-white rounded-full blur-3xl translate-x-1/3 -translate-y-1/3" />
-          <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-white rounded-full blur-3xl -translate-x-1/3 translate-y-1/3" />
-        </div>
-        <div className="relative max-w-7xl mx-auto px-4 sm:px-6 py-20 lg:py-28">
-          <div className="grid grid-cols-1 lg:grid-cols-2 gap-12 items-center">
+      <section className="bg-white border-b border-gray-100">
+        <div className="page-shell py-8 sm:py-10 lg:py-14">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-12 items-center">
             <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 bg-white/15 backdrop-blur-sm text-white/90 text-sm px-4 py-1.5 rounded-full mb-6">
+              <div className="inline-flex items-center gap-2 bg-emerald-50 text-emerald-700 text-xs sm:text-sm px-3 py-1.5 rounded-full mb-5">
                 <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                <span>Avaliado 4.9/5 por nossos clientes</span>
+                Compra segura com farmácias locais verificadas
               </div>
-              <h1 className="text-4xl sm:text-5xl lg:text-6xl font-extrabold text-white mb-6 leading-tight tracking-tight">
-                Sua farmácia
-                <span className="block text-primary-200">na palma da mão</span>
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-gray-950 leading-tight tracking-normal">
+                Medicamentos, farmácias e suporte farmacêutico em um só lugar
               </h1>
-              <p className="text-lg text-white/80 mb-8 max-w-lg leading-relaxed">
-                Compare preços entre farmácias, aplique cupons e receba seus medicamentos em casa com o melhor frete de Goiânia.
+              <p className="text-base sm:text-lg text-gray-600 mt-4 max-w-2xl leading-relaxed">
+                Compare preços em Goiânia, envie receitas quando necessário e acompanhe a entrega sem sair do app.
               </p>
-              <div className="flex flex-col sm:flex-row gap-3">
-                <Link
-                  to="/farmacias"
-                  className="inline-flex items-center justify-center gap-2 bg-white text-primary-700 px-7 py-3.5 rounded-xl font-semibold hover:bg-gray-50 transition-all shadow-lg hover:shadow-xl active:scale-[0.98]"
-                >
-                  Ver Farmácias
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-                <Link
-                  to="/suporte"
-                  className="inline-flex items-center justify-center gap-2 border-2 border-white/30 text-white px-7 py-3.5 rounded-xl font-semibold hover:bg-white/10 transition-all backdrop-blur-sm"
-                >
-                  Fale Conosco
-                </Link>
-              </div>
 
               <form
                 onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}`) }}
-                className="mt-8 max-w-lg"
+                className="mt-6 max-w-2xl"
               >
-                <div className="relative">
-                  <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
-                  <input
-                    type="text"
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    placeholder="Buscar medicamentos, vitaminas..."
-                    className="w-full pl-12 pr-28 py-3.5 rounded-xl text-gray-900 bg-white/95 backdrop-blur-sm shadow-lg focus:outline-none focus:ring-2 focus:ring-white/50 text-sm"
-                  />
+                <div className="flex flex-col sm:flex-row gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-soft">
+                  <div className="relative flex-1">
+                    <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
+                    <input
+                      type="text"
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      placeholder="Buscar remédio, vitamina ou farmácia"
+                      className="w-full pl-11 pr-3 py-3 text-gray-900 bg-transparent focus:outline-none text-sm sm:text-base"
+                    />
+                  </div>
                   <button
                     type="submit"
-                    className="absolute right-2 top-1/2 -translate-y-1/2 bg-primary text-white px-5 py-2 rounded-lg font-semibold text-sm hover:bg-secondary transition"
+                    className="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-secondary transition"
                   >
                     Buscar
+                    <ArrowRight className="w-4 h-4" />
                   </button>
                 </div>
               </form>
+
+              <div className="mt-5 flex flex-wrap gap-2">
+                {[
+                  { label: 'Farmácias abertas', to: '/farmacias' },
+                  { label: 'Medicamentos populares', to: '/produtos' },
+                  { label: 'Enviar receita', to: '/receita' },
+                ].map((item) => (
+                  <button
+                    key={item.label}
+                    type="button"
+                    onClick={() => navigate(item.to)}
+                    className="rounded-full border border-gray-200 bg-gray-50 px-4 py-2 text-sm font-medium text-gray-700 hover:border-primary/40 hover:bg-primary/5 hover:text-primary transition"
+                  >
+                    {item.label}
+                  </button>
+                ))}
+              </div>
             </div>
-            <div className="hidden lg:flex items-center justify-center animate-fade-in">
-              <div className="relative">
-                <div className="w-80 h-80 bg-white/10 backdrop-blur rounded-full flex items-center justify-center">
-                  <div className="w-60 h-60 bg-white/10 rounded-full flex items-center justify-center">
-                    <div className="text-8xl">💊</div>
+
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-2xl border border-emerald-100 bg-emerald-50 p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-4">
+                  <div>
+                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pedido rápido</p>
+                    <h2 className="mt-1 text-xl font-bold text-gray-950">Entrega em até 4 horas</h2>
+                  </div>
+                  <Truck className="w-9 h-9 text-emerald-600" />
+                </div>
+                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-emerald-200/70 pt-4 text-center">
+                  <div>
+                    <MapPin className="mx-auto mb-1 w-4 h-4 text-primary" />
+                    <p className="text-[11px] font-medium text-gray-600">Bairro</p>
+                  </div>
+                  <div>
+                    <CreditCard className="mx-auto mb-1 w-4 h-4 text-blue-600" />
+                    <p className="text-[11px] font-medium text-gray-600">Pagamento</p>
+                  </div>
+                  <div>
+                    <Clock className="mx-auto mb-1 w-4 h-4 text-orange-600" />
+                    <p className="text-[11px] font-medium text-gray-600">Rastreamento</p>
                   </div>
                 </div>
-                <div className="absolute top-4 right-0 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2 animate-slide-up">
-                  <Truck className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-semibold text-gray-700">Entrega Grátis</span>
-                </div>
-                <div className="absolute bottom-8 left-0 bg-white rounded-2xl shadow-lg px-4 py-3 flex items-center gap-2 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-                  <Shield className="w-5 h-5 text-primary" />
-                  <span className="text-sm font-semibold text-gray-700">100% Seguro</span>
+              </div>
+
+              <div className="rounded-2xl border border-gray-100 bg-gray-950 p-5 text-white shadow-sm">
+                <div className="flex items-start gap-3">
+                  <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center">
+                    <Shield className="w-5 h-5 text-emerald-300" />
+                  </div>
+                  <div>
+                    <h2 className="font-bold">Receitas e controlados com validação</h2>
+                    <p className="mt-1 text-sm text-white/70">
+                      Fluxo pensado para segurança, LGPD e atendimento farmacêutico.
+                    </p>
+                    <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-300 hover:text-emerald-200">
+                      Enviar receita <ChevronRight className="w-4 h-4" />
+                    </Link>
+                  </div>
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-16 grid grid-cols-2 md:grid-cols-4 gap-6 border-t border-white/10 pt-10">
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">50k+</div>
-              <div className="text-white/60 text-sm mt-1">Pedidos Entregues</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">4.9</div>
-              <div className="text-white/60 text-sm mt-1">Avaliação Média</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">2h</div>
-              <div className="text-white/60 text-sm mt-1">Entrega Média</div>
-            </div>
-            <div className="text-center">
-              <div className="text-3xl font-bold text-white">1000+</div>
-              <div className="text-white/60 text-sm mt-1">Produtos</div>
-            </div>
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+            {[
+              ['50k+', 'Pedidos entregues'],
+              ['4.9', 'Avaliação média'],
+              ['2h', 'Entrega média'],
+              ['1000+', 'Produtos'],
+            ].map(([value, label]) => (
+              <div key={label} className="rounded-xl border border-gray-100 bg-gray-50 px-4 py-3">
+                <div className="text-2xl font-bold text-gray-950">{value}</div>
+                <div className="text-xs text-gray-500 mt-0.5">{label}</div>
+              </div>
+            ))}
           </div>
         </div>
       </section>
@@ -339,10 +360,7 @@ export default function Home() {
       {!isAuthenticated() && (
       <section className="py-20 bg-white">
         <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
-          <div className="bg-gradient-to-br from-primary to-secondary rounded-3xl p-10 sm:p-14 text-white relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10">
-              <div className="absolute top-0 right-0 w-64 h-64 bg-white rounded-full blur-3xl translate-x-1/2 -translate-y-1/2" />
-            </div>
+          <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl p-8 sm:p-12 text-white relative overflow-hidden">
             <div className="relative">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">Pronto para começar?</h2>
               <p className="text-white/80 mb-8 text-lg max-w-md mx-auto">

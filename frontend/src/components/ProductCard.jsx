@@ -104,7 +104,7 @@ export default function ProductCard({ product }) {
   ) || 'https://via.placeholder.com/200'
 
   return (
-    <div className={`rounded-lg shadow-md overflow-hidden transition transform hover:-translate-y-1 ${
+    <div className={`rounded-lg shadow-md overflow-hidden transition transform hover:-translate-y-1 h-full flex flex-col ${
       isOutOfStock 
         ? 'bg-gray-100 opacity-60 hover:opacity-70' 
         : 'bg-white hover:shadow-lg'
@@ -145,7 +145,7 @@ export default function ProductCard({ product }) {
         )}
       </div>
 
-      <div className="p-4">
+      <div className="p-4 flex flex-1 flex-col">
         {remoteBlocked && (
           <div className="flex items-start gap-2 p-3 bg-amber-50 border border-amber-200 rounded-lg text-xs text-amber-800 mb-3">
             <AlertTriangle className="w-4 h-4 text-amber-500 mt-0.5 shrink-0" />
@@ -170,13 +170,13 @@ export default function ProductCard({ product }) {
             R$ {displayPrice.toFixed(2)}
           </div>
           {product.estoque > 0 ? (
-            <p className="text-xs text-green-600 font-semibold">✓ Disponível</p>
+            <p className="text-xs text-green-600 font-semibold">Disponível</p>
           ) : (
-            <p className="text-xs text-red-600 font-semibold">⚠️ Fora de estoque</p>
+            <p className="text-xs text-red-600 font-semibold">Fora de estoque</p>
           )}
         </div>
 
-        <div className="space-y-2">
+        <div className="space-y-2 mt-auto">
           {product.estoque > 0 && (
             <div className="flex items-center gap-2 mb-3">
               <button

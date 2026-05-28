@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useCartStore, useAuthStore, usePrescriptionStore } from '../stores/store'
 import { useNavigate, Link } from 'react-router-dom'
-import { Trash2, ArrowRight, Tag, Truck, Store, X, CheckCircle, AlertTriangle } from 'lucide-react'
+import { Trash2, ArrowRight, Tag, Truck, Store, X, CheckCircle, AlertTriangle, ShoppingCart, Package2 } from 'lucide-react'
 import api, { interactionService, prescriptionService } from '../services/api'
 import StatusReceita from '../components/StatusReceita'
 import { itemExigeReceita, receitaVinculadaAoProduto } from '../utils/receitaCart'
@@ -315,9 +315,9 @@ export default function Carrinho() {
 
   if (items.length === 0) {
     return (
-      <div className="max-w-7xl mx-auto px-4 py-12">
+      <div className="page-shell py-12">
         <div className="text-center py-16">
-          <div className="text-6xl mb-4">🛒</div>
+          <ShoppingCart className="w-14 h-14 text-gray-300 mx-auto mb-4" />
           <h1 className="text-3xl font-bold mb-2">Carrinho Vazio</h1>
           <p className="text-gray-600 mb-6">
             Você ainda não adicionou nenhum produto ao carrinho
@@ -334,8 +334,8 @@ export default function Carrinho() {
   }
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
-      <h1 className="text-3xl font-bold mb-2">Meu Carrinho</h1>
+    <div className="page-shell py-6 sm:py-8">
+      <h1 className="section-title mb-2">Meu Carrinho</h1>
       <div className="flex items-center gap-2 mb-8 text-gray-500">
         <Store className="w-4 h-4" />
         <span className="text-sm">{pharmacyName}</span>
@@ -347,12 +347,12 @@ export default function Carrinho() {
             {items.map((item, idx) => (
               <div
                 key={item.id}
-                className={`p-5 flex gap-4 hover:bg-gray-50 transition ${
+                className={`p-4 sm:p-5 flex flex-col sm:flex-row gap-4 hover:bg-gray-50 transition ${
                   itemExigeReceita(item) ? 'bg-amber-50/40' : ''
                 } ${idx > 0 ? 'border-t border-gray-100' : ''}`}
               >
                 <div className="w-16 h-16 bg-gradient-to-br from-gray-50 to-gray-100 rounded-xl flex items-center justify-center flex-shrink-0">
-                  <span className="text-2xl">💊</span>
+                  <Package2 className="w-7 h-7 text-gray-300" />
                 </div>
 
                 <div className="flex-1 min-w-0">
@@ -374,7 +374,7 @@ export default function Carrinho() {
                   </div>
                 </div>
 
-                <div className="flex flex-col items-end gap-2">
+                <div className="flex items-center justify-between gap-3 sm:flex-col sm:items-end sm:justify-start sm:gap-2">
                   <button
                     onClick={() => removeItem(item.id)}
                     className="text-gray-300 hover:text-red-500 transition"
@@ -408,7 +408,7 @@ export default function Carrinho() {
             ))}
           </div>
 
-          <div className="flex gap-3">
+          <div className="flex flex-col gap-3 sm:flex-row">
             <Link
               to="/farmacias"
               className="flex-1 border border-primary text-primary px-5 py-3 rounded-xl font-semibold hover:bg-primary/5 transition text-center text-sm"
@@ -640,7 +640,7 @@ export default function Carrinho() {
 
             {precisaReceitaNoPedido && !rxUi.rx && rxUi.modo !== 'pendente' && (
               <p className="text-xs text-amber-600 text-center mt-3 font-medium">
-                ⚠️ Há medicamentos que exigem receita. Envie a receita médica correspondente a cada um.
+                Há medicamentos que exigem receita. Envie a receita médica correspondente a cada um.
               </p>
             )}
             {!precisaReceitaNoPedido && (

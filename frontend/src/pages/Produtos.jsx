@@ -4,7 +4,7 @@ import { useCartStore, useUiStore } from '../stores/store'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
 import { productService, pharmacyService } from '../services/api'
-import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle } from 'lucide-react'
+import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle, Package2 } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
@@ -163,15 +163,15 @@ export default function Produtos() {
     })
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="page-shell py-6 sm:py-8">
       {/* Search Bar */}
       <div className="mb-8">
-        <h1 className="text-3xl font-bold mb-2">
+        <h1 className="section-title mb-2">
           {query ? `Resultados para "${query}"` : 'Todos os Medicamentos'}
         </h1>
         <p className="text-gray-500 mb-4">Compare preços entre farmácias e encontre o melhor</p>
 
-        <form onSubmit={handleSearch} className="flex gap-3" ref={searchWrapperRef}>
+        <form onSubmit={handleSearch} className="flex flex-col gap-3 sm:flex-row" ref={searchWrapperRef}>
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
             <input
@@ -213,7 +213,7 @@ export default function Produtos() {
           </div>
           <button
             type="submit"
-            className="px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-secondary transition"
+            className="w-full px-6 py-3 bg-primary text-white rounded-xl font-semibold hover:bg-secondary transition sm:w-auto"
           >
             Buscar
           </button>
@@ -223,7 +223,7 @@ export default function Produtos() {
       <div className="flex flex-col lg:flex-row gap-8">
         {/* Sidebar Filters */}
         <aside className="lg:w-64 flex-shrink-0">
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 sticky top-20 space-y-5">
+          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 lg:sticky lg:top-20 space-y-5">
             <h3 className="font-bold flex items-center gap-2 text-sm">
               <Filter className="w-4 h-4 text-primary" /> Filtros
             </h3>
@@ -328,7 +328,7 @@ export default function Produtos() {
             <LoadingSpinner />
           ) : filtered.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-2xl">
-              <div className="text-5xl mb-4">💊</div>
+              <Package2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg mb-2">Nenhum produto encontrado</p>
               <p className="text-gray-400 text-sm">
                 {onlyOnlinePharmacist
@@ -484,7 +484,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
                 className="w-full h-full object-contain"
               />
             ) : (
-              <span className="text-3xl">💊</span>
+              <Package2 className="w-8 h-8 text-gray-300" />
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -533,7 +533,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
         </div>
 
         {/* Price + add */}
-        <div className="flex items-end justify-between mt-auto pt-3 border-t border-gray-50">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mt-auto pt-3 border-t border-gray-50">
           <div>
             {temPromocao && (
               <span className="text-xs text-gray-400 line-through mr-1">

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { useParams, Link, useNavigate } from 'react-router-dom'
-import { Star, Clock, MapPin, ArrowLeft, Search, ShoppingCart, Truck, MessageSquare, AlertTriangle, FileText, Info } from 'lucide-react'
+import { Star, Clock, MapPin, ArrowLeft, Search, ShoppingCart, Truck, MessageSquare, AlertTriangle, FileText, Info, Package2 } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { useCartStore, useUiStore } from '../stores/store'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
@@ -116,12 +116,12 @@ export default function FarmaciaDetalhe() {
   return (
     <div>
       <div className={`bg-gradient-to-br ${colors[colorIndex]} text-white`}>
-        <div className="max-w-7xl mx-auto px-4 py-8">
+        <div className="page-shell py-8">
           <Link to="/farmacias" className="inline-flex items-center gap-2 text-white/80 hover:text-white transition mb-6 text-sm">
             <ArrowLeft className="w-4 h-4" /> Voltar para farmácias
           </Link>
 
-          <div className="flex items-start gap-6">
+          <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
             <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
               <span className="text-4xl font-bold">{initial}</span>
             </div>
@@ -174,7 +174,7 @@ export default function FarmaciaDetalhe() {
         </div>
       </div>
 
-      <div className="max-w-7xl mx-auto px-4 py-8">
+      <div className="page-shell py-8">
         <div className="flex flex-col sm:flex-row gap-4 mb-8">
           <div className="relative flex-1">
             <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
@@ -209,7 +209,7 @@ export default function FarmaciaDetalhe() {
 
         {filtered.length === 0 ? (
           <div className="text-center py-16 bg-gray-50 rounded-2xl">
-            <div className="text-5xl mb-4">💊</div>
+          <Package2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
             <p className="text-gray-500 text-lg">Nenhum produto encontrado</p>
           </div>
         ) : (
@@ -330,7 +330,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
             ) : productImage ? (
               <img src={productImage} alt="" className="w-full h-full object-contain" />
             ) : (
-              <span className="text-3xl">💊</span>
+              <Package2 className="w-8 h-8 text-gray-300" />
             )}
           </div>
           <div className="flex-1 min-w-0">
@@ -369,7 +369,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
           )}
         </div>
 
-        <div className="flex items-end justify-between mt-auto pt-3 border-t border-gray-50">
+        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mt-auto pt-3 border-t border-gray-50">
           <div>
             {temPromocao && (
               <span className="text-xs text-gray-400 line-through mr-1">

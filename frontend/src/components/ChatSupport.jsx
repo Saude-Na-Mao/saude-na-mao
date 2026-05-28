@@ -13,24 +13,24 @@ import Logger from '../utils/logger'
 const logger = new Logger('ChatSupport')
 
 const MENU_OPTIONS_CLIENT = [
-  { id: 1, label: 'Informações sobre Medicamentos 💊', submenu: null },
-  { id: 2, label: 'Dúvidas sobre Receita 📋', submenu: null },
-  { id: 3, label: 'Agendamento com Farmacêutico 👨‍⚕️', submenu: null },
-  { id: 4, label: 'Rastrear Pedido 📦', submenu: null },
+  { id: 1, label: 'Informações sobre medicamentos', submenu: null },
+  { id: 2, label: 'Dúvidas sobre receita', submenu: null },
+  { id: 3, label: 'Agendamento com farmacêutico', submenu: null },
+  { id: 4, label: 'Rastrear pedido', submenu: null },
   { id: 5, label: 'Suporte Geral', submenu: null },
 ]
 
 const MENU_OPTIONS_PHARMACY_STAFF = [
-  { id: 1, label: 'Suporte técnico do painel 🖥️', submenu: null },
-  { id: 2, label: 'Dúvidas sobre pedidos e status 📦', submenu: null },
-  { id: 3, label: 'Dúvidas sobre validação de receita 📋', submenu: null },
-  { id: 4, label: 'Problema com chat/atendimento 💬', submenu: null },
+  { id: 1, label: 'Suporte técnico do painel', submenu: null },
+  { id: 2, label: 'Dúvidas sobre pedidos e status', submenu: null },
+  { id: 3, label: 'Dúvidas sobre validação de receita', submenu: null },
+  { id: 4, label: 'Problema com chat/atendimento', submenu: null },
   { id: 5, label: 'Outros assuntos da farmácia', submenu: null },
 ]
 
 const WAITING_MESSAGE = {
   type: 'bot',
-  text: '⏳ Você foi conectado à nossa central de atendimento. Um agente responderá em breve.',
+  text: 'Você foi conectado à nossa central de atendimento. Um agente responderá em breve.',
   timestamp: new Date(),
 }
 
@@ -89,8 +89,8 @@ export default function ChatSupport() {
   const welcomeMessage = {
     type: 'bot',
     text: isPharmacyStaff
-      ? 'Olá! 👋 Bem-vindo ao suporte interno da farmácia.\n\nEscolha uma opção abaixo:'
-      : 'Olá! 👋 Bem-vindo ao suporte Saúde na Mão.\n\nEscolha uma opção abaixo:',
+      ? 'Olá! Bem-vindo ao suporte interno da farmácia.\n\nEscolha uma opção abaixo:'
+      : 'Olá! Bem-vindo ao suporte Saúde na Mão.\n\nEscolha uma opção abaixo:',
     timestamp: new Date(),
     showMenu: true,
   }
@@ -154,7 +154,7 @@ export default function ChatSupport() {
         ...prev,
         {
           type: 'bot',
-          text: `✅ Você selecionou: "${option.label}"\n\n${WAITING_MESSAGE.text}`,
+          text: `Você selecionou: "${option.label}"\n\n${WAITING_MESSAGE.text}`,
           timestamp: new Date(),
         },
       ])
@@ -169,7 +169,7 @@ export default function ChatSupport() {
     if (!token) {
       setMessages(prev => [...prev, {
         type: 'bot',
-        text: '⚠️ Faça login para usar o chat de suporte.',
+        text: 'Faça login para usar o chat de suporte.',
         timestamp: new Date(),
       }])
       setInputValue('')
@@ -195,14 +195,14 @@ export default function ChatSupport() {
           setLastMsgCount((ticket.mensagens || []).length)
           setMessages(prev => [...prev, {
             type: 'bot',
-            text: '✅ Chamado criado! Um farmacêutico irá responder em breve.',
+            text: 'Chamado criado. Um farmacêutico irá responder em breve.',
             timestamp: new Date(),
           }])
         }
       } catch {
         setMessages(prev => [...prev, {
           type: 'bot',
-          text: '❌ Erro ao criar chamado. Tente novamente.',
+          text: 'Erro ao criar chamado. Tente novamente.',
           timestamp: new Date(),
         }])
       }
@@ -213,7 +213,7 @@ export default function ChatSupport() {
       } catch {
         setMessages(prev => [...prev, {
           type: 'bot',
-          text: '❌ Erro ao enviar mensagem. Tente novamente.',
+          text: 'Erro ao enviar mensagem. Tente novamente.',
           timestamp: new Date(),
         }])
       }
@@ -230,7 +230,7 @@ export default function ChatSupport() {
       setChatClosed(true)
       setMessages(prev => [...prev, {
         type: 'bot',
-        text: '✅ Chamado finalizado. Obrigado pelo contato!',
+        text: 'Chamado finalizado. Obrigado pelo contato.',
         timestamp: new Date(),
       }])
     } catch {}
@@ -255,9 +255,9 @@ export default function ChatSupport() {
   }
 
   return (
-    <div className="fixed bottom-6 right-6 z-50">
+    <div className="fixed bottom-4 right-4 z-50 sm:bottom-6 sm:right-6">
       {isOpen && (
-        <div className="bg-white rounded-lg shadow-2xl w-96 h-[600px] mb-4 flex flex-col overflow-hidden border border-gray-200">
+        <div className="fixed inset-x-3 bottom-20 flex h-[min(78svh,600px)] flex-col overflow-hidden rounded-xl border border-gray-200 bg-white shadow-2xl sm:static sm:mb-4 sm:w-96 sm:max-w-[calc(100vw-2rem)]">
           <div className="bg-gradient-to-r from-green-500 to-blue-500 text-white p-4 flex justify-between items-center">
             <div className="flex items-center gap-2">
               <MessageCircle size={20} />
@@ -354,7 +354,7 @@ export default function ChatSupport() {
                   onClick={handleReset}
                   className="w-full text-sm text-blue-600 hover:text-blue-800 font-medium hover:underline transition"
                 >
-                  ← Voltar ao Menu Principal
+                  Voltar ao menu principal
                 </button>
               ) : null}
             </div>
@@ -375,7 +375,7 @@ export default function ChatSupport() {
               <button
                 onClick={handleSendMessage}
                 disabled={!selectedOption || !inputValue.trim() || chatClosed || sendingMsg}
-                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 transition flex items-center gap-1"
+                className="bg-green-500 hover:bg-green-600 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg px-3 py-2 transition flex items-center justify-center gap-1 shrink-0"
                 aria-label="Enviar mensagem"
               >
                 <Send size={18} />

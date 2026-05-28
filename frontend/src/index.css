@@ -12,6 +12,7 @@ html {
   scroll-behavior: smooth;
   width: 100%;
   overflow-x: hidden;
+  text-size-adjust: 100%;
 }
 
 body {
@@ -28,6 +29,10 @@ body {
 
 #root {
   width: 100%;
+  min-width: 0;
+}
+
+main {
   min-width: 0;
 }
 
@@ -81,6 +86,14 @@ input:focus, select:focus, textarea:focus {
 }
 
 @layer components {
+  .page-shell {
+    @apply max-w-7xl mx-auto px-4 sm:px-6;
+  }
+
+  .section-title {
+    @apply text-2xl sm:text-3xl font-bold text-gray-900 tracking-normal;
+  }
+
   .btn-primary {
     @apply bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-secondary transition-all duration-200 shadow-sm hover:shadow-md active:scale-[0.98];
   }
@@ -95,6 +108,18 @@ input:focus, select:focus, textarea:focus {
 
   .input-field {
     @apply w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary transition-all duration-200 bg-white;
+  }
+}
+
+@media (max-width: 640px) {
+  h1,
+  h2,
+  h3,
+  p,
+  a,
+  button,
+  span {
+    overflow-wrap: anywhere;
   }
 }
 

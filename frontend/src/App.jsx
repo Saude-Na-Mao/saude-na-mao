@@ -44,7 +44,7 @@ function AppContent() {
     <div className="flex flex-col min-h-screen">
       <Navbar />
       <NotificationToast />
-      <main className="flex-1">
+      <main id="main-content" className="flex-1 min-w-0">
         <Routes>
           <Route path="/" element={<Home />} />
           <Route path="/farmacias" element={<Farmacias />} />

@@ -59,9 +59,9 @@ export default function Farmacias() {
   if (loading) return <LoadingSpinner />
 
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8">
+    <div className="page-shell py-6 sm:py-8">
       <div className="mb-8">
-        <h1 className="text-3xl font-bold text-gray-900 mb-2">Farmácias</h1>
+        <h1 className="section-title mb-2">Farmácias</h1>
         <p className="text-gray-500">Escolha uma farmácia e veja os produtos disponíveis</p>
       </div>
 
@@ -114,7 +114,7 @@ export default function Farmacias() {
 
       {sorted.length === 0 ? (
         <div className="text-center py-16 bg-gray-50 rounded-2xl">
-          <div className="text-5xl mb-4">🏪</div>
+          <Store className="w-12 h-12 text-gray-300 mx-auto mb-4" />
           <p className="text-gray-500 text-lg">
             {onlyOnlinePharmacist
               ? 'Nenhuma farmácia com farmacêutico online agora'
@@ -203,7 +203,7 @@ function PharmacyCard({ pharmacy }) {
           </div>
         </div>
 
-        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between">
+        <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">
           {pharmacy.ativa === false ? (
             <span className="text-xs text-red-600 font-medium bg-red-50 px-2.5 py-1 rounded-full">
               Fechada
@@ -213,7 +213,7 @@ function PharmacyCard({ pharmacy }) {
               Aberta
             </span>
           )}
-          <span className="text-xs text-gray-400">
+          <span className="min-w-0 truncate text-xs text-gray-400">
             {pharmacy.logradouro}, {pharmacy.numero}
           </span>
         </div>

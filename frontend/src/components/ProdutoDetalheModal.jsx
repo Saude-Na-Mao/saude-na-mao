@@ -189,11 +189,11 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
 
   const modalContent = (
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center p-2 sm:p-6 bg-black/70 backdrop-blur-[2px] animate-[fadeIn_0.18s_ease-out]"
+      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/70 backdrop-blur-[2px] animate-[fadeIn_0.18s_ease-out]"
       onClick={onClose}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-[min(96vw,1100px)] h-[min(92vh,840px)] overflow-hidden flex flex-col transition-all duration-200"
+        className="bg-white rounded-xl sm:rounded-2xl shadow-2xl w-full max-w-[1100px] h-[min(92svh,840px)] overflow-hidden flex flex-col transition-all duration-200"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
@@ -237,7 +237,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
               <div className="flex flex-wrap items-baseline gap-2">
                 {hasPromo ? (
                   <>
-                    <span className="text-4xl font-bold text-primary">
+                    <span className="text-3xl sm:text-4xl font-bold text-primary">
                       R$ {displayPrice.toFixed(2)}
                     </span>
                     <span className="text-sm text-gray-400 line-through">
@@ -245,7 +245,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
                     </span>
                   </>
                 ) : (
-                  <span className="text-4xl font-bold text-primary">
+                  <span className="text-3xl sm:text-4xl font-bold text-primary">
                     R$ {displayPrice.toFixed(2)}
                   </span>
                 )}
@@ -362,7 +362,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
 
           {/* Chat com farmacêutico */}
           <div className="mx-5 sm:mx-6 mt-0 mb-5 border border-emerald-100 rounded-xl overflow-hidden">
-            <div className="flex items-center justify-between gap-3 p-4 bg-emerald-50">
+            <div className="flex flex-col gap-3 p-4 bg-emerald-50 sm:flex-row sm:items-center sm:justify-between">
               <div className="flex items-center gap-3 min-w-0">
                 <div className="w-10 h-10 rounded-lg bg-emerald-600 flex items-center justify-center flex-shrink-0">
                   <MessageCircle className="w-5 h-5 text-white" />
@@ -395,7 +395,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
                       state: { from: window.location.pathname },
                     })
                   }
-                  className="text-xs sm:text-sm font-semibold bg-white text-emerald-700 border border-emerald-200 px-3 py-1.5 rounded-lg hover:bg-emerald-100 transition flex-shrink-0"
+                  className="w-full text-xs sm:w-auto sm:text-sm font-semibold bg-white text-emerald-700 border border-emerald-200 px-3 py-2 rounded-lg hover:bg-emerald-100 transition flex-shrink-0"
                 >
                   Entrar para conversar
                 </button>
@@ -404,7 +404,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
                   type="button"
                   onClick={abrirChat}
                   disabled={creatingTicket}
-                  className="text-xs sm:text-sm font-semibold bg-emerald-600 text-white px-3 py-1.5 rounded-lg hover:bg-emerald-700 transition flex-shrink-0 disabled:opacity-60 inline-flex items-center gap-2"
+                  className="w-full text-xs sm:w-auto sm:text-sm font-semibold bg-emerald-600 text-white px-3 py-2 rounded-lg hover:bg-emerald-700 transition flex-shrink-0 disabled:opacity-60 inline-flex items-center justify-center gap-2"
                 >
                   {creatingTicket ? (
                     <>

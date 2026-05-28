@@ -144,7 +144,7 @@ export default function NotificationToast() {
 
         addNotification({
           type: 'success',
-          title: '✅ Receita aprovada!',
+          title: 'Receita aprovada',
           message: 'Sua receita foi aprovada. Agora você pode finalizar a compra.',
           duration: 8000,
           action: buildPrescriptionNotificationAction(prescriptionId),
@@ -152,7 +152,7 @@ export default function NotificationToast() {
       } else if (novoStatus === 'Rejeitada') {
         addNotification({
           type: 'error',
-          title: '❌ Receita rejeitada',
+          title: 'Receita rejeitada',
           message: observacoes || 'Sua receita foi rejeitada. Envie uma nova.',
           duration: 10000,
           action: buildPrescriptionNotificationAction(prescriptionId),
@@ -232,7 +232,7 @@ export default function NotificationToast() {
   if (notifications.length === 0) return null
 
   return (
-    <div className="fixed top-4 right-4 z-[9999] flex flex-col gap-2 max-w-sm w-full pointer-events-none">
+    <div className="fixed left-3 right-3 top-3 z-[9999] flex flex-col gap-2 pointer-events-none sm:left-auto sm:right-4 sm:top-4 sm:w-full sm:max-w-sm">
       {notifications.map((n) => {
         const Icon = ICON_MAP[n.type] || Info
         const colors = COLOR_MAP[n.type] || COLOR_MAP.info
