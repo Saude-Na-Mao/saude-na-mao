@@ -825,8 +825,6 @@ export function PharmacistDashboard() {
     const st = String(o?.status || '').trim();
     if (['cancelado', 'entregue', 'rejeitado'].includes(st)) return false;
     if (st === 'aguardando_confirmacao_receita_farmacia') return true;
-    const isPickup = ['retirada', 'drive-thru'].includes(String(o?.tipo_entrega || '').trim());
-    if (orderHasPrescriptionItem(o) && !isPickup) return false;
     if (st === 'em_processamento') return true;
     return (
       st === 'aguardando_pagamento' &&
@@ -1430,8 +1428,8 @@ export function PharmacistDashboard() {
             </button>
           </div>
           <p className="text-xs text-gray-600 mb-3">
-            Pedidos com receita para <strong>entrega</strong> são aprovados na aba <strong>Receitas</strong>.
-            Quando o entregador voltar com a receita, use o campo abaixo para encerrar com o código do cliente.
+            Após pagamento concluído, confirme que o pedido está separado para liberar a entrega.
+            Se houver receita física, encerre com o código quando o entregador retornar à farmácia.
           </p>
 
           {ordersLoading ? (
@@ -1489,7 +1487,7 @@ export function PharmacistDashboard() {
                         {String(order?.status || '').trim() === 'aguardando_pagamento' &&
                           String(order?.status_pagamento || '').trim() === 'aprovado' && (
                           <p className="text-xs text-teal-900 bg-teal-50 border border-teal-100 rounded-lg px-3 py-2">
-                            O cliente já pagou e vê &quot;aguardando farmácia&quot; — confirme a compra / separação abaixo.
+                            Pagamento concluído. Confirme que o pedido está pronto para entrega.
                           </p>
                         )}
 
@@ -1589,8 +1587,7 @@ export function PharmacistDashboard() {
                             >
                               Cancelar pedido
                             </button>
-                            {!orderHasPrescriptionItem(order) &&
-                              String(order?.status || '').trim() !==
+                            {String(order?.status || '').trim() !==
                                 'aguardando_confirmacao_receita_farmacia' &&
                               String(order?.status || '').trim() === 'aguardando_pagamento' &&
                               String(order?.status_pagamento || '').trim() === 'aprovado' && (
@@ -1600,7 +1597,7 @@ export function PharmacistDashboard() {
                                 className="px-3 py-2 bg-green-600 text-white rounded-lg text-sm font-medium hover:bg-green-700 disabled:pointer-events-none disabled:cursor-not-allowed disabled:bg-gray-600 disabled:opacity-70 disabled:hover:bg-gray-600"
                                 disabled={submittingOrderAction}
                               >
-                                Confirmar e liberar para entregador
+                                Pedido pronto para entrega
                               </button>
                             )}
                           </div>

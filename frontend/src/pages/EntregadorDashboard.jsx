@@ -442,12 +442,17 @@ export default function EntregadorDashboard() {
           r.readAsDataURL(fotoComprovante);
         });
       }
-      await deliveryService.entregarAoCliente(activeDelivery._id, {
+      const res = await deliveryService.entregarAoCliente(activeDelivery._id, {
         codigo_confirmacao: codigoEntrega.trim(),
         foto_comprovante: foto || undefined,
       });
       setCodigoEntrega("");
       setFotoComprovante(null);
+      if (res.data?.data?.aguardando_confirmacao_farmacia) {
+        await loadActiveFromApi();
+        await loadHistorico(histPage);
+        return;
+      }
       setActiveDelivery(null);
       setActiveOrder(null);
       await refreshProfile();
@@ -494,6 +499,10 @@ export default function EntregadorDashboard() {
     activeOrder?.id_usuario?.telefone ||
     activeDelivery?.id_cliente?.telefone ||
     "—";
+  const aguardandoConfirmacaoFarmacia = Boolean(
+    activeDelivery?.receita_aguardando_confirmacao_farmacia_em ||
+      activeOrder?.status === "aguardando_confirmacao_receita_farmacia",
+  );
 
   if (loading) {
     return (
@@ -795,6 +804,12 @@ export default function EntregadorDashboard() {
             </p>
 
             <div className="mt-4 flex flex-wrap gap-3">
+              {aguardandoConfirmacaoFarmacia && (
+                <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+                  Código confirmado com o cliente. Entregue a receita física na farmácia para o farmacêutico finalizar o pedido.
+                </div>
+              )}
+
               {activeDelivery.status === "aceita" && (
                 <button
                   type="button"
@@ -807,7 +822,8 @@ export default function EntregadorDashboard() {
               )}
 
               {(activeDelivery.status === "coletada" ||
-                activeDelivery.status === "em_transito") && (
+                activeDelivery.status === "em_transito") &&
+                !aguardandoConfirmacaoFarmacia && (
                 <div className="w-full space-y-3">
                   <input
                     type="text"

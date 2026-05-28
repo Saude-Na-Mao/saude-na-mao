@@ -12,6 +12,7 @@ const {
   isOrderEligibleForDispatch,
   buildEligibleOrderDispatchFilter,
   NON_DISPATCH_TYPES,
+  orderNeedsPharmacyReceiptReturn,
 } = require("../utils/deliveryEligibility");
 
 const ALLOWED_STATUS_TRANSITIONS = {
@@ -773,6 +774,45 @@ async function confirmDelivery(deliveryId, entregadorId, codigo) {
   const codigoEsperado = String(delivery.codigo_confirmacao ?? "").trim();
   if (!codigoEsperado || codigoEsperado !== codigoNorm) {
     throw createError("Código de confirmação inválido", 400);
+  }
+
+  const order = await Order.findById(delivery.id_pedido);
+  if (orderNeedsPharmacyReceiptReturn(order)) {
+    const now = new Date();
+    delivery.receita_fisica_cliente_confirmada_em = now;
+    delivery.receita_aguardando_confirmacao_farmacia_em = now;
+    delivery.historico_status.push({
+      status: "em_transito",
+      alterado_em: now,
+      observacao:
+        "Código confirmado com o cliente; aguardando conferência da receita física na farmácia",
+    });
+    await delivery.save();
+
+    if (order.status !== "aguardando_confirmacao_receita_farmacia") {
+      order.adicionarHistoricoStatus(
+        "aguardando_confirmacao_receita_farmacia",
+        "Código confirmado pelo entregador; aguardando conferência da receita física na farmácia",
+      );
+      await order.save();
+      await emitOrderStatus(
+        String(order._id),
+        "aguardando_confirmacao_receita_farmacia",
+        "Aguardando confirmação da receita na farmácia",
+      );
+      await notifyOrderStatus(order, "aguardando_confirmacao_receita_farmacia");
+    }
+
+    emitDeliveryUpdate(deliveryId, "delivery:status", {
+      status: delivery.status,
+      atualizadoEm: now,
+      aguardando_confirmacao_farmacia: true,
+    });
+
+    return {
+      entrega: stripConfirmationCodeForEntregador(delivery),
+      aguardando_confirmacao_farmacia: true,
+    };
   }
 
   const finalDelivery = await updateDeliveryStatus(deliveryId, "entregue", {

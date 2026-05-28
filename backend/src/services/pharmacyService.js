@@ -24,11 +24,24 @@ async function listPharmacies({
   estado,
   search,
   ativa = true,
+  onlyOnlinePharmacist = false,
 } = {}) {
   const filtro = { ativa };
   if (cidade) filtro.cidade = { $regex: cidade, $options: "i" };
   if (estado) filtro.estado = estado.toUpperCase();
   if (search) filtro.nome = { $regex: search, $options: "i" };
+
+  const onlineCutoff = getOnlinePresenceCutoff();
+  if (onlyOnlinePharmacist === true || onlyOnlinePharmacist === "true") {
+    const pharmacyIds = await Pharmacist.distinct("id_farmacia", {
+      ativo: true,
+      logado: true,
+      disponivel_chat: { $ne: false },
+      bloqueado: { $ne: true },
+      ultima_atividade: { $gte: onlineCutoff },
+    });
+    filtro._id = { $in: pharmacyIds };
+  }
 
   const resultado = await Pharmacy.paginate(filtro, {
     page,
@@ -44,7 +57,6 @@ async function listPharmacies({
     .map((id) => new mongoose.Types.ObjectId(id));
 
   if (ids.length > 0) {
-    const onlineCutoff = getOnlinePresenceCutoff();
     const [reviewStats, pharmacistStats] = await Promise.all([
       Review.aggregate([
         { $match: { id_farmacia: { $in: ids } } },

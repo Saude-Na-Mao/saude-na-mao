@@ -1,7 +1,7 @@
 import { useState, useEffect, useRef } from 'react'
 import { useNavigate, Link } from 'react-router-dom'
 import { useCartStore, useAuthStore, usePrescriptionStore } from '../stores/store'
-import { orderService, geoService, userService, prescriptionService } from '../services/api'
+import { orderService, geoService, userService, prescriptionService, paymentService } from '../services/api'
 import AddressNumberInput from '../components/AddressNumberInput'
 import { itemExigeReceita, receitaVinculadaAoProduto } from '../utils/receitaCart'
 import {
@@ -11,7 +11,6 @@ import {
   ArrowLeft,
   CheckCircle,
   ShieldCheck,
-  Package,
   MapPin,
   Truck,
   Clock,
@@ -320,14 +319,17 @@ export default function Checkout() {
 
       const res = await orderService.create(orderData)
       const pedido = res.data?.data?.pedido
+      const paymentRes = await paymentService.confirmTest(pedido._id)
+      const pedidoPago = paymentRes.data?.data?.pedido || pedido
 
       orderDoneRef.current = true
       setOrderCreated({
-        ...pedido,
+        ...pedidoPago,
         _pharmacyName: pharmacyName,
         _total: total,
         _paymentMethod: paymentMethod,
         _hasControlled: items.some((i) => i.controlado),
+        _paymentApproved: pedidoPago?.status_pagamento === 'aprovado',
       })
       clearCart()
       clearPrescricoes()
@@ -347,9 +349,9 @@ export default function Checkout() {
           <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
             <CheckCircle className="w-10 h-10 text-emerald-500" />
           </div>
-          <h1 className="text-3xl font-bold mb-2">Pedido Confirmado!</h1>
+          <h1 className="text-3xl font-bold mb-2">Pagamento aprovado!</h1>
           <p className="text-gray-500 mb-6">
-            Seu pedido foi recebido e está sendo preparado pela farmácia.
+            Seu pedido foi pago e enviado para a farmácia preparar.
           </p>
 
           <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left space-y-3">
@@ -365,6 +367,12 @@ export default function Checkout() {
               <span className="text-gray-500">Pagamento</span>
               <span className="font-medium">
                 {PAYMENT_METHODS.find((m) => m.id === orderCreated._paymentMethod)?.label}
+              </span>
+            </div>
+            <div className="flex justify-between text-sm">
+              <span className="text-gray-500">Status</span>
+              <span className="font-bold text-emerald-600">
+                {orderCreated._paymentApproved ? 'Aprovado' : 'Pendente'}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -384,10 +392,10 @@ export default function Checkout() {
 
           <div className="flex flex-col sm:flex-row gap-3">
             <Link
-              to={`/pedido/${orderCreated._id}/comprovante`}
+              to={`/rastreamento/${orderCreated._id}`}
               className="flex-1 bg-primary text-white py-3 rounded-xl font-semibold hover:bg-secondary transition flex items-center justify-center gap-2"
             >
-              <Package className="w-4 h-4" /> Ver Comprovante
+              <Truck className="w-4 h-4" /> Acompanhar Pedido
             </Link>
             <Link
               to="/pedidos"

@@ -173,6 +173,25 @@ export default function Rastreamento() {
     return 'pending'
   }
 
+  const getTrackingStatus = (pedido) => {
+    const status = String(pedido?.status || '').trim()
+    if (status === 'entregue') return 'entregue'
+    if (status === 'a_caminho' || status === 'aguardando_confirmacao_receita_farmacia') {
+      return 'a_caminho'
+    }
+    if (status === 'confirmado') return 'enviado'
+    if (status === 'em_processamento') return 'confirmado'
+    if (
+      status === 'aguardando_pagamento' &&
+      String(pedido?.status_pagamento || '').trim() === 'aprovado'
+    ) {
+      return 'confirmado'
+    }
+    return status
+  }
+
+  const trackingStatus = getTrackingStatus(order)
+
   return (
     <div className="max-w-4xl mx-auto px-4 py-12">
       <button
@@ -241,21 +260,33 @@ export default function Rastreamento() {
               </div>
             </div>
           )}
+
+          {order.status === 'aguardando_confirmacao_receita_farmacia' && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6 mb-6 flex items-center gap-4">
+              <Clock className="w-10 h-10 text-amber-500 flex-shrink-0 animate-pulse" />
+              <div>
+                <h3 className="font-bold text-amber-900 text-lg">Aguardando confirmação na farmácia</h3>
+                <p className="text-sm text-amber-800">
+                  O entregador confirmou o código com você. A farmácia precisa conferir a receita física para finalizar.
+                </p>
+              </div>
+            </div>
+          )}
           
           <div className="space-y-6 max-w-2xl">
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  getStepStatus('confirmado', order.status) === 'completed'
+                  getStepStatus('confirmado', trackingStatus) === 'completed'
                     ? 'bg-green-500 text-white'
-                    : getStepStatus('confirmado', order.status) === 'current'
+                    : getStepStatus('confirmado', trackingStatus) === 'current'
                     ? 'bg-primary text-white animate-pulse'
                     : 'bg-gray-300 text-gray-600'
                 }`}>
                   <CheckCircle className="w-6 h-6" />
                 </div>
                 <div className={`w-1 h-12 ${
-                  getStepStatus('enviado', order.status) === 'completed'
+                  getStepStatus('enviado', trackingStatus) === 'completed'
                     ? 'bg-green-500'
                     : 'bg-gray-300'
                 }`} />
@@ -269,17 +300,17 @@ export default function Rastreamento() {
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  getStepStatus('enviado', order.status) === 'completed'
+                  getStepStatus('enviado', trackingStatus) === 'completed'
                     ? 'bg-green-500 text-white'
-                    : getStepStatus('enviado', order.status) === 'current'
+                    : getStepStatus('enviado', trackingStatus) === 'current'
                     ? 'bg-primary text-white animate-pulse'
                     : 'bg-gray-300 text-gray-600'
                 }`}>
                   <Package className="w-6 h-6" />
                 </div>
                 <div className={`w-1 h-12 ${
-                  getStepStatus('a_caminho', order.status) === 'completed' ||
-                  getStepStatus('a_caminho', order.status) === 'current'
+                  getStepStatus('a_caminho', trackingStatus) === 'completed' ||
+                  getStepStatus('a_caminho', trackingStatus) === 'current'
                     ? 'bg-green-500'
                     : 'bg-gray-300'
                 }`} />
@@ -293,16 +324,16 @@ export default function Rastreamento() {
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  getStepStatus('a_caminho', order.status) === 'completed'
+                  getStepStatus('a_caminho', trackingStatus) === 'completed'
                     ? 'bg-green-500 text-white'
-                    : getStepStatus('a_caminho', order.status) === 'current'
+                    : getStepStatus('a_caminho', trackingStatus) === 'current'
                     ? 'bg-primary text-white animate-pulse'
                     : 'bg-gray-300 text-gray-600'
                 }`}>
                   <Truck className="w-6 h-6" />
                 </div>
                 <div className={`w-1 h-12 ${
-                  getStepStatus('entregue', order.status) === 'completed'
+                  getStepStatus('entregue', trackingStatus) === 'completed'
                     ? 'bg-green-500'
                     : 'bg-gray-300'
                 }`} />
@@ -316,9 +347,9 @@ export default function Rastreamento() {
             <div className="flex gap-4">
               <div className="flex flex-col items-center">
                 <div className={`w-12 h-12 rounded-full flex items-center justify-center ${
-                  getStepStatus('entregue', order.status) === 'completed'
+                  getStepStatus('entregue', trackingStatus) === 'completed'
                     ? 'bg-green-500 text-white'
-                    : getStepStatus('entregue', order.status) === 'current'
+                    : getStepStatus('entregue', trackingStatus) === 'current'
                     ? 'bg-primary text-white animate-pulse'
                     : 'bg-gray-300 text-gray-600'
                 }`}>
@@ -354,7 +385,7 @@ export default function Rastreamento() {
                   addressText(deliveryDetail?.endereco_entrega) ||
                   addressText(order.endereco_entrega)
                 }
-                status={order.status}
+                status={trackingStatus}
                 className="h-[350px]"
               />
             </Suspense>

@@ -6,6 +6,7 @@ const User = require("../models/User");
 const Payment = require("../models/Payment");
 const Delivery = require("../models/Delivery");
 const Review = require("../models/Review");
+const Prescription = require("../models/Prescription");
 const prescriptionService = require("./prescriptionService");
 const couponService = require("./couponService");
 const compliance = require("../config/compliance");
@@ -357,15 +358,37 @@ function pedidoNaFilaFarmaciaParaNotificacao(order) {
   const st = String(order.status || "").trim();
   if (["cancelado", "entregue", "rejeitado"].includes(st)) return false;
   if (st === "aguardando_confirmacao_receita_farmacia") return true;
-  const isPickup = ["retirada", "drive-thru"].includes(
-    String(order.tipo_entrega || "").trim(),
-  );
-  if (orderHasLinkedPrescriptionItems(order) && !isPickup) return false;
   if (st === "em_processamento") return true;
   return (
     st === "aguardando_pagamento" &&
     String(order.status_pagamento || "").trim() === "aprovado"
   );
+}
+
+async function assertLinkedPrescriptionsApproved(order) {
+  const receitaIds = [
+    ...new Set(
+      (order.itens || [])
+        .map((item) => item.id_receita)
+        .filter(Boolean)
+        .map((id) => String(id)),
+    ),
+  ];
+
+  if (receitaIds.length === 0 && orderHasLinkedPrescriptionItems(order)) {
+    throw createError("Pedido com receita sem vínculo de receita aprovada.", 400);
+  }
+
+  if (receitaIds.length === 0) return;
+
+  const aprovadas = await Prescription.countDocuments({
+    _id: { $in: receitaIds },
+    status: "Aprovada",
+  });
+
+  if (aprovadas !== receitaIds.length) {
+    throw createError("A receita do pedido ainda não foi aprovada.", 400);
+  }
 }
 
 function notifyPharmacyPedidoPendenteSocket(order) {
@@ -917,23 +940,27 @@ async function approveOrderByPharmacist(orderId, pharmacyId, observacao) {
     throw createError("Pedido não pode ser aprovado neste status", 400);
   }
 
-  if (orderHasLinkedPrescriptionItems(order)) {
-    throw createError(
-      "Pedidos com receita são validados na aba Receitas, não por esta ação.",
-      400,
-    );
+  const hasPrescriptionItems = orderHasLinkedPrescriptionItems(order);
+  if (hasPrescriptionItems) {
+    await assertLinkedPrescriptionsApproved(order);
   }
 
   order.aprovado_farmaceutico = true;
   order.historico_status.push({
     status: order.status,
-    observacao: observacao || "Pedido aprovado pelo farmacêutico",
+    observacao:
+      observacao ||
+      (hasPrescriptionItems
+        ? "Receita aprovada e pedido separado pela farmácia"
+        : "Pedido aprovado pelo farmacêutico"),
   });
 
   if (order.status_pagamento === "aprovado" && order.status === "aguardando_pagamento") {
     order.adicionarHistoricoStatus(
       "em_processamento",
-      "Pagamento ok e pedido validado pelo farmacêutico — entrega liberada para entregadores; confirmado quando um entregador aceitar",
+      hasPrescriptionItems
+        ? "Pagamento ok, receita validada e pedido separado — entrega liberada para entregadores"
+        : "Pagamento ok e pedido validado pelo farmacêutico — entrega liberada para entregadores; confirmado quando um entregador aceitar",
     );
   }
 

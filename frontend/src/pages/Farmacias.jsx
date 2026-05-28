@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle } from 'lucide-react'
+import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle, Store } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { pharmacyService } from '../services/api'
 
@@ -16,8 +16,8 @@ export default function Farmacias() {
   }, [])
 
   useEffect(() => {
-    if (!onlyOnlinePharmacist) return undefined
     loadPharmacies({ silent: true })
+    if (!onlyOnlinePharmacist) return undefined
     const interval = setInterval(() => loadPharmacies({ silent: true }), 15000)
     return () => clearInterval(interval)
   }, [onlyOnlinePharmacist])
@@ -25,7 +25,10 @@ export default function Farmacias() {
   const loadPharmacies = async (opts = {}) => {
     try {
       if (!opts.silent) setLoading(true)
-      const response = await pharmacyService.getAll()
+      const response = await pharmacyService.getAll({
+        limit: 200,
+        onlyOnlinePharmacist: onlyOnlinePharmacist ? 'true' : undefined,
+      })
       const payload = response.data?.data
       const data = Array.isArray(payload) ? payload : payload?.docs ?? []
       setPharmacies(data)

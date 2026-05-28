@@ -3,13 +3,15 @@ const productService = require("../services/productService");
 
 async function listPharmacies(req, res, next) {
   try {
-    const { page, limit, cidade, estado, search } = req.query;
+    const { page, limit, cidade, estado, search, onlyOnlinePharmacist } =
+      req.query;
     const resultado = await pharmacyService.listPharmacies({
       page,
       limit,
       cidade,
       estado,
       search,
+      onlyOnlinePharmacist,
     });
     res.json({ success: true, data: resultado });
   } catch (error) {
