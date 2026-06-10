@@ -1,0 +1,170 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-06-10T15:30:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram name="DER - Saúde na Mão">
+    <mxGraphModel dx="1600" dy="1400" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1320" pageHeight="1400" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="User" value="&lt;b&gt;User&lt;/b&gt;&lt;br&gt;&lt;i&gt;users&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;nome&lt;br&gt;email UNIQUE&lt;br&gt;cpf UNIQUE?&lt;br&gt;senha&lt;br&gt;role/tipo_usuario&lt;br&gt;lgpd_consentimento" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="250" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="Address" value="&lt;b&gt;Address&lt;/b&gt;&lt;br&gt;&lt;i&gt;addresses&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;logradouro&lt;br&gt;numero&lt;br&gt;cidade&lt;br&gt;estado&lt;br&gt;cep&lt;br&gt;padrao" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="270" width="250" height="152" as="geometry" />
+        </mxCell>
+        <mxCell id="Pharmacy" value="&lt;b&gt;Pharmacy&lt;/b&gt;&lt;br&gt;&lt;i&gt;pharmacies&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_dono FK&lt;br&gt;cnpj UNIQUE&lt;br&gt;nome&lt;br&gt;endereco&lt;br&gt;compliance docs&lt;br&gt;location" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="60" width="250" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="Pharmacist" value="&lt;b&gt;Pharmacist&lt;/b&gt;&lt;br&gt;&lt;i&gt;pharmacists&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;id_farmacia FK&lt;br&gt;crm UNIQUE&lt;br&gt;disponivel_chat&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="270" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Product" value="&lt;b&gt;Product&lt;/b&gt;&lt;br&gt;&lt;i&gt;products&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_farmacia FK&lt;br&gt;id_catalogo FK?&lt;br&gt;nome&lt;br&gt;preco&lt;br&gt;estoque&lt;br&gt;classificacao_receita" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="60" width="250" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="MedicineCatalog" value="&lt;b&gt;MedicineCatalog&lt;/b&gt;&lt;br&gt;&lt;i&gt;medicinecatalogs&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;nome&lt;br&gt;principio_ativo&lt;br&gt;classificacao_receita&lt;br&gt;registro_anvisa&lt;br&gt;codigo_ean" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="60" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Cart" value="&lt;b&gt;Cart&lt;/b&gt;&lt;br&gt;&lt;i&gt;carts&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK UNIQUE&lt;br&gt;id_farmacia FK&lt;br&gt;id_endereco_entrega FK&lt;br&gt;itens[]&lt;br&gt;total" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="480" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Order" value="&lt;b&gt;Order&lt;/b&gt;&lt;br&gt;&lt;i&gt;orders&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;id_farmacia FK&lt;br&gt;id_entrega FK?&lt;br&gt;itens[]&lt;br&gt;status&lt;br&gt;total" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="480" width="250" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="Payment" value="&lt;b&gt;Payment&lt;/b&gt;&lt;br&gt;&lt;i&gt;payments&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_pedido FK UNIQUE&lt;br&gt;id_usuario FK&lt;br&gt;gateway&lt;br&gt;forma_pagamento&lt;br&gt;status&lt;br&gt;valor" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="480" width="250" height="138" as="geometry" />
+        </mxCell>
+        <mxCell id="Delivery" value="&lt;b&gt;Delivery&lt;/b&gt;&lt;br&gt;&lt;i&gt;deliveries&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_pedido FK&lt;br&gt;id_entregador FK?&lt;br&gt;id_farmacia FK&lt;br&gt;id_cliente FK&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="480" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Prescription" value="&lt;b&gt;Prescription&lt;/b&gt;&lt;br&gt;&lt;i&gt;prescriptions&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;id_farmacia FK?&lt;br&gt;id_produto FK?&lt;br&gt;id_pedido_utilizado FK?&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="700" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="PrescriptionUseLog" value="&lt;b&gt;PrescriptionUseLog&lt;/b&gt;&lt;br&gt;&lt;i&gt;prescriptionuselogs&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_receita FK&lt;br&gt;id_pedido FK&lt;br&gt;id_usuario FK&lt;br&gt;id_farmacia FK&lt;br&gt;token_unico UNIQUE" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="700" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="ReceitaDigital" value="&lt;b&gt;ReceitaDigital&lt;/b&gt;&lt;br&gt;&lt;i&gt;receitadigitals&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;prescriptionId FK&lt;br&gt;paciente.id FK&lt;br&gt;farmaceutico.id FK&lt;br&gt;hash UNIQUE&lt;br&gt;valido" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="700" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Review" value="&lt;b&gt;Review&lt;/b&gt;&lt;br&gt;&lt;i&gt;reviews&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_farmacia FK&lt;br&gt;id_usuario FK&lt;br&gt;nota&lt;br&gt;comentario&lt;br&gt;UNIQUE farmacia+usuario" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="700" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="SupportMessage" value="&lt;b&gt;SupportMessage&lt;/b&gt;&lt;br&gt;&lt;i&gt;supportmessages&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;id_atendente FK?&lt;br&gt;id_farmacia FK?&lt;br&gt;mensagens[]&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="910" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="Coupon" value="&lt;b&gt;Coupon&lt;/b&gt;&lt;br&gt;&lt;i&gt;coupons&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;codigo UNIQUE&lt;br&gt;tipo_desconto&lt;br&gt;valor&lt;br&gt;validade&lt;br&gt;usuarios_utilizaram[]" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="910" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="AuditLog" value="&lt;b&gt;AuditLog&lt;/b&gt;&lt;br&gt;&lt;i&gt;auditlogs&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;usuario_id FK?&lt;br&gt;acao&lt;br&gt;recurso&lt;br&gt;status&lt;br&gt;criado_em TTL" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="910" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="FraudAlert" value="&lt;b&gt;FraudAlert&lt;/b&gt;&lt;br&gt;&lt;i&gt;fraudalerts&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;id_usuario FK&lt;br&gt;investigador FK?&lt;br&gt;tipo_alerta&lt;br&gt;nivel_risco&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="910" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="MedicineTracking" value="&lt;b&gt;MedicineTracking&lt;/b&gt;&lt;br&gt;&lt;i&gt;medicinetrackings&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;medicamento_id FK&lt;br&gt;farmacia_origem FK&lt;br&gt;cliente_destino FK&lt;br&gt;etapas[]&lt;br&gt;status" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="350" y="1120" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="DrugInteraction" value="&lt;b&gt;DrugInteraction&lt;/b&gt;&lt;br&gt;&lt;i&gt;drug_interactions&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;medicamento1&lt;br&gt;medicamento2&lt;br&gt;severidade&lt;br&gt;mecanismo&lt;br&gt;recomendacao" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="660" y="1120" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="DrugContraindication" value="&lt;b&gt;DrugContraindication&lt;/b&gt;&lt;br&gt;&lt;i&gt;drug_contraindications&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;medicamento&lt;br&gt;condicoes[]&lt;br&gt;restricoes_populacao[]&lt;br&gt;fonte" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="970" y="1120" width="250" height="110" as="geometry" />
+        </mxCell>
+        <mxCell id="FAQ" value="&lt;b&gt;FAQ&lt;/b&gt;&lt;br&gt;&lt;i&gt;faqs&lt;/i&gt;&lt;hr size='1'&gt;_id PK&lt;br&gt;pergunta&lt;br&gt;resposta&lt;br&gt;categoria&lt;br&gt;tags[]&lt;br&gt;ativo" style="rounded=0;whiteSpace=wrap;html=1;align=left;verticalAlign=top;spacing=8;strokeColor=#000000;fillColor=#ffffff;fontSize=11;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="250" height="124" as="geometry" />
+        </mxCell>
+        <mxCell id="r1" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Address">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r2" value="1:0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Cart">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r3" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r4" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r5" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r6" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="SupportMessage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r7" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="AuditLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r8" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="FraudAlert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r9" value="1:0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Pharmacist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r10" value="1:N dono" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Pharmacy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r11" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r12" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r13" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Delivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r14" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r15" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="SupportMessage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r16" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Pharmacist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r17" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="MedicineCatalog" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r18" value="N:M itens[]" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Cart" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r19" value="N:0..N itens[]" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Cart" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r20" value="N:M itens[]" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r21" value="N:0..N itens[]" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r22" value="1:0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r23" value="1:0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Delivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r24" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="PrescriptionUseLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r25" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Prescription" target="PrescriptionUseLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r26" value="1:0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Prescription" target="ReceitaDigital">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r27" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Product" target="MedicineTracking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r28" value="1:N" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="MedicineTracking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r29" value="1:N cliente/farmaceutico" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="MedicineTracking">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r30" value="1:N cliente/entregador" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Delivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="r31" value="N:M usuarios_utilizaram[]" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Coupon" target="User">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>

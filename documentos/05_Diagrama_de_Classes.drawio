@@ -1,0 +1,176 @@
+<?xml version='1.0' encoding='utf-8'?>
+<mxfile host="app.diagrams.net" modified="2026-06-10T15:40:00.000Z" agent="Codex" version="24.7.17" type="device">
+  <diagram name="Diagrama de Classes - Saúde na Mão">
+    <mxGraphModel dx="1700" dy="1900" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1320" pageHeight="1950" math="0" shadow="0">
+      <root>
+        <mxCell id="0" />
+        <mxCell id="1" parent="0" />
+        <mxCell id="User" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;User&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ nome: String&lt;br&gt;+ email: String&lt;br&gt;+ senha: String&lt;br&gt;+ role: String&lt;br&gt;+ tipo_usuario: String&lt;br&gt;+ ativo: Boolean&lt;hr size='1'&gt;+ comparePassword()&lt;br&gt;+ incrementLoginAttempts()&lt;br&gt;+ resetLoginAttempts()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="60" width="265" height="199" as="geometry" />
+        </mxCell>
+        <mxCell id="Address" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Address&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ logradouro: String&lt;br&gt;+ numero: String&lt;br&gt;+ cidade: String&lt;br&gt;+ estado: String&lt;br&gt;+ cep: String&lt;br&gt;+ padrao: Boolean&lt;hr size='1'&gt;+ preSavePadrao()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="315" width="265" height="183" as="geometry" />
+        </mxCell>
+        <mxCell id="Pharmacy" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Pharmacy&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ nome: String&lt;br&gt;+ cnpj: String&lt;br&gt;+ id_dono: ObjectId&lt;br&gt;+ location: GeoJSON&lt;br&gt;+ formas_pagamento: String[]&lt;br&gt;+ tipos_entrega: String[]&lt;hr size='1'&gt;+ paginate()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="60" width="265" height="171" as="geometry" />
+        </mxCell>
+        <mxCell id="Pharmacist" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Pharmacist&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ crm: String&lt;br&gt;+ disponivel_chat: Boolean&lt;br&gt;+ status_motivo: String&lt;hr size='1'&gt;+ atualizarStatus()&lt;br&gt;+ registrarMetrica()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="315" width="265" height="173" as="geometry" />
+        </mxCell>
+        <mxCell id="Product" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Product&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_catalogo: ObjectId&lt;br&gt;+ nome: String&lt;br&gt;+ preco: Number&lt;br&gt;+ estoque: Number&lt;br&gt;+ receita_obrigatoria: Boolean&lt;br&gt;+ controlado: Boolean&lt;hr size='1'&gt;+ get preco_final()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="670" y="60" width="265" height="183" as="geometry" />
+        </mxCell>
+        <mxCell id="MedicineCatalog" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;MedicineCatalog&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ nome: String&lt;br&gt;+ principio_ativo: String&lt;br&gt;+ categoria: String&lt;br&gt;+ classificacao_receita: String&lt;br&gt;+ registro_anvisa: String&lt;br&gt;+ codigo_ean: String&lt;hr size='1'&gt;+ paginate()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="985" y="60" width="265" height="171" as="geometry" />
+        </mxCell>
+        <mxCell id="Cart" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Cart&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_endereco_entrega: ObjectId&lt;br&gt;+ itens: CartItem[]&lt;br&gt;+ subtotal: Number&lt;br&gt;+ total: Number&lt;hr size='1'&gt;+ recalcularTotais()&lt;br&gt;+ renovarExpiracao()&lt;br&gt;+ preValidateFarmaciaUnica()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="570" width="265" height="199" as="geometry" />
+        </mxCell>
+        <mxCell id="CartItem" value="&amp;lt;&amp;lt;Subdocument&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;CartItem&lt;/b&gt;&lt;hr size='1'&gt;+ id_produto: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_receita: ObjectId&lt;br&gt;+ preco_unitario: Number&lt;br&gt;+ quantidade: Number&lt;br&gt;+ subtotal: Number&lt;hr size='1'&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="570" width="265" height="145" as="geometry" />
+        </mxCell>
+        <mxCell id="Order" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Order&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_entrega: ObjectId&lt;br&gt;+ itens: OrderItem[]&lt;br&gt;+ status: String&lt;br&gt;+ status_pagamento: String&lt;br&gt;+ total: Number&lt;hr size='1'&gt;+ adicionarHistoricoStatus()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="670" y="570" width="265" height="183" as="geometry" />
+        </mxCell>
+        <mxCell id="OrderItem" value="&amp;lt;&amp;lt;Subdocument&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;OrderItem&lt;/b&gt;&lt;hr size='1'&gt;+ id_produto: ObjectId&lt;br&gt;+ id_receita: ObjectId&lt;br&gt;+ nome_produto: String&lt;br&gt;+ preco_unitario: Number&lt;br&gt;+ quantidade: Number&lt;br&gt;+ subtotal: Number&lt;br&gt;+ classificacao_receita: String&lt;hr size='1'&gt;" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="985" y="570" width="265" height="157" as="geometry" />
+        </mxCell>
+        <mxCell id="Payment" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Payment&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_pedido: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ gateway: String&lt;br&gt;+ forma_pagamento: String&lt;br&gt;+ valor: Number&lt;br&gt;+ status: String&lt;hr size='1'&gt;+ registrarGatewayStatus()&lt;br&gt;+ calcularSplit()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="670" y="845" width="265" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="Delivery" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Delivery&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_pedido: ObjectId&lt;br&gt;+ id_entregador: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_cliente: ObjectId&lt;br&gt;+ status: String&lt;br&gt;+ historico_status: HistoricoEntrega[]&lt;hr size='1'&gt;+ adicionarHistorico()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="985" y="845" width="265" height="171" as="geometry" />
+        </mxCell>
+        <mxCell id="Prescription" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Prescription&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_produto: ObjectId&lt;br&gt;+ url_arquivo: String&lt;br&gt;+ tipo_receita: String&lt;br&gt;+ status: String&lt;br&gt;+ chat_mensagens: ChatMensagem[]&lt;hr size='1'&gt;+ adicionarHistorico()&lt;br&gt;+ validarValidade()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="845" width="265" height="197" as="geometry" />
+        </mxCell>
+        <mxCell id="PrescriptionUseLog" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;PrescriptionUseLog&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_receita: ObjectId&lt;br&gt;+ id_pedido: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ status_uso: String&lt;br&gt;+ token_unico: String&lt;hr size='1'&gt;+ adicionarValidacao()&lt;br&gt;+ aprovar()&lt;br&gt;+ rejeitar()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="845" width="265" height="199" as="geometry" />
+        </mxCell>
+        <mxCell id="ReceitaDigital" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;ReceitaDigital&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ prescriptionId: ObjectId&lt;br&gt;+ paciente: Object&lt;br&gt;+ farmaceutico: Object&lt;br&gt;+ medicamentos: Object[]&lt;br&gt;+ assinatura: String&lt;br&gt;+ hash: String&lt;hr size='1'&gt;+ verificarIntegridade()&lt;br&gt;+ preSaveGerarHash()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1120" width="265" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="Review" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Review&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ nota: Number&lt;br&gt;+ comentario: String&lt;br&gt;+ resposta_loja: String&lt;hr size='1'&gt;+ validarNota()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="1120" width="265" height="159" as="geometry" />
+        </mxCell>
+        <mxCell id="SupportMessage" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;SupportMessage&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ id_atendente: ObjectId&lt;br&gt;+ id_farmacia: ObjectId&lt;br&gt;+ assunto: String&lt;br&gt;+ status: String&lt;br&gt;+ mensagens: Message[]&lt;hr size='1'&gt;+ adicionarMensagem()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="670" y="1120" width="265" height="171" as="geometry" />
+        </mxCell>
+        <mxCell id="Coupon" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;Coupon&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ codigo: String&lt;br&gt;+ tipo_desconto: String&lt;br&gt;+ valor: Number&lt;br&gt;+ validade: Date&lt;br&gt;+ limite_uso: Number&lt;br&gt;+ usuarios_utilizaram: Object[]&lt;hr size='1'&gt;+ validarUso()&lt;br&gt;+ registrarUso()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1120" width="265" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="AuditLog" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;AuditLog&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ usuario_id: ObjectId&lt;br&gt;+ acao: String&lt;br&gt;+ recurso: String&lt;br&gt;+ status: String&lt;br&gt;+ criado_em: Date&lt;br&gt;+ valores_novos: Mixed&lt;hr size='1'&gt;+ registrarAcao()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1395" width="265" height="171" as="geometry" />
+        </mxCell>
+        <mxCell id="FraudAlert" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;FraudAlert&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ id_usuario: ObjectId&lt;br&gt;+ investigador: ObjectId&lt;br&gt;+ tipo_alerta: String&lt;br&gt;+ nivel_risco: String&lt;br&gt;+ status: String&lt;hr size='1'&gt;+ resolver()&lt;br&gt;+ marcarFalsoPositivo()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="1395" width="265" height="173" as="geometry" />
+        </mxCell>
+        <mxCell id="MedicineTracking" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;MedicineTracking&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ medicamento_id: ObjectId&lt;br&gt;+ lote: String&lt;br&gt;+ farmacia_origem: ObjectId&lt;br&gt;+ cliente_destino: ObjectId&lt;br&gt;+ etapas: Etapa[]&lt;br&gt;+ status: String&lt;hr size='1'&gt;+ get etapa_atual()&lt;br&gt;+ adicionarEtapa()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="670" y="1395" width="265" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="DrugInteraction" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;DrugInteraction&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ medicamento1: Object&lt;br&gt;+ medicamento2: Object&lt;br&gt;+ severidade: String&lt;br&gt;+ mecanismo: String&lt;br&gt;+ recomendacao: String&lt;hr size='1'&gt;+ buscarPorPrincipioAtivo()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="985" y="1395" width="265" height="159" as="geometry" />
+        </mxCell>
+        <mxCell id="DrugContraindication" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;DrugContraindication&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ medicamento: Object&lt;br&gt;+ condicoes: Object[]&lt;br&gt;+ restricoes_populacao: Object[]&lt;br&gt;+ alergias_cruzadas: Object[]&lt;br&gt;+ fonte: String&lt;hr size='1'&gt;+ buscarPorMedicamento()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="40" y="1665" width="265" height="159" as="geometry" />
+        </mxCell>
+        <mxCell id="FAQ" value="&amp;lt;&amp;lt;Mongoose Model&amp;gt;&amp;gt;&lt;br&gt;&lt;b&gt;FAQ&lt;/b&gt;&lt;hr size='1'&gt;+ _id: ObjectId&lt;br&gt;+ pergunta: String&lt;br&gt;+ resposta: String&lt;br&gt;+ categoria: String&lt;br&gt;+ tags: String[]&lt;br&gt;+ ativo: Boolean&lt;br&gt;+ ordem: Number&lt;hr size='1'&gt;+ buscarPorTexto()&lt;br&gt;+ registrarAvaliacao()" style="swimlane;fontStyle=1;align=center;verticalAlign=top;childLayout=stackLayout;horizontal=1;startSize=28;horizontalStack=0;resizeParent=1;resizeParentMax=0;resizeLast=0;collapsible=0;marginBottom=0;whiteSpace=wrap;html=1;strokeColor=#000000;fillColor=#ffffff;fontSize=10;" vertex="1" parent="1">
+          <mxGeometry x="355" y="1665" width="265" height="185" as="geometry" />
+        </mxCell>
+        <mxCell id="rel1" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Address">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel2" value="1   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Cart">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel3" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel4" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel5" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel6" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="SupportMessage">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel7" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="AuditLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel8" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="FraudAlert">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel9" value="1   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Pharmacist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel10" value="1   0..* dono" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="User" target="Pharmacy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel11" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel12" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Pharmacist">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel13" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Order">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel14" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Review">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel15" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Pharmacy" target="Delivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel16" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="MedicineCatalog" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel17" value="1   1..*" style="startArrow=diamondThin;startFill=1;endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Cart" target="CartItem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel18" value="0..*   1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="CartItem" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel19" value="0..*   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="CartItem" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel20" value="1   1..*" style="startArrow=diamondThin;startFill=1;endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="OrderItem">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel21" value="0..*   1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="OrderItem" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel22" value="0..*   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="OrderItem" target="Prescription">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel23" value="1   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Payment">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel24" value="1   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Order" target="Delivery">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel25" value="1   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Prescription" target="PrescriptionUseLog">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel26" value="1   0..1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Prescription" target="ReceitaDigital">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel27" value="0..*   1 cliente/entregador" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Delivery" target="User">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel28" value="0..*   1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="MedicineTracking" target="Product">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel29" value="0..*   1" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="MedicineTracking" target="Pharmacy">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel30" value="0..*   1 cliente" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="MedicineTracking" target="User">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+        <mxCell id="rel31" value="0..*   0..*" style="endArrow=none;html=1;rounded=0;strokeColor=#000000;fontSize=10;labelBackgroundColor=#ffffff;" edge="1" parent="1" source="Coupon" target="User">
+          <mxGeometry relative="1" as="geometry" />
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
