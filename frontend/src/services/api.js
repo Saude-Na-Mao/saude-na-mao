@@ -138,9 +138,9 @@ api.interceptors.response.use(
       return Promise.reject({
         status: 'NETWORK_ERROR',
         message: isAuth
-          ? 'Conectando ao servidor… Se acabou de iniciar o backend, aguarde até 1 minuto (MongoDB Atlas) e tente de novo.'
+          ? 'Conectando ao servidor… Se acabou de iniciar o backend, aguarde até 1 minuto e tente de novo.'
           : timedOut
-            ? 'Servidor demorou a responder. Aguarde "MongoDB conectado" no terminal do backend e recarregue a página.'
+            ? 'Servidor demorou a responder. Aguarde o backend ficar pronto e recarregue a página.'
             : ERROR_MESSAGES.NETWORK,
       })
     }

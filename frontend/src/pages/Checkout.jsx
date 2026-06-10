@@ -385,7 +385,7 @@ export default function Checkout() {
             <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 mb-6 text-left">
               <p className="text-sm text-amber-800 font-semibold mb-1">Medicamento com controle especial</p>
               <p className="text-xs text-amber-700">
-                A dispensação real depende de farmácia regularizada, responsável técnico e validação conforme a classificação da receita.
+                O pedido foi enviado para validação farmacêutica conforme a classificação da receita.
               </p>
             </div>
           )}
@@ -616,7 +616,7 @@ export default function Checkout() {
             {/* Dados do Cartão (visual only) */}
             {(paymentMethod === 'cartao_credito' || paymentMethod === 'cartao_debito') && (
               <div className="mt-5 p-4 bg-gray-50 rounded-xl space-y-3">
-                <p className="text-xs text-gray-400 mb-2">Os dados abaixo são apenas ilustrativos e não serão processados.</p>
+                <p className="text-xs text-gray-400 mb-2">Informe os dados do cartão para confirmar o pedido.</p>
                 <div>
                   <label className="block text-xs font-medium text-gray-500 mb-1">Número do Cartão</label>
                   <input

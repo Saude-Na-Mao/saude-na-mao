@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { MapPin, Clock, Shield, Zap, ArrowRight, Star, Truck, CreditCard, Headphones, Tag, ChevronRight, Search, Percent } from 'lucide-react'
+import { MapPin, Clock, Shield, ArrowRight, Star, Truck, CreditCard, Tag, ChevronRight, Search, Percent } from 'lucide-react'
 import { couponService, pharmacyService, productService } from '../services/api'
 import { useAuthStore } from '../stores/store'
 import ProductCard from '../components/ProductCard'
@@ -57,25 +57,25 @@ export default function Home() {
   return (
     <div>
       <section className="bg-gradient-to-br from-primary-800 via-primary-700 to-secondary border-b border-primary-900/20">
-        <div className="page-shell py-8 sm:py-10 lg:py-14">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.08fr_0.92fr] gap-8 lg:gap-12 items-center">
+        <div className="page-shell py-10 sm:py-12 lg:py-16">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-5 lg:gap-8 items-center">
             <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full mb-5">
+              <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full mb-4">
                 <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
-                Compra segura com farmácias locais verificadas
+                Farmácias locais verificadas
               </div>
-              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-normal">
-                Medicamentos, farmácias e suporte farmacêutico em um só lugar
+              <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-normal max-w-4xl">
+                Medicamentos na sua mão
               </h1>
-              <p className="text-base sm:text-lg text-white/80 mt-4 max-w-2xl leading-relaxed">
-                Compare preços em Goiânia, envie receitas quando necessário e acompanhe a entrega sem sair do app.
+              <p className="text-base sm:text-lg text-white/80 mt-3 max-w-2xl leading-snug">
+                Compre, pague e acompanhe a entrega em Goiânia.
               </p>
 
               <form
                 onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}`) }}
-                className="mt-6 max-w-2xl"
+                className="mt-5 max-w-3xl"
               >
-                <div className="flex flex-col sm:flex-row gap-2 rounded-2xl border border-gray-200 bg-white p-2 shadow-soft">
+                <div className="flex flex-col sm:flex-row gap-2 rounded-xl border border-gray-200 bg-white p-2 shadow-soft">
                   <div className="relative flex-1">
                     <Search className="absolute left-3.5 top-1/2 -translate-y-1/2 w-5 h-5 text-gray-400" />
                     <input
@@ -88,7 +88,7 @@ export default function Home() {
                   </div>
                   <button
                     type="submit"
-                    className="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-3 rounded-xl font-semibold text-sm hover:bg-secondary transition"
+                    className="inline-flex items-center justify-center gap-2 bg-primary text-white px-5 py-3 rounded-lg font-semibold text-sm hover:bg-secondary transition"
                   >
                     Buscar
                     <ArrowRight className="w-4 h-4" />
@@ -96,7 +96,7 @@ export default function Home() {
                 </div>
               </form>
 
-              <div className="mt-5 flex flex-wrap gap-2">
+              <div className="mt-4 flex flex-wrap gap-2">
                 {[
                   { label: 'Farmácias abertas', to: '/farmacias' },
                   { label: 'Medicamentos populares', to: '/produtos' },
@@ -115,11 +115,11 @@ export default function Home() {
             </div>
 
             <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-2xl border border-white/20 bg-white p-5 shadow-sm">
+              <div className="rounded-xl border border-white/20 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pedido rápido</p>
-                    <h2 className="mt-1 text-xl font-bold text-gray-900">Entrega em até 4 horas</h2>
+                    <h2 className="mt-1 text-xl font-bold text-gray-900">Entrega rápida</h2>
                   </div>
                   <Truck className="w-9 h-9 text-emerald-600" />
                 </div>
@@ -139,16 +139,13 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/20 bg-emerald-50 p-5 text-gray-900 shadow-sm">
+              <div className="rounded-xl border border-white/20 bg-emerald-50 p-5 text-gray-900 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
                     <Shield className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h2 className="font-bold">Receitas e controlados com validação</h2>
-                    <p className="mt-1 text-sm text-gray-600">
-                      Fluxo pensado para segurança, LGPD e atendimento farmacêutico.
-                    </p>
+                    <h2 className="font-bold">Receitas com validação</h2>
                     <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
                       Enviar receita <ChevronRight className="w-4 h-4" />
                     </Link>
@@ -158,7 +155,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
               ['50k+', 'Pedidos entregues'],
               ['4.9', 'Avaliação média'],
@@ -175,8 +172,8 @@ export default function Home() {
       </section>
 
       {coupons.length > 0 && (
-        <section className="py-10 bg-gradient-to-r from-amber-50 to-orange-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
+        <section className="py-8 bg-gradient-to-r from-amber-50 to-orange-50">
+          <div className="page-shell">
             <div className="flex items-center justify-between mb-6">
               <div className="flex items-center gap-2">
                 <Tag className="w-5 h-5 text-orange-500" />
@@ -204,9 +201,9 @@ export default function Home() {
       )}
 
       {(pharmacies.length > 0 || loadingPharmacies) && (
-        <section className="py-16 bg-white">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex items-center justify-between mb-8">
+        <section className="py-10 bg-white">
+          <div className="page-shell">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <span className="text-primary font-semibold text-sm uppercase tracking-wider">Perto de você</span>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">Farmácias em Goiânia</h2>
@@ -215,7 +212,7 @@ export default function Home() {
                 Ver todas <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
               {loadingPharmacies
                 ? Array.from({ length: 6 }).map((_, i) => <PharmacyCardSkeleton key={i} />)
                 : pharmacies.map((pharmacy) => {
@@ -253,9 +250,9 @@ export default function Home() {
       )}
 
       {(featuredProducts.length > 0 || loadingProducts) && (
-        <section className="py-16 bg-gray-50">
-          <div className="max-w-7xl mx-auto px-4 sm:px-6">
-            <div className="flex items-center justify-between mb-8">
+        <section className="py-10 bg-gray-50">
+          <div className="page-shell">
+            <div className="flex items-center justify-between mb-6">
               <div>
                 <span className="text-primary font-semibold text-sm uppercase tracking-wider">Destaque</span>
                 <h2 className="text-2xl sm:text-3xl font-bold text-gray-900 mt-1">Produtos em Destaque</h2>
@@ -264,7 +261,7 @@ export default function Home() {
                 Ver todos <ChevronRight className="w-4 h-4" />
               </Link>
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-5">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 xl:grid-cols-5 gap-4">
               {loadingProducts
                 ? Array.from({ length: 4 }).map((_, i) => <ProductCardSkeleton key={i} />)
                 : featuredProducts.map((product) => (
@@ -276,24 +273,21 @@ export default function Home() {
         </section>
       )}
 
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
+      <section className="py-10 bg-gray-50">
+        <div className="page-shell">
+          <div className="text-center mb-8">
             <span className="text-primary font-semibold text-sm uppercase tracking-wider">Nossos Diferenciais</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
-              Por que escolher Saúde na Mão?
+              Compra simples e segura
             </h2>
-            <p className="text-gray-500 mt-3 max-w-2xl mx-auto">
-              Oferecemos uma experiência completa de compra de medicamentos, com foco em agilidade, segurança e praticidade.
-            </p>
           </div>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
             <div className="card p-6 text-center group hover:-translate-y-1 transition-all duration-300">
               <div className="w-14 h-14 bg-blue-50 group-hover:bg-blue-100 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-colors">
-                <Zap className="text-blue-600 w-6 h-6" />
+                <Truck className="text-blue-600 w-6 h-6" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Entrega Rápida</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Receba seus medicamentos em até 4 horas na sua região</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Receba na sua região</p>
             </div>
 
             <div className="card p-6 text-center group hover:-translate-y-1 transition-all duration-300">
@@ -301,7 +295,7 @@ export default function Home() {
                 <CreditCard className="text-green-600 w-6 h-6" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Pagamento Seguro</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Diversas formas de pagamento com total segurança</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Pix, cartão ou dinheiro</p>
             </div>
 
             <div className="card p-6 text-center group hover:-translate-y-1 transition-all duration-300">
@@ -309,29 +303,29 @@ export default function Home() {
                 <Shield className="text-purple-600 w-6 h-6" />
               </div>
               <h3 className="font-semibold text-gray-900 mb-2">Dados Protegidos</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Suas informações sempre criptografadas e seguras</p>
+              <p className="text-gray-500 text-sm leading-relaxed">Conta e pedidos protegidos</p>
             </div>
 
             <div className="card p-6 text-center group hover:-translate-y-1 transition-all duration-300">
               <div className="w-14 h-14 bg-orange-50 group-hover:bg-orange-100 rounded-2xl flex items-center justify-center mx-auto mb-5 transition-colors">
-                <Headphones className="text-orange-600 w-6 h-6" />
+                <CreditCard className="text-orange-600 w-6 h-6" />
               </div>
-              <h3 className="font-semibold text-gray-900 mb-2">Suporte 24/7</h3>
-              <p className="text-gray-500 text-sm leading-relaxed">Atendimento humanizado a qualquer momento</p>
+              <h3 className="font-semibold text-gray-900 mb-2">Comprovante</h3>
+              <p className="text-gray-500 text-sm leading-relaxed">Pedido registrado no app</p>
             </div>
           </div>
         </div>
       </section>
 
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
+      <section className="py-10 bg-gray-50">
+        <div className="page-shell">
+          <div className="text-center mb-8">
             <span className="text-primary font-semibold text-sm uppercase tracking-wider">Como funciona</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
               Simples e rápido
             </h2>
           </div>
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-4xl mx-auto">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-5 max-w-5xl mx-auto">
             <div className="text-center">
               <div className="w-16 h-16 bg-primary/10 rounded-2xl flex items-center justify-center mx-auto mb-5">
                 <span className="text-2xl font-bold text-primary">1</span>
@@ -358,8 +352,8 @@ export default function Home() {
       </section>
 
       {!isAuthenticated() && (
-      <section className="py-20 bg-white">
-        <div className="max-w-4xl mx-auto px-4 sm:px-6 text-center">
+      <section className="py-10 bg-white">
+        <div className="page-shell text-center">
           <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl p-8 sm:p-12 text-white relative overflow-hidden">
             <div className="relative">
               <h2 className="text-3xl sm:text-4xl font-bold mb-4">Pronto para começar?</h2>
@@ -379,9 +373,9 @@ export default function Home() {
       </section>
       )}
 
-      <section className="py-20 bg-gray-50">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6">
-          <div className="text-center mb-14">
+      <section className="py-10 bg-gray-50">
+        <div className="page-shell">
+          <div className="text-center mb-8">
             <span className="text-primary font-semibold text-sm uppercase tracking-wider">FAQ</span>
             <h2 className="text-3xl sm:text-4xl font-bold text-gray-900 mt-2">
               Dúvidas Frequentes

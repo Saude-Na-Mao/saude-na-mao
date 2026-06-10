@@ -10,9 +10,9 @@ const TABS = [
 const FAQS = [
   {
     id: 1,
-    pergunta: 'Este sistema vende medicamentos de verdade?',
+    pergunta: 'Como funciona a compra de medicamentos?',
     resposta:
-      'Este ambiente demonstra o fluxo da plataforma. A operação real depende de farmácias licenciadas, responsáveis técnicos e integrações regulatórias.',
+      'A plataforma conecta clientes a farmácias cadastradas, com pedido, pagamento, validação farmacêutica quando necessário e acompanhamento da entrega.',
   },
   {
     id: 2,
@@ -24,19 +24,19 @@ const FAQS = [
     id: 3,
     pergunta: 'Posso conversar com um farmacêutico?',
     resposta:
-      'O chat é parte da simulação acadêmica. Para uso real, o atendimento farmacêutico deve ser prestado por profissional habilitado e vinculado a farmácia regularizada.',
+      'Sim. O atendimento farmacêutico fica disponível para dúvidas sobre receita, produtos e acompanhamento do pedido.',
   },
   {
     id: 4,
     pergunta: 'Como faço para usar uma receita digital?',
     resposta:
-      'Você pode anexar uma imagem ou PDF para demonstrar o fluxo de validação. Use dados fictícios sempre que possível, pois receitas são dados pessoais sensíveis.',
+      'Anexe uma imagem ou PDF da receita no fluxo de compra. A farmácia avalia o documento antes da liberação dos itens que exigem validação.',
   },
   {
     id: 5,
     pergunta: 'O pagamento é real?',
     resposta:
-      'Não. Os métodos de pagamento são ilustrativos para demonstrar experiência de checkout. Nenhum cartão ou Pix real deve ser processado neste protótipo.',
+      'O pagamento é confirmado no fluxo do pedido e registrado no comprovante exibido ao cliente.',
   },
   {
     id: 6,
@@ -49,34 +49,33 @@ const FAQS = [
 const TERMOS_CONTENT = `
 # Termos de Uso - Saúde na Mão
 
-**Última atualização: 26 de Maio de 2026**
+**Última atualização: 10 de Junho de 2026**
 
 ## 1. Aceitação dos Termos
-Ao acessar esta plataforma, você reconhece que o ambiente atual apresenta fluxos de demonstração técnica.
+Ao acessar a plataforma, você concorda com estes Termos de Uso e com as regras aplicáveis aos pedidos realizados.
 
 ## 2. Descrição do Serviço
-Saúde na Mão apresenta uma plataforma de farmácias, produtos, upload de receita, pedido e acompanhamento de entrega.
-O sistema não realiza venda real, pagamento real, prescrição, diagnóstico ou dispensação efetiva de medicamentos.
+Saúde na Mão conecta clientes a farmácias cadastradas, permitindo busca de produtos, envio de receita, pagamento, acompanhamento de pedidos e suporte.
 
-## 3. Uso de Demonstração
-Os dados de farmácias, produtos, receitas, pagamentos e entregas podem ser fictícios. Para testes, não envie receitas reais nem documentos com dados pessoais sensíveis.
+## 3. Conta e Pedidos
+O usuário deve informar dados corretos de cadastro, endereço e contato. A confirmação do pedido depende de disponibilidade, pagamento e validação farmacêutica quando aplicável.
 
 ## 4. Medicamentos e Receitas
-- Medicamentos com receita exigem validação farmacêutica simulada antes do checkout.
+- Medicamentos com receita exigem validação farmacêutica antes da liberação.
 - Medicamentos controlados exigem atendimento direto da farmácia e regras específicas.
-- O protótipo não substitui orientação médica ou farmacêutica.
-- Qualquer operação real exigiria farmácia regularizada, responsável técnico, documentação sanitária e cumprimento das normas aplicáveis.
+- A plataforma não substitui consulta médica, prescrição ou orientação individualizada.
+- A farmácia é responsável pela dispensação conforme normas sanitárias aplicáveis.
 
 ## 5. Responsabilidades do Usuário
-- Usar o sistema apenas para demonstração acadêmica.
+- Usar a plataforma de forma adequada.
 - Não inserir dados de terceiros sem autorização.
-- Não tentar burlar autenticação, regras de receita ou bloqueios regulatórios.
+- Não tentar burlar autenticação, regras de receita ou validações de segurança.
 
 ## 6. Limitação de Responsabilidade
-As informações exibidas são demonstrativas. Decisões reais sobre medicamentos devem ser feitas com médico, farmacêutico e farmácia autorizada.
+A plataforma organiza o fluxo do pedido. Decisões clínicas, prescrição, substituição terapêutica e dispensação dependem de profissionais habilitados e farmácias autorizadas.
 
 ## 7. Alterações
-Estes termos podem ser alterados conforme o projeto evoluir ou novas exigências acadêmicas e regulatórias forem identificadas.
+Estes termos podem ser alterados conforme evolução do serviço, exigências legais ou melhorias operacionais.
 
 ## 8. Lei Aplicável
 Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil.
@@ -85,25 +84,25 @@ Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil.
 const PRIVACIDADE_CONTENT = `
 # Política de Privacidade - Saúde na Mão
 
-**Última atualização: 26 de Maio de 2026**
+**Última atualização: 10 de Junho de 2026**
 
 ## 1. Finalidade
 Esta política descreve como a plataforma trata dados pessoais durante cadastro, login, carrinho, receita, pedido e suporte.
 
 ## 2. Dados Coletados
 - **Cadastro**: nome, email, telefone e endereço informado.
-- **Pedido**: itens do carrinho, farmácia escolhida, status e endereço de entrega simulado.
+- **Pedido**: itens do carrinho, farmácia escolhida, status, pagamento e endereço de entrega.
 - **Receita**: arquivo enviado e metadados de validação, quando o fluxo for usado.
 - **Segurança**: logs técnicos necessários para autenticação, auditoria e prevenção de abuso.
 
 ## 3. Dados Sensíveis
-Receitas médicas podem conter dados pessoais sensíveis. Em ambientes de teste, recomenda-se usar arquivos fictícios ou anonimizados.
+Receitas médicas podem conter dados pessoais sensíveis e são tratadas com controle de acesso e finalidade específica.
 
 ## 4. Uso dos Dados
-Os dados são usados para demonstrar funcionalidades do sistema, autenticar usuários, validar regras do carrinho e registrar histórico de pedidos.
+Os dados são usados para autenticar usuários, processar pedidos, validar regras do carrinho, registrar histórico, prestar suporte e proteger a plataforma.
 
 ## 5. Compartilhamento
-Em ambiente de demonstração, dados não devem ser enviados a farmácias, entregadores ou processadores de pagamento reais. Qualquer integração real exigiria contrato, base legal, medidas de segurança e informação clara ao titular.
+Dados podem ser compartilhados com farmácias, entregadores e serviços necessários ao processamento do pedido, sempre conforme finalidade, base legal e medidas de segurança.
 
 ## 6. Direitos do Titular
 Você tem direito a:
@@ -115,13 +114,13 @@ Você tem direito a:
 Para exercer esses direitos, contate o responsável pela plataforma.
 
 ## 7. Retenção
-Dados de teste devem ser mantidos pelo menor tempo necessário para validação do produto. Arquivos de receita devem ser removidos ou anonimizados após a demonstração.
+Dados são mantidos pelo tempo necessário para execução do serviço, cumprimento legal, auditoria e segurança.
 
 ## 8. Segurança
-O projeto usa autenticação, controle de acesso e validações de backend. Mesmo assim, não deve receber documentos reais sem necessidade operacional e autorização adequada.
+O projeto usa autenticação, controle de acesso, validações de backend e registro de eventos relevantes.
 
 ## 9. Alterações
-Esta política pode ser atualizada conforme o protótipo evoluir.
+Esta política pode ser atualizada conforme evolução do serviço.
 `.trim()
 
 export default function Legal() {
@@ -268,9 +267,9 @@ export default function Legal() {
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">
           <div className="bg-white rounded-lg p-4 shadow text-center">
             <CheckCircle className="w-8 h-8 text-green-500 mx-auto mb-2" />
-            <h3 className="font-semibold text-gray-900 mb-1">Ambiente de Demonstração</h3>
+            <h3 className="font-semibold text-gray-900 mb-1">Operação Monitorada</h3>
             <p className="text-sm text-gray-600">
-              Fluxos preparados para apresentação e validação
+              Fluxos com autenticação, pedido e acompanhamento
             </p>
           </div>
 

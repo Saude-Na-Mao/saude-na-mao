@@ -1,7 +1,7 @@
 import { useState, useEffect } from 'react'
 import { useParams, useNavigate, Link } from 'react-router-dom'
 import { useAuthStore } from '../stores/store'
-import { orderService, paymentService } from '../services/api'
+import { orderService } from '../services/api'
 import LoadingSpinner from '../components/LoadingSpinner'
 import {
   CheckCircle,
@@ -15,7 +15,6 @@ import {
   Store,
   Calendar,
   Hash,
-  FlaskConical,
 } from 'lucide-react'
 
 const PAYMENT_LABELS = {
@@ -41,7 +40,6 @@ export default function Comprovante() {
   const navigate = useNavigate()
   const { token } = useAuthStore()
   const [order, setOrder] = useState(null)
-  const [paymentRecord, setPaymentRecord] = useState(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -55,23 +53,12 @@ export default function Comprovante() {
   const loadOrder = async () => {
     try {
       setLoading(true)
-      const [orderRes, payRes] = await Promise.allSettled([
-        orderService.getById(id),
-        paymentService.getStatus(id),
-      ])
-      if (orderRes.status === 'fulfilled') {
-        const d = orderRes.value.data?.data
-        setOrder(d?.pedido || d || null)
-      } else {
-        setOrder(null)
-      }
-      if (payRes.status === 'fulfilled') {
-        setPaymentRecord(payRes.value.data?.data?.pagamento || null)
-      } else {
-        setPaymentRecord(null)
-      }
+      const orderRes = await orderService.getById(id)
+      const d = orderRes.data?.data
+      setOrder(d?.pedido || d || null)
     } catch (err) {
       console.error('Erro ao carregar pedido:', err)
+      setOrder(null)
     } finally {
       setLoading(false)
     }
@@ -90,10 +77,7 @@ export default function Comprovante() {
     )
   }
 
-  const isTestPayment = paymentRecord?.gateway === 'teste'
-  const payment = isTestPayment
-    ? { label: 'Pagamento simulado (teste)', icon: FlaskConical, color: 'text-amber-700', bg: 'bg-amber-50' }
-    : (PAYMENT_LABELS[order.metodo_pagamento] || PAYMENT_LABELS.pix)
+  const payment = PAYMENT_LABELS[order.metodo_pagamento] || PAYMENT_LABELS.pix
   const PayIcon = payment.icon
   const status = STATUS_MAP[order.status] || STATUS_MAP.em_processamento
   const endereco = order.endereco_entrega || {}
@@ -127,26 +111,11 @@ export default function Comprovante() {
           </div>
           <h1 className="text-2xl font-bold">Comprovante do Pedido</h1>
           <p className="text-white/80 text-sm mt-1">
-            {isTestPayment ? 'Pagamento simulado — sem valor real' : 'Apenas para visualização'}
+            Pagamento confirmado e pedido registrado
           </p>
         </div>
 
         <div className="p-6 space-y-6">
-          {isTestPayment && (
-            <div
-              className="flex gap-3 rounded-xl border-2 border-dashed border-amber-400 bg-amber-50 px-4 py-3 text-sm text-amber-900"
-              role="status"
-            >
-              <FlaskConical className="w-5 h-5 shrink-0 text-amber-600 mt-0.5" />
-              <div>
-                <p className="font-bold">Modo teste</p>
-                <p className="text-xs text-amber-800/90 mt-0.5">
-                  Este comprovante refere-se a um pagamento simulado no ambiente de desenvolvimento.
-                  Nenhuma transação financeira real foi processada.
-                </p>
-              </div>
-            </div>
-          )}
           {/* Info geral */}
           <div className="grid grid-cols-2 gap-4">
             <div className="flex items-start gap-3">

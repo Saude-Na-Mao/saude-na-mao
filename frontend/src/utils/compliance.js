@@ -7,12 +7,12 @@ const prescriptionClasses = new Set([
 
 const controlledClasses = new Set(['tarja_preta', 'controlado_a'])
 
-export const TCC_DEMO_MODE = import.meta.env.VITE_TCC_DEMO_MODE !== 'false'
+export const TCC_DEMO_MODE = import.meta.env.VITE_TCC_DEMO_MODE === 'true'
 export const ALLOW_CONTROLLED_REMOTE_SALE =
   import.meta.env.VITE_ALLOW_CONTROLLED_REMOTE_SALE !== 'false'
 
 export const COMPLIANCE_DEMO_NOTICE =
-  'Demonstração controlada: não realiza dispensação real de medicamentos. Compras com receita, incluindo tarja preta, dependem de validação farmacêutica antes do pedido.'
+  'Compras com receita dependem de validação farmacêutica antes do pedido.'
 
 export function requiresPrescription(product) {
   const classification = product?.classificacao_receita || 'sem_receita'

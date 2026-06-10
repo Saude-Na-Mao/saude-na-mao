@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, useCallback } from 'react'
+import { useState, useEffect, useRef, useCallback, useMemo } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { useAuthStore, useUiStore } from '../stores/store'
 import {
@@ -20,6 +20,7 @@ import {
   FileText, MessageSquare, Clock, ChevronDown, ChevronUp, User,
   RefreshCw, Package, ShoppingCart, Plus, Edit2, XCircle, Users, AlertTriangle,
   ClipboardList, Eye, MapPin, Star, LayoutDashboard, TrendingUp, DollarSign, Search, Menu, X,
+  BarChart3, Download, ArrowUpDown,
 } from 'lucide-react'
 import {
   ConversionFunnelCard,
@@ -218,7 +219,7 @@ export default function Farmaceutico() {
 
   return (
     <div className="min-h-screen bg-gray-50 pt-20 pb-12">
-      <div className="max-w-6xl mx-auto px-4">
+      <div className="w-full px-3 sm:px-4 lg:px-6">
         {/* Header */}
         <div className="mb-6 flex items-start justify-between gap-4">
           <div className="min-w-0">
@@ -234,7 +235,7 @@ export default function Farmaceutico() {
               </button>
             )}
             <h1 className="text-2xl font-bold text-gray-900">
-              {isOwner ? 'Painel do Dono da Farmácia' : 'Painel da Farmácia'}
+              {isOwner ? 'Dashboard da Farmácia' : 'Painel da Farmácia'}
             </h1>
             <p className="text-gray-500 text-sm mt-1">
               Bem-vindo, {user?.nome?.split(' ')[0]}!
@@ -577,13 +578,397 @@ function AvaliacoesRespostasPanel({ pharmacyId, resolvingPharmacy = false }) {
   )
 }
 
+const SALES_PERIOD_OPTIONS = [
+  { value: 'today', label: 'Hoje' },
+  { value: '7d', label: 'Últimos 7 dias' },
+  { value: '30d', label: 'Últimos 30 dias' },
+  { value: 'custom', label: 'Intervalo' },
+]
+
+function pad2(value) {
+  return String(value).padStart(2, '0')
+}
+
+function toDateInputValue(value = new Date()) {
+  const date = new Date(value)
+  return `${date.getFullYear()}-${pad2(date.getMonth() + 1)}-${pad2(date.getDate())}`
+}
+
+function startOfDay(value) {
+  const date = new Date(value)
+  date.setHours(0, 0, 0, 0)
+  return date
+}
+
+function endOfDay(value) {
+  const date = new Date(value)
+  date.setHours(23, 59, 59, 999)
+  return date
+}
+
+function getSalesPeriodRange(period, customStart, customEnd) {
+  const now = new Date()
+
+  if (period === 'today') {
+    return { start: startOfDay(now), end: endOfDay(now) }
+  }
+
+  if (period === '7d' || period === '30d') {
+    const days = period === '7d' ? 6 : 29
+    const start = new Date(now)
+    start.setDate(now.getDate() - days)
+    return { start: startOfDay(start), end: endOfDay(now) }
+  }
+
+  if (period === 'custom') {
+    return {
+      start: customStart ? startOfDay(`${customStart}T00:00:00`) : new Date(0),
+      end: customEnd ? endOfDay(`${customEnd}T00:00:00`) : endOfDay(now),
+    }
+  }
+
+  const start = new Date(now)
+  start.setDate(now.getDate() - 29)
+  return { start: startOfDay(start), end: endOfDay(now) }
+}
+
+function getOrderCreatedDate(order) {
+  const raw = order?.createdAt || order?.dataPedido || order?.created_at
+  if (!raw) return null
+  const date = new Date(raw)
+  return Number.isNaN(date.getTime()) ? null : date
+}
+
+function orderIsInRange(order, range) {
+  const date = getOrderCreatedDate(order)
+  if (!date) return false
+  return date >= range.start && date <= range.end
+}
+
+function formatBRL(value) {
+  return new Intl.NumberFormat('pt-BR', {
+    style: 'currency',
+    currency: 'BRL',
+  }).format(Number(value || 0))
+}
+
+function numberValue(value, fallback = 0) {
+  const n = Number(value)
+  return Number.isFinite(n) ? n : fallback
+}
+
+function getOrderTotal(order) {
+  return numberValue(order?.total ?? order?.valorTotal)
+}
+
+function getOrderItems(order) {
+  return Array.isArray(order?.itens) ? order.itens : []
+}
+
+function getProductName(item) {
+  return String(item?.nome_produto || item?.nome || item?.produto?.nome || 'Item').trim()
+}
+
+function getProductKey(item, name) {
+  const rawId = item?.id_produto?._id || item?.id_produto || item?.produto?._id || item?.produto?.id || name
+  return String(rawId || name).toLowerCase()
+}
+
+function getItemQuantity(item) {
+  return Math.max(1, numberValue(item?.quantidade ?? item?.quantity, 1))
+}
+
+function getItemRevenue(item) {
+  const subtotal = numberValue(item?.subtotal, NaN)
+  if (Number.isFinite(subtotal)) return subtotal
+  return getItemQuantity(item) * numberValue(item?.preco_unitario ?? item?.preco)
+}
+
+function isRevenueOrder(order) {
+  const status = getOrderDisplayStatusKey(order)
+  const paymentStatus = String(order?.status_pagamento || '').trim()
+  const blocked = ['cancelado', 'rejeitado'].includes(status)
+  const paid = paymentStatus === 'aprovado'
+  const activeSale = ['confirmado', 'em_processamento', 'a_caminho', 'entregue'].includes(status)
+  return !blocked && (paid || activeSale)
+}
+
+function buildSalesAnalysis(orders, range) {
+  const periodOrders = (orders || []).filter((order) => orderIsInRange(order, range))
+  const statusCounts = {}
+  const productsByKey = new Map()
+  let revenueOrders = 0
+  let totalRevenue = 0
+
+  periodOrders.forEach((order) => {
+    const status = getOrderDisplayStatusKey(order) || 'sem_status'
+    statusCounts[status] = (statusCounts[status] || 0) + 1
+
+    if (!isRevenueOrder(order)) return
+
+    revenueOrders += 1
+    totalRevenue += getOrderTotal(order)
+
+    const seenInOrder = new Set()
+    getOrderItems(order).forEach((item) => {
+      const name = getProductName(item)
+      const key = getProductKey(item, name)
+      const current = productsByKey.get(key) || {
+        key,
+        name,
+        orderCount: 0,
+        quantity: 0,
+        revenue: 0,
+      }
+
+      if (!seenInOrder.has(key)) {
+        current.orderCount += 1
+        seenInOrder.add(key)
+      }
+
+      current.quantity += getItemQuantity(item)
+      current.revenue += getItemRevenue(item)
+      productsByKey.set(key, current)
+    })
+  })
+
+  const products = [...productsByKey.values()]
+
+  return {
+    periodOrders,
+    totalOrders: periodOrders.length,
+    statusCounts,
+    deliveredOrders: statusCounts.entregue || 0,
+    rejectedOrders: (statusCounts.rejeitado || 0) + (statusCounts.cancelado || 0),
+    awaitingPaymentOrders: statusCounts.aguardando_pagamento || 0,
+    revenueOrders,
+    totalRevenue,
+    averageTicket: revenueOrders > 0 ? totalRevenue / revenueOrders : 0,
+    products,
+    byOrders: [...products].sort((a, b) => b.orderCount - a.orderCount || b.revenue - a.revenue),
+    byQuantity: [...products].sort((a, b) => b.quantity - a.quantity || b.revenue - a.revenue),
+    byRevenue: [...products].sort((a, b) => b.revenue - a.revenue || b.quantity - a.quantity),
+  }
+}
+
+function escapeCsv(value) {
+  return `"${String(value ?? '').replace(/"/g, '""')}"`
+}
+
+function exportProductsCsv(products) {
+  const rows = [
+    ['Produto', 'Pedidos em que apareceu', 'Unidades vendidas', 'Receita gerada'],
+    ...products.map((product) => [
+      product.name,
+      product.orderCount,
+      product.quantity,
+      product.revenue.toFixed(2).replace('.', ','),
+    ]),
+  ]
+  const csv = rows.map((row) => row.map(escapeCsv).join(';')).join('\n')
+  const blob = new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8;' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `analise-vendas-${toDateInputValue()}.csv`
+  link.click()
+  URL.revokeObjectURL(url)
+}
+
+function statusLabelForSales(status, statusLabels = {}) {
+  return statusLabels[status] || String(status || 'Sem status').replace(/_/g, ' ')
+}
+
+function SummaryMetric({ label, value, tone = 'gray' }) {
+  const tones = {
+    emerald: 'border-emerald-100 bg-emerald-50 text-emerald-900',
+    blue: 'border-blue-100 bg-blue-50 text-blue-900',
+    amber: 'border-amber-100 bg-amber-50 text-amber-900',
+    red: 'border-red-100 bg-red-50 text-red-900',
+    gray: 'border-gray-100 bg-white text-gray-900',
+  }
+
+  return (
+    <div className={`rounded-xl border p-4 ${tones[tone] || tones.gray}`}>
+      <p className="text-xs font-semibold uppercase tracking-wide opacity-70">{label}</p>
+      <p className="mt-2 text-2xl font-bold">{value}</p>
+    </div>
+  )
+}
+
+function RankingCard({ title, products, value }) {
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4">
+      <h3 className="text-sm font-bold text-gray-900">{title}</h3>
+      <div className="mt-3 space-y-2">
+        {products.slice(0, 5).length === 0 ? (
+          <p className="text-sm text-gray-400">Sem dados</p>
+        ) : (
+          products.slice(0, 5).map((product, index) => (
+            <div key={product.key} className="flex items-center justify-between gap-3 text-sm">
+              <span className="min-w-0 truncate text-gray-700">
+                {index + 1}. {product.name}
+              </span>
+              <span className="shrink-0 font-semibold text-gray-900">{value(product)}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function TopProductsBarChart({ products }) {
+  const top = products.slice(0, 5)
+  const max = Math.max(...top.map((product) => product.revenue), 1)
+
+  return (
+    <div className="rounded-xl border border-gray-100 bg-white p-4">
+      <h3 className="text-sm font-bold text-gray-900">Top 5 por receita</h3>
+      <div className="mt-4 space-y-3">
+        {top.length === 0 ? (
+          <p className="text-sm text-gray-400">Sem dados</p>
+        ) : (
+          top.map((product) => (
+            <div key={product.key} className="grid grid-cols-[minmax(90px,180px)_1fr_auto] items-center gap-3 text-sm">
+              <span className="truncate text-gray-600">{product.name}</span>
+              <div className="h-7 overflow-hidden rounded-full bg-gray-100">
+                <div
+                  className="h-full rounded-full bg-emerald-500"
+                  style={{ width: `${Math.max(8, (product.revenue / max) * 100)}%` }}
+                />
+              </div>
+              <span className="font-semibold text-gray-900">{formatBRL(product.revenue)}</span>
+            </div>
+          ))
+        )}
+      </div>
+    </div>
+  )
+}
+
+function SalesAnalysisPanel({ analysis, sortedProducts, sortConfig, onSort, statusLabels }) {
+  const renderSortIcon = (key) => (
+    <ArrowUpDown
+      className={`w-3.5 h-3.5 ${sortConfig.key === key ? 'text-primary' : 'text-gray-300'}`}
+    />
+  )
+
+  return (
+    <div className="p-4 sm:p-5 space-y-5">
+      <div className="grid grid-cols-2 lg:grid-cols-6 gap-3">
+        <SummaryMetric label="Pedidos" value={analysis.totalOrders} />
+        <SummaryMetric label="Entregues" value={analysis.deliveredOrders} tone="emerald" />
+        <SummaryMetric label="Rejeitados" value={analysis.rejectedOrders} tone="red" />
+        <SummaryMetric label="Aguardando" value={analysis.awaitingPaymentOrders} tone="amber" />
+        <SummaryMetric label="Ticket médio" value={formatBRL(analysis.averageTicket)} tone="blue" />
+        <SummaryMetric label="Receita" value={formatBRL(analysis.totalRevenue)} tone="emerald" />
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        <RankingCard
+          title="Mais vendidos por pedido"
+          products={analysis.byOrders}
+          value={(product) => `${product.orderCount} pedido(s)`}
+        />
+        <RankingCard
+          title="Maior quantidade"
+          products={analysis.byQuantity}
+          value={(product) => `${product.quantity} un.`}
+        />
+        <RankingCard
+          title="Maior receita"
+          products={analysis.byRevenue}
+          value={(product) => formatBRL(product.revenue)}
+        />
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[1fr_360px] gap-4">
+        <div className="overflow-x-auto rounded-xl border border-gray-100 bg-white">
+          <table className="w-full text-sm">
+            <thead className="bg-gray-50">
+              <tr>
+                {[
+                  ['name', 'Produto'],
+                  ['orderCount', 'Pedidos'],
+                  ['quantity', 'Unidades'],
+                  ['revenue', 'Receita'],
+                ].map(([key, label]) => (
+                  <th key={key} className="px-4 py-3 text-left font-semibold">
+                    <button
+                      type="button"
+                      onClick={() => onSort(key)}
+                      className="inline-flex items-center gap-1.5 text-gray-700 hover:text-primary"
+                    >
+                      {label}
+                      {renderSortIcon(key)}
+                    </button>
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {sortedProducts.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-8 text-center text-gray-400">
+                    Nenhum produto vendido no período
+                  </td>
+                </tr>
+              ) : (
+                sortedProducts.map((product) => (
+                  <tr key={product.key} className="border-t border-gray-100 hover:bg-gray-50">
+                    <td className="px-4 py-3 font-medium text-gray-900">{product.name}</td>
+                    <td className="px-4 py-3">{product.orderCount}</td>
+                    <td className="px-4 py-3">{product.quantity}</td>
+                    <td className="px-4 py-3 font-semibold">{formatBRL(product.revenue)}</td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+
+        <div className="space-y-4">
+          <TopProductsBarChart products={analysis.byRevenue} />
+          <div className="rounded-xl border border-gray-100 bg-white p-4">
+            <h3 className="text-sm font-bold text-gray-900">Pedidos por status</h3>
+            <div className="mt-3 space-y-2">
+              {Object.entries(analysis.statusCounts).length === 0 ? (
+                <p className="text-sm text-gray-400">Sem dados</p>
+              ) : (
+                Object.entries(analysis.statusCounts)
+                  .sort((a, b) => b[1] - a[1])
+                  .map(([status, count]) => (
+                    <div key={status} className="flex items-center justify-between gap-3 text-sm">
+                      <span className="truncate text-gray-600">{statusLabelForSales(status, statusLabels)}</span>
+                      <span className="font-semibold text-gray-900">{count}</span>
+                    </div>
+                  ))
+              )}
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
 /* ────────── Histórico de Pedidos ────────── */
 function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState(null)
   const [search, setSearch] = useState('')
+  const [viewMode, setViewMode] = useState('historico')
   const [statusFilter, setStatusFilter] = useState('')
+  const [salesPeriod, setSalesPeriod] = useState('30d')
+  const [customStart, setCustomStart] = useState(() => {
+    const date = new Date()
+    date.setDate(date.getDate() - 29)
+    return toDateInputValue(date)
+  })
+  const [customEnd, setCustomEnd] = useState(() => toDateInputValue())
+  const [sortConfig, setSortConfig] = useState({ key: 'revenue', direction: 'desc' })
   const [pickupCompletingId, setPickupCompletingId] = useState(null)
   const [codigoRetiradaPorPedido, setCodigoRetiradaPorPedido] = useState({})
 
@@ -717,6 +1102,36 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
     return blob.includes(termo)
   })
 
+  const salesRange = useMemo(
+    () => getSalesPeriodRange(salesPeriod, customStart, customEnd),
+    [salesPeriod, customStart, customEnd]
+  )
+
+  const salesAnalysis = useMemo(
+    () => buildSalesAnalysis(orders, salesRange),
+    [orders, salesRange]
+  )
+
+  const sortedProducts = useMemo(() => {
+    const direction = sortConfig.direction === 'asc' ? 1 : -1
+    return [...salesAnalysis.products].sort((a, b) => {
+      if (sortConfig.key === 'name') {
+        return direction * a.name.localeCompare(b.name, 'pt-BR')
+      }
+
+      const diff = numberValue(a[sortConfig.key]) - numberValue(b[sortConfig.key])
+      if (diff !== 0) return direction * diff
+      return a.name.localeCompare(b.name, 'pt-BR')
+    })
+  }, [salesAnalysis.products, sortConfig])
+
+  const handleProductSort = (key) => {
+    setSortConfig((current) => ({
+      key,
+      direction: current.key === key && current.direction === 'desc' ? 'asc' : 'desc',
+    }))
+  }
+
   if (resolvingPharmacy) return (
     <div className="bg-white rounded-xl shadow-sm p-12 text-center">
       <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin mx-auto mb-3" />
@@ -733,37 +1148,131 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100">
-      <div className="flex items-center justify-between p-5 border-b border-gray-100">
+      <div className="flex flex-col xl:flex-row xl:items-center xl:justify-between gap-4 p-5 border-b border-gray-100">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-blue-50 rounded-xl flex items-center justify-center">
-            <ShoppingCart className="w-5 h-5 text-blue-500" />
+            {viewMode === 'analise' ? (
+              <BarChart3 className="w-5 h-5 text-blue-500" />
+            ) : (
+              <ShoppingCart className="w-5 h-5 text-blue-500" />
+            )}
           </div>
           <div>
-            <h2 className="font-bold text-gray-900">Histórico de Pedidos</h2>
-            <p className="text-xs text-gray-400">{historicoPedidos.length} pedido(s)</p>
+            <h2 className="font-bold text-gray-900">
+              {viewMode === 'analise' ? 'Análise de Vendas' : 'Histórico de Pedidos'}
+            </h2>
+            <p className="text-xs text-gray-400">
+              {viewMode === 'analise'
+                ? `${salesAnalysis.totalOrders} pedido(s) no período`
+                : `${historicoPedidos.length} pedido(s)`}
+            </p>
           </div>
         </div>
-        <div className="flex gap-2 items-center">
-          <input
-            type="text"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            placeholder="Pesquisar por pedido, cliente, item..."
-            className="px-3 py-2 border rounded-lg text-sm w-72"
-          />
-          <select
-            value={statusFilter}
-            onChange={(e) => setStatusFilter(e.target.value)}
-            className="px-3 py-2 border rounded-lg text-sm"
-          >
-            <option value="">Todos</option>
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <option key={k} value={k}>{v}</option>
-            ))}
-          </select>
-          <button onClick={loadOrders} disabled={loading} className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition">
-            <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
-          </button>
+        <div className="flex flex-col lg:flex-row lg:items-center gap-2">
+          <div className="inline-flex rounded-xl bg-gray-100 p-1">
+            <button
+              type="button"
+              onClick={() => setViewMode('historico')}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                viewMode === 'historico' ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Histórico
+            </button>
+            <button
+              type="button"
+              onClick={() => setViewMode('analise')}
+              className={`px-3 py-2 rounded-lg text-sm font-semibold transition ${
+                viewMode === 'analise' ? 'bg-white text-primary shadow-sm' : 'text-gray-600 hover:text-gray-900'
+              }`}
+            >
+              Análise de Vendas
+            </button>
+          </div>
+
+          {viewMode === 'historico' ? (
+            <div className="flex flex-col sm:flex-row gap-2 sm:items-center">
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Pesquisar por pedido, cliente, item..."
+                className="px-3 py-2 border rounded-lg text-sm w-full sm:w-72"
+              />
+              <select
+                value={statusFilter}
+                onChange={(e) => setStatusFilter(e.target.value)}
+                className="px-3 py-2 border rounded-lg text-sm"
+              >
+                <option value="">Todos</option>
+                {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                  <option key={k} value={k}>{v}</option>
+                ))}
+              </select>
+              <button
+                type="button"
+                onClick={() => loadOrders()}
+                disabled={loading}
+                className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition"
+                title="Atualizar"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row sm:flex-wrap gap-2 sm:items-center">
+              <div className="flex flex-wrap gap-1">
+                {SALES_PERIOD_OPTIONS.map((option) => (
+                  <button
+                    key={option.value}
+                    type="button"
+                    onClick={() => setSalesPeriod(option.value)}
+                    className={`px-3 py-2 rounded-lg text-xs font-semibold border transition ${
+                      salesPeriod === option.value
+                        ? 'border-primary bg-primary text-white'
+                        : 'border-gray-200 bg-white text-gray-600 hover:bg-gray-50'
+                    }`}
+                  >
+                    {option.label}
+                  </button>
+                ))}
+              </div>
+              {salesPeriod === 'custom' && (
+                <div className="flex gap-2">
+                  <input
+                    type="date"
+                    value={customStart}
+                    onChange={(e) => setCustomStart(e.target.value)}
+                    className="px-3 py-2 border rounded-lg text-sm"
+                  />
+                  <input
+                    type="date"
+                    value={customEnd}
+                    onChange={(e) => setCustomEnd(e.target.value)}
+                    className="px-3 py-2 border rounded-lg text-sm"
+                  />
+                </div>
+              )}
+              <button
+                type="button"
+                onClick={() => exportProductsCsv(salesAnalysis.products)}
+                disabled={salesAnalysis.products.length === 0}
+                className="inline-flex items-center justify-center gap-2 px-3 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50 disabled:opacity-50"
+              >
+                <Download className="w-4 h-4" />
+                CSV
+              </button>
+              <button
+                type="button"
+                onClick={() => loadOrders()}
+                disabled={loading}
+                className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition"
+                title="Atualizar"
+              >
+                <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+          )}
         </div>
       </div>
 
@@ -773,6 +1282,14 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
         </div>
+      ) : viewMode === 'analise' ? (
+        <SalesAnalysisPanel
+          analysis={salesAnalysis}
+          sortedProducts={sortedProducts}
+          sortConfig={sortConfig}
+          onSort={handleProductSort}
+          statusLabels={STATUS_LABELS}
+        />
       ) : historicoPedidos.length === 0 ? (
         <div className="text-center py-16">
           <ShoppingCart className="w-12 h-12 text-gray-300 mx-auto mb-3" />

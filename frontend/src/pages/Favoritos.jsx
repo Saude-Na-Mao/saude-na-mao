@@ -10,19 +10,19 @@ export default function Favoritos() {
   const { addItem } = useCartStore()
   const { addNotification } = useUiStore()
   const { user } = useAuthStore()
-  const [loadingDemo, setLoadingDemo] = useState(false)
-  const [attemptedDemo, setAttemptedDemo] = useState(false)
+  const [loadingInitialFavorites, setLoadingInitialFavorites] = useState(false)
+  const [attemptedInitialFavorites, setAttemptedInitialFavorites] = useState(false)
   const navigate = useNavigate()
 
   useEffect(() => {
-    const isTestClient = String(user?.email || '').toLowerCase() === 'teste@teste.com'
-    if (!isTestClient || items.length > 0 || loadingDemo || attemptedDemo) return
+    const isSeedClient = String(user?.email || '').toLowerCase() === 'teste@teste.com'
+    if (!isSeedClient || items.length > 0 || loadingInitialFavorites || attemptedInitialFavorites) return
 
     let cancelled = false
-    async function loadDemoFavorites() {
+    async function loadInitialFavorites() {
       try {
-        setAttemptedDemo(true)
-        setLoadingDemo(true)
+        setAttemptedInitialFavorites(true)
+        setLoadingInitialFavorites(true)
         const res = await productService.getAll({ limit: 8 })
         const data = res.data?.data
         const list = Array.isArray(data) ? data : data?.docs || data?.produtos || []
@@ -42,17 +42,17 @@ export default function Favoritos() {
         })).filter((product) => product.id)
         if (!cancelled && favorites.length > 0) setFavorites(favorites)
       } catch {
-        /* demo fallback opcional */
+        /* fallback opcional */
       } finally {
-        if (!cancelled) setLoadingDemo(false)
+        if (!cancelled) setLoadingInitialFavorites(false)
       }
     }
 
-    loadDemoFavorites()
+    loadInitialFavorites()
     return () => {
       cancelled = true
     }
-  }, [user?.email, items.length, loadingDemo, attemptedDemo, setFavorites])
+  }, [user?.email, items.length, loadingInitialFavorites, attemptedInitialFavorites, setFavorites])
 
   const handleToggleFavorite = (product) => {
     const result = toggleFavorite(product)
@@ -67,7 +67,7 @@ export default function Favoritos() {
       <div className="max-w-4xl mx-auto px-4 py-16 text-center">
         <Heart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
         <h1 className="text-2xl font-bold mb-2">
-          {loadingDemo ? 'Carregando favoritos...' : 'Nenhum favorito ainda'}
+          {loadingInitialFavorites ? 'Carregando favoritos...' : 'Nenhum favorito ainda'}
         </h1>
         <p className="text-gray-500 mb-6">Salve seus medicamentos preferidos para encontrá-los rapidamente</p>
         <Link to="/produtos" className="inline-block bg-primary text-white px-6 py-3 rounded-xl font-semibold hover:bg-secondary transition">

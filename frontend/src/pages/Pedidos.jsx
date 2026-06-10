@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import Alert from '../components/Alert'
 import ReviewModal from '../components/ReviewModal'
 import DeliveryReviewModal from '../components/DeliveryReviewModal'
-import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, FlaskConical, CheckCircle, Clock } from 'lucide-react'
+import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, CheckCircle, Clock } from 'lucide-react'
 import {
   PEDIDOS_TAB,
   orderMatchesPedidosTab,
@@ -213,7 +213,7 @@ export default function Pedidos() {
       }
       addNotification({
         type: 'success',
-        title: 'Pagamento de teste confirmado',
+        title: 'Pagamento confirmado',
         message: msg,
         duration: 10000,
       })
@@ -221,7 +221,7 @@ export default function Pedidos() {
       await loadOrders({ silent: true })
     } catch (err) {
       console.error('confirmTestPayment', err)
-      setError(err?.message || 'Não foi possível confirmar pagamento de teste')
+      setError(err?.message || 'Não foi possível confirmar pagamento')
     } finally {
       setProcessingPaymentOrderId(null)
     }
@@ -382,21 +382,19 @@ export default function Pedidos() {
                     <div className="w-full space-y-1.5">
                       <div className="flex items-center justify-center gap-1.5">
                         <span className="inline-flex items-center gap-1 rounded-full bg-amber-100 px-2.5 py-0.5 text-[10px] font-bold uppercase tracking-wide text-amber-800">
-                          <FlaskConical className="w-3 h-3" />
-                          Modo teste
+                          <Clock className="w-3 h-3" />
+                          Pagamento pendente
                         </span>
                       </div>
                       <button
                         type="button"
                         onClick={() => handleTestPayment(oid)}
                         disabled={processingPaymentOrderId === oid}
-                        className="inline-flex flex-col items-center justify-center gap-0.5 border-2 border-dashed border-amber-400 bg-amber-50/80 text-amber-900 px-4 py-2.5 rounded-lg hover:bg-amber-100 transition w-full disabled:opacity-50"
+                        className="inline-flex items-center justify-center gap-2 bg-primary text-white px-4 py-2.5 rounded-lg hover:bg-secondary transition w-full disabled:opacity-50"
                       >
+                        <CheckCircle className="w-4 h-4" />
                         <span className="text-sm font-semibold">
-                          {processingPaymentOrderId === oid ? 'Processando...' : 'Simular pagamento'}
-                        </span>
-                        <span className="text-[10px] text-amber-700/90 leading-tight text-center">
-                          Não é cobrança real — só para testar o fluxo
+                          {processingPaymentOrderId === oid ? 'Processando...' : 'Confirmar pagamento'}
                         </span>
                       </button>
                     </div>
