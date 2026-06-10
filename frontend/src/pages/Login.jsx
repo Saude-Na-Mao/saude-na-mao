@@ -260,38 +260,34 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-[calc(100svh-4rem)] flex flex-col lg:flex-row">
-      <div className="hidden lg:flex lg:w-[48%] lg:min-h-[calc(100svh-4rem)] bg-gradient-to-br from-emerald-700 via-teal-700 to-slate-900 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
-          <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
+    <div className="min-h-[calc(100svh-4rem)] bg-gray-50 lg:grid lg:grid-cols-[0.95fr_1.05fr]">
+      <div className="hidden lg:flex min-h-[calc(100svh-4rem)] bg-gradient-to-br from-[#047857] via-[#059669] to-[#0f766e] relative overflow-hidden">
+        <div className="relative z-10 flex flex-col justify-center px-10 xl:px-16 text-white">
+          <div className="w-12 h-12 bg-white/15 backdrop-blur rounded-xl flex items-center justify-center mb-6">
             <Heart className="w-7 h-7" />
           </div>
-          <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight">
-            Sua saúde na<br />palma da mão
+          <h2 className="text-4xl xl:text-5xl font-bold mb-4 leading-tight tracking-normal">
+            Sua saúde<br />em uma tela
           </h2>
-          <p className="text-lg text-white/80 mb-8 max-w-md">
-            Compre medicamentos com segurança e receba em casa com rapidez e praticidade.
+          <p className="text-base xl:text-lg text-white/80 mb-6 max-w-md leading-relaxed">
+            Entre, escolha a farmácia, pague e acompanhe o pedido sem complicação.
           </p>
-          <div className="space-y-3 max-w-md">
+          <div className="grid gap-3 max-w-md">
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
-              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
-              <span className="text-white/90">Entrega em até 4 horas</span>
+              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">1</div>
+              <span className="text-white/90">Compra rápida com farmácias locais</span>
             </div>
             <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
-              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
-              <span className="text-white/90">Preços competitivos e transparentes</span>
-            </div>
-            <div className="flex items-center gap-3 rounded-xl border border-white/10 bg-white/10 px-4 py-3">
-              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">✓</div>
-              <span className="text-white/90">Pagamento seguro e protegido</span>
+              <div className="w-8 h-8 bg-white/15 rounded-lg flex items-center justify-center text-sm">2</div>
+              <span className="text-white/90">Pagamento e rastreamento no app</span>
             </div>
           </div>
         </div>
       </div>
 
-      <div className="w-full lg:w-[52%] lg:min-h-[calc(100svh-4rem)] flex items-center justify-center px-4 sm:px-8 py-8 sm:py-10 lg:py-12 bg-gray-50">
+      <div className="min-h-[calc(100svh-4rem)] flex items-center justify-center px-4 sm:px-8 py-5 lg:py-0 bg-gray-50">
         <div className="w-full max-w-md">
-          <div className="lg:hidden text-center mb-6">
+          <div className="lg:hidden text-center mb-4">
             <div className="inline-flex items-center gap-2.5 mb-2">
               <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-sm">
                 <span className="text-white text-xl font-bold">S</span>
@@ -300,8 +296,8 @@ export default function Login() {
             </div>
           </div>
 
-          <div className="bg-white rounded-xl sm:rounded-2xl shadow-card p-5 sm:p-8 lg:p-10">
-            <div className="mb-6">
+          <div className="bg-white rounded-xl sm:rounded-2xl shadow-card p-5 sm:p-6 lg:p-7">
+            <div className="mb-5">
               <h1 className="text-2xl font-bold text-gray-900">Bem-vindo de volta</h1>
               <p className="text-gray-500 text-sm mt-1.5">
                 Acesse sua conta com senha, Google ou código por e-mail.
@@ -320,7 +316,7 @@ export default function Login() {
               </div>
             )}
 
-            <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-6">
+            <div className="grid grid-cols-2 gap-1 rounded-xl bg-gray-100 p-1 mb-5">
               <button
                 type="button"
                 onClick={() => changeMode('password')}
@@ -346,7 +342,7 @@ export default function Login() {
             </div>
 
             {loginMode === 'password' ? (
-              <form onSubmit={handleSubmit} className="space-y-5" noValidate>
+              <form onSubmit={handleSubmit} className="space-y-4" noValidate>
                 <div>
                   <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Email
@@ -444,7 +440,7 @@ export default function Login() {
                 </button>
               </form>
             ) : (
-              <form onSubmit={otpSent ? verifyEmailCode : requestEmailCode} className="space-y-5" noValidate>
+              <form onSubmit={otpSent ? verifyEmailCode : requestEmailCode} className="space-y-4" noValidate>
                 <div>
                   <label htmlFor="otp-email" className="block text-sm font-medium text-gray-700 mb-1.5">
                     Email
@@ -526,7 +522,7 @@ export default function Login() {
               </form>
             )}
 
-            <div className="my-6 flex items-center gap-4">
+            <div className="my-5 flex items-center gap-4">
               <div className="flex-1 h-px bg-gray-200" />
               <span className="text-gray-400 text-xs font-medium uppercase tracking-wider">ou</span>
               <div className="flex-1 h-px bg-gray-200" />
@@ -546,7 +542,7 @@ export default function Login() {
               </button>
             )}
 
-            <p className="text-center text-gray-500 text-sm mt-8">
+            <p className="text-center text-gray-500 text-sm mt-5">
               Ainda não tem conta?{' '}
               <Link to="/registro" className="text-primary font-semibold hover:text-secondary transition">
                 Cadastre-se gratuitamente

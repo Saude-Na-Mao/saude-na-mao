@@ -1,6 +1,6 @@
 import { Link, Navigate, useNavigate } from 'react-router-dom'
 import { useState, useEffect } from 'react'
-import { MapPin, Clock, Shield, ArrowRight, Star, Truck, CreditCard, Tag, ChevronRight, Search, Percent } from 'lucide-react'
+import { MapPin, Clock, Shield, ArrowRight, Star, Truck, CreditCard, Tag, ChevronRight, Search, Percent, UserPlus } from 'lucide-react'
 import { couponService, pharmacyService, productService } from '../services/api'
 import { useAuthStore } from '../stores/store'
 import ProductCard from '../components/ProductCard'
@@ -19,6 +19,8 @@ export default function Home() {
   const authenticated = isAuthenticated()
   const isPharmacyRole = authenticated && ['dono_farmacia', 'farmaceutico'].includes(user?.role)
   const isDriver = authenticated && user?.role === 'entregador'
+  const accountCtaPath = authenticated ? '/perfil' : '/registro'
+  const accountCtaLabel = authenticated ? 'Minha conta' : 'Criar conta'
 
   useEffect(() => {
     pharmacyService.getAll()
@@ -56,24 +58,24 @@ export default function Home() {
 
   return (
     <div>
-      <section className="bg-gradient-to-br from-primary-800 via-primary-700 to-secondary border-b border-primary-900/20">
-        <div className="page-shell py-10 sm:py-12 lg:py-16">
-          <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-5 lg:gap-8 items-center">
+      <section className="min-h-[calc(100svh-4rem)] bg-gradient-to-br from-[#047857] via-[#059669] to-[#0f766e] border-b border-primary-900/20">
+        <div className="page-shell min-h-[calc(100svh-4rem)] flex flex-col justify-center py-8 sm:py-10 lg:py-12">
+          <div className="grid grid-cols-1 lg:grid-cols-[1.15fr_0.85fr] gap-6 lg:gap-10 items-center">
             <div className="animate-fade-in">
-              <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full mb-4">
+              <div className="inline-flex items-center gap-2 bg-white/15 text-white text-xs sm:text-sm px-3 py-1.5 rounded-full mb-5">
                 <Star className="w-3.5 h-3.5 fill-yellow-400 text-yellow-400" />
                 Farmácias locais verificadas
               </div>
               <h1 className="text-3xl sm:text-4xl lg:text-5xl font-extrabold text-white leading-tight tracking-normal max-w-4xl">
                 Medicamentos na sua mão
               </h1>
-              <p className="text-base sm:text-lg text-white/80 mt-3 max-w-2xl leading-snug">
+              <p className="text-base sm:text-lg text-white/80 mt-4 max-w-2xl leading-snug">
                 Compre, pague e acompanhe a entrega em Goiânia.
               </p>
 
               <form
                 onSubmit={(e) => { e.preventDefault(); if (searchQuery.trim()) navigate(`/produtos?search=${encodeURIComponent(searchQuery.trim())}`) }}
-                className="mt-5 max-w-3xl"
+                className="mt-7 max-w-3xl"
               >
                 <div className="flex flex-col sm:flex-row gap-2 rounded-xl border border-gray-200 bg-white p-2 shadow-soft">
                   <div className="relative flex-1">
@@ -96,11 +98,11 @@ export default function Home() {
                 </div>
               </form>
 
-              <div className="mt-4 flex flex-wrap gap-2">
+              <div className="mt-5 flex flex-wrap gap-2.5">
                 {[
                   { label: 'Farmácias abertas', to: '/farmacias' },
                   { label: 'Medicamentos populares', to: '/produtos' },
-                  { label: 'Enviar receita', to: '/receita' },
+                  { label: accountCtaLabel, to: accountCtaPath },
                 ].map((item) => (
                   <button
                     key={item.label}
@@ -114,8 +116,8 @@ export default function Home() {
               </div>
             </div>
 
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-1">
-              <div className="rounded-xl border border-white/20 bg-white p-5 shadow-sm">
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-1">
+              <div className="rounded-xl border border-white/20 bg-white p-5 sm:p-6 shadow-sm">
                 <div className="flex items-center justify-between gap-4">
                   <div>
                     <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Pedido rápido</p>
@@ -123,7 +125,7 @@ export default function Home() {
                   </div>
                   <Truck className="w-9 h-9 text-emerald-600" />
                 </div>
-                <div className="mt-5 grid grid-cols-3 gap-2 border-t border-emerald-200/70 pt-4 text-center">
+                <div className="mt-5 grid grid-cols-3 gap-3 border-t border-emerald-200/70 pt-4 text-center">
                   <div>
                     <MapPin className="mx-auto mb-1 w-4 h-4 text-primary" />
                     <p className="text-[11px] font-medium text-gray-600">Bairro</p>
@@ -139,15 +141,16 @@ export default function Home() {
                 </div>
               </div>
 
-              <div className="rounded-xl border border-white/20 bg-emerald-50 p-5 text-gray-900 shadow-sm">
+              <div className="rounded-xl border border-white/20 bg-emerald-50 p-5 sm:p-6 text-gray-900 shadow-sm">
                 <div className="flex items-start gap-3">
                   <div className="w-10 h-10 rounded-xl bg-emerald-100 flex items-center justify-center">
-                    <Shield className="w-5 h-5 text-emerald-700" />
+                    <UserPlus className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h2 className="font-bold">Receitas com validação</h2>
-                    <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
-                      Enviar receita <ChevronRight className="w-4 h-4" />
+                    <p className="text-xs font-semibold uppercase tracking-wider text-emerald-700">Conta gratuita</p>
+                    <h2 className="mt-1 font-bold">Entre e compre mais rápido</h2>
+                    <Link to={accountCtaPath} className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+                      {accountCtaLabel} <ChevronRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>
@@ -155,7 +158,7 @@ export default function Home() {
             </div>
           </div>
 
-          <div className="mt-6 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
+          <div className="mt-8 grid grid-cols-2 md:grid-cols-4 gap-3 sm:gap-4">
             {[
               ['50k+', 'Pedidos entregues'],
               ['4.9', 'Avaliação média'],

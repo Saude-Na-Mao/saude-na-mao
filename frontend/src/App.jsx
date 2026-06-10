@@ -1,4 +1,4 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom'
+import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import PrivateRoute from './components/PrivateRoute'
 import Logger from './utils/logger'
@@ -40,6 +40,9 @@ import './App.css'
 const logger = new Logger('App')
 
 function AppContent() {
+  const location = useLocation()
+  const isAuthScreen = ['/login', '/registro'].includes(location.pathname)
+
   return (
     <div className="flex flex-col min-h-screen">
       <Navbar />
@@ -225,8 +228,8 @@ function AppContent() {
           />
         </Routes>
       </main>
-      <Footer />
-      <ChatSupport />
+      {!isAuthScreen && <Footer />}
+      {!isAuthScreen && <ChatSupport />}
     </div>
   )
 }
