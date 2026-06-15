@@ -103,7 +103,7 @@ async function updateProfile(userId, updates) {
     throw createError("Usuário não encontrado", 404);
   }
 
-  const allowedFields = ["nome", "telefone", "fotoPerfil"];
+  const allowedFields = ["nome", "telefone", "cpf", "foto_perfil"];
   allowedFields.forEach((field) => {
     if (updates[field] !== undefined) {
       user[field] = updates[field];

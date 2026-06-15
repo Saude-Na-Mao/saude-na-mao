@@ -135,6 +135,10 @@ const pharmacySchema = new mongoose.Schema(
       type: String,
       default: null,
     },
+    foto: {
+      type: String,
+      default: null,
+    },
     descricao: {
       type: String,
       trim: true,

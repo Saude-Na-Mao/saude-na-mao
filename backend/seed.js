@@ -12,30 +12,30 @@ const USERS = [
   { nome: "Cliente Teste", email: "teste@teste.com", senha: "Teste@123", tipo_usuario: "cliente", cpf: "12345678909", rg: "7654321" },
 
   // FARMACÊUTICO GENÉRICO
-  { nome: "Farmacêutico Genérico", email: "farmaceutico@saudenamao.com", senha: "Farm@123", tipo_usuario: "farmaceutico", farmacia: "Drogaria Rosário - Jardim Goiás", crf: "GO-00001" },
+  { nome: "Farmacêutico Genérico", email: "farmaceutico@saudenamao.com", senha: "Farm@123", tipo_usuario: "farmaceutico", farmacia: "Drogasil - Setor Bueno", crf: "GO-00001" },
 
   // FARMACÊUTICOS POR FARMÁCIA (Goiânia)
-  { nome: "Carla Mendes", email: "farm.jardim@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Rosário - Jardim Goiás", crf: "GO-12001" },
-  { nome: "Renato Souza", email: "farm.bueno@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogarias Pacheco - Setor Bueno", crf: "GO-12002" },
-  { nome: "Beatriz Alves", email: "farm.marista@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Droga Raia - Marista", crf: "GO-12003" },
-  { nome: "Lucas Pereira", email: "farm.oeste@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Santa Marta - Setor Oeste", crf: "GO-12004" },
-  { nome: "Paula Nogueira", email: "farm.lozandes@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogasil - Park Lozandes", crf: "GO-12005" },
-  { nome: "Marcos Oliveira", email: "farm.central@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Farmácia Pague Menos - Central", crf: "GO-12006" },
+  { nome: "Carla Mendes", email: "farm.drogasil@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogasil - Setor Bueno", crf: "GO-12001" },
+  { nome: "Renato Souza", email: "farm.pacheco@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogarias Pacheco - Setor Bueno", crf: "GO-12002" },
+  { nome: "Beatriz Alves", email: "farm.dragaraia@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Droga Raia - Setor Oeste", crf: "GO-12003" },
+  { nome: "Lucas Pereira", email: "farm.paguemenos@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Farmácia Pague Menos - Setor Bueno", crf: "GO-12004" },
+  { nome: "Paula Nogueira", email: "farm.santamarta@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Santa Marta - Jardim América", crf: "GO-12005" },
+  { nome: "Marcos Oliveira", email: "farm.medfacil@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "farmaceutico", farmacia: "Drogaria Medfacil - Setor Pedro Ludovico", crf: "GO-12006" },
 
   // ENTREGADOR
   { nome: "Entregador Teste", email: "entregador@saudenamao.com", senha: "Entrega@123", tipo_usuario: "entregador" },
   { nome: "Juliana Entregas", email: "entregadora.demo@gyn.local", senha: "Entrega@123", tipo_usuario: "entregador" },
 
   // DONO DE FARMÁCIA GENÉRICO
-  { nome: "Dono Genérico", email: "dono@farmacia.com", senha: "Dono@123", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Rosário - Jardim Goiás" },
+  { nome: "Dono Genérico", email: "dono@farmacia.com", senha: "Dono@123", tipo_usuario: "dono_farmacia", farmacia: "Drogasil - Setor Bueno" },
 
   // DONOS POR FARMÁCIA
-  { nome: "Maria Silva", email: "dono.jardim.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Rosário - Jardim Goiás" },
-  { nome: "João Santos", email: "dono.bueno.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogarias Pacheco - Setor Bueno" },
-  { nome: "Ana Costa", email: "dono.marista.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Droga Raia - Marista" },
-  { nome: "Pedro Lima", email: "dono.oeste.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Santa Marta - Setor Oeste" },
-  { nome: "Fernanda Rocha", email: "dono.lozandes.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogasil - Park Lozandes" },
-  { nome: "Rafael Lima", email: "dono.central.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Farmácia Pague Menos - Central" },
+  { nome: "Maria Silva", email: "dono.drogasil.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogasil - Setor Bueno" },
+  { nome: "João Santos", email: "dono.pacheco.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogarias Pacheco - Setor Bueno" },
+  { nome: "Ana Costa", email: "dono.dragaraia.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Droga Raia - Setor Oeste" },
+  { nome: "Pedro Lima", email: "dono.paguemenos.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Farmácia Pague Menos - Setor Bueno" },
+  { nome: "Fernanda Rocha", email: "dono.santamarta.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Santa Marta - Jardim América" },
+  { nome: "Rafael Lima", email: "dono.medfacil.demo@gyn.local", senha: "SeedGyn@2026", tipo_usuario: "dono_farmacia", farmacia: "Drogaria Medfacil - Setor Pedro Ludovico" },
 
   // ADMIN
   { nome: "Administrador", email: "admin@saudenamao.com", senha: "Admin@123", tipo_usuario: "administrador" },

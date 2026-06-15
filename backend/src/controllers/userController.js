@@ -18,7 +18,8 @@ function normalizeUser(user) {
     dados_dono_farmacia: userObj.dados_dono_farmacia,
     dados_farmaceutico: userObj.dados_farmaceutico,
     dados_entregador: userObj.dados_entregador,
-    fotoPerfil: userObj.fotoPerfil,
+    foto_perfil: userObj.foto_perfil,
+    fotoPerfil: userObj.foto_perfil,
     criado_em: userObj.createdAt,
   };
 }
@@ -34,13 +35,20 @@ async function getProfile(req, res, next) {
 
 async function updateProfile(req, res, next) {
   try {
-    const { nome, telefone, dados_entregador } = req.body;
+    const { nome, telefone, cpf, dados_entregador } = req.body;
     const updateData = { nome, telefone };
+    if (cpf !== undefined) {
+      updateData.cpf = String(cpf).replace(/\D/g, "") || undefined;
+    }
     if (dados_entregador !== undefined) {
-      updateData.dados_entregador = dados_entregador;
+      // Em upload multipart o objeto chega como string JSON.
+      updateData.dados_entregador =
+        typeof dados_entregador === "string"
+          ? JSON.parse(dados_entregador)
+          : dados_entregador;
     }
     if (req.file) {
-      updateData.fotoPerfil = req.file.path;
+      updateData.foto_perfil = `/${String(req.file.path).replace(/\\/g, "/")}`;
     }
     const user = await userService.updateProfile(req.user.id, updateData);
     res.json({ success: true, message: "Perfil atualizado", data: { user: normalizeUser(user) } });

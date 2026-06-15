@@ -263,10 +263,29 @@ export default function Home() {
                 const colorIdx = pharmacy.nome?.length % colors.length || 0
                 return (
                   <Link key={pharmacy._id} to={`/farmacia/${pharmacy._id}`} className="bg-white rounded-2xl border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group">
-                    <div className={`h-24 bg-gradient-to-br ${colors[colorIdx]} flex items-center justify-center`}>
-                      <div className="w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
-                        <span className="text-2xl font-bold text-white">{initial}</span>
-                      </div>
+                    <div className={`relative h-24 bg-gradient-to-br ${colors[colorIdx]} flex items-center justify-center overflow-hidden`}>
+                      {pharmacy.foto && (
+                        <img
+                          src={pharmacy.foto}
+                          alt={pharmacy.nome}
+                          loading="lazy"
+                          className="absolute inset-0 w-full h-full object-cover"
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                      )}
+                      {pharmacy.logo ? (
+                        <img
+                          src={pharmacy.logo}
+                          alt={pharmacy.nome}
+                          loading="lazy"
+                          className="relative w-14 h-14 rounded-xl bg-white object-contain p-1 shadow-md"
+                          onError={(e) => { e.currentTarget.style.display = 'none' }}
+                        />
+                      ) : (
+                        <div className="relative w-12 h-12 bg-white/20 backdrop-blur-sm rounded-xl flex items-center justify-center">
+                          <span className="text-2xl font-bold text-white">{initial}</span>
+                        </div>
+                      )}
                     </div>
                     <div className="p-4">
                       <h3 className="font-bold text-gray-900 group-hover:text-primary transition-colors">{pharmacy.nome}</h3>

@@ -10,8 +10,9 @@ import {
   Package, Heart, CreditCard, FileText, ChevronRight,
   ShoppingBag, Star, Clock, Shield, Bell, HelpCircle,
   Plus, Trash2, CheckCircle, X, MessageSquare, Send,
-  RefreshCw, Bike, Car, Award, Store, Clipboard,
+  RefreshCw, Bike, Car, Award, Store, Clipboard, Camera,
 } from 'lucide-react'
+import { resolveMediaUrl } from '../utils/mediaUrl'
 import { setSupportToastSuppressed } from '../utils/supportTicketStorage'
 import { useSupportTicketRoom } from '../hooks/useSupportTicketRoom'
 import {
@@ -27,6 +28,22 @@ const normalizeCnh = (value) => String(value || '').replace(/\D/g, '')
 const PLATE_REGEX = /^[A-Z]{3}[0-9][A-Z0-9][0-9]{2}$/
 const CNH_REGEX = /^\d{11}$/
 
+const onlyDigits = (value) => String(value || '').replace(/\D/g, '')
+const formatTelefone = (value) => {
+  const d = onlyDigits(value).slice(0, 11)
+  if (d.length <= 2) return d
+  if (d.length <= 6) return `(${d.slice(0, 2)}) ${d.slice(2)}`
+  if (d.length <= 10) return `(${d.slice(0, 2)}) ${d.slice(2, 6)}-${d.slice(6)}`
+  return `(${d.slice(0, 2)}) ${d.slice(2, 7)}-${d.slice(7)}`
+}
+const formatCpf = (value) => {
+  const d = onlyDigits(value).slice(0, 11)
+  if (d.length <= 3) return d
+  if (d.length <= 6) return `${d.slice(0, 3)}.${d.slice(3)}`
+  if (d.length <= 9) return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6)}`
+  return `${d.slice(0, 3)}.${d.slice(3, 6)}.${d.slice(6, 9)}-${d.slice(9)}`
+}
+
 export default function Perfil() {
   const navigate = useNavigate()
   const location = useLocation()
@@ -41,11 +58,14 @@ export default function Perfil() {
   const [passwordData, setPasswordData] = useState({ senhaAtual: '', novaSenha: '', confirmarSenha: '' })
   const [stats, setStats] = useState({ pedidos: 0, receitas: 0 })
   const [pharmacyInfo, setPharmacyInfo] = useState(null)
+  const [photoFile, setPhotoFile] = useState(null)
+  const [photoPreview, setPhotoPreview] = useState(null)
+  const photoInputRef = useRef(null)
   const [formData, setFormData] = useState({
     nome: user?.nome || '',
     email: user?.email || '',
-    telefone: user?.telefone || '',
-    cpf: user?.cpf || '',
+    telefone: formatTelefone(user?.telefone || ''),
+    cpf: formatCpf(user?.cpf || ''),
     dados_entregador: {
       tipo_veiculo: user?.dados_entregador?.tipo_veiculo || '',
       placa: user?.dados_entregador?.placa || '',
@@ -98,7 +118,18 @@ export default function Perfil() {
   }
 
   const handleChange = (e) => {
-    setFormData({ ...formData, [e.target.name]: e.target.value })
+    const { name, value } = e.target
+    let next = value
+    if (name === 'telefone') next = formatTelefone(value)
+    if (name === 'cpf') next = formatCpf(value)
+    setFormData({ ...formData, [name]: next })
+  }
+
+  const handlePhotoSelect = (e) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+    setPhotoFile(file)
+    setPhotoPreview(URL.createObjectURL(file))
   }
 
   const handleDriverChange = (e) => {
@@ -118,11 +149,24 @@ export default function Perfil() {
   const handleSubmit = async (e) => {
     e.preventDefault()
     setError(null)
+
+    const telefoneDigits = onlyDigits(formData.telefone)
+    if (telefoneDigits && (telefoneDigits.length < 10 || telefoneDigits.length > 11)) {
+      setError('Telefone inválido. Informe DDD + número (10 ou 11 dígitos).')
+      return
+    }
+    const cpfDigits = onlyDigits(formData.cpf)
+    if (cpfDigits && cpfDigits.length !== 11) {
+      setError('CPF inválido. Informe os 11 dígitos.')
+      return
+    }
+
     setLoading(true)
     try {
       const payload = {
         nome: formData.nome,
-        telefone: formData.telefone,
+        telefone: telefoneDigits,
+        cpf: cpfDigits,
       }
       if (isDriver) {
         const tipoVeiculo = formData.dados_entregador?.tipo_veiculo || ''
@@ -155,11 +199,26 @@ export default function Perfil() {
         }
       }
 
-      const response = await userService.updateProfile(payload)
+      let request = payload
+      if (photoFile) {
+        const fd = new FormData()
+        fd.append('foto', photoFile)
+        fd.append('nome', payload.nome)
+        if (payload.telefone) fd.append('telefone', payload.telefone)
+        if (payload.cpf) fd.append('cpf', payload.cpf)
+        if (payload.dados_entregador) {
+          fd.append('dados_entregador', JSON.stringify(payload.dados_entregador))
+        }
+        request = fd
+      }
+
+      const response = await userService.updateProfile(request)
       const updatedUser = response.data?.data?.user || response.data?.user || response.data?.data
       if (updatedUser) setUser(updatedUser)
       setMessage('Perfil atualizado com sucesso!')
       setEditMode(false)
+      setPhotoFile(null)
+      setPhotoPreview(null)
       setTimeout(() => setMessage(null), 3000)
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.mensagem || 'Erro ao atualizar perfil')
@@ -217,6 +276,8 @@ export default function Perfil() {
 
   const roleBadge = ROLE_BADGE[userRole] || ROLE_BADGE.cliente
 
+  const avatarSrc = photoPreview || resolveMediaUrl(user?.foto_perfil || user?.fotoPerfil)
+
   const isClientOnly = !isPharmacyRole && !isDriver && !isAdmin
 
   const menuItems = [
@@ -239,8 +300,31 @@ export default function Perfil() {
       {/* Profile Header */}
       <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl p-6 mb-8 text-white">
         <div className="flex items-center gap-5">
-          <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl font-bold flex-shrink-0">
-            {user?.nome?.charAt(0)?.toUpperCase() || '👤'}
+          <div className="relative w-20 h-20 flex-shrink-0">
+            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center text-4xl font-bold overflow-hidden">
+              {avatarSrc ? (
+                <img src={avatarSrc} alt={user?.nome || 'Perfil'} className="w-full h-full object-cover" />
+              ) : (
+                user?.nome?.charAt(0)?.toUpperCase() || '👤'
+              )}
+            </div>
+            {editMode && (
+              <button
+                type="button"
+                onClick={() => photoInputRef.current?.click()}
+                className="absolute -bottom-1 -right-1 w-8 h-8 bg-white text-primary rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition"
+                title="Alterar foto"
+              >
+                <Camera className="w-4 h-4" />
+              </button>
+            )}
+            <input
+              ref={photoInputRef}
+              type="file"
+              accept="image/jpeg,image/png,image/webp"
+              onChange={handlePhotoSelect}
+              className="hidden"
+            />
           </div>
           <div className="flex-1 min-w-0">
             <div className="flex items-center gap-2">
@@ -380,6 +464,9 @@ export default function Perfil() {
                       value={formData.telefone}
                       onChange={handleChange}
                       disabled={!editMode || loading}
+                      inputMode="numeric"
+                      maxLength={16}
+                      placeholder="(62) 99999-9999"
                       className="w-full pl-10 pr-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
                     />
                   </div>
@@ -391,8 +478,12 @@ export default function Perfil() {
                     type="text"
                     name="cpf"
                     value={formData.cpf}
-                    disabled
-                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm bg-gray-50 text-gray-500"
+                    onChange={handleChange}
+                    disabled={!editMode || loading}
+                    inputMode="numeric"
+                    maxLength={14}
+                    placeholder="000.000.000-00"
+                    className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
                   />
                 </div>
 
@@ -409,11 +500,13 @@ export default function Perfil() {
                       type="button"
                       onClick={() => {
                         setEditMode(false)
+                        setPhotoFile(null)
+                        setPhotoPreview(null)
                         setFormData({
                           nome: user?.nome || '',
                           email: user?.email || '',
-                          telefone: user?.telefone || '',
-                          cpf: user?.cpf || '',
+                          telefone: formatTelefone(user?.telefone || ''),
+                          cpf: formatCpf(user?.cpf || ''),
                           dados_entregador: {
                             tipo_veiculo: user?.dados_entregador?.tipo_veiculo || '',
                             placa: user?.dados_entregador?.placa || '',

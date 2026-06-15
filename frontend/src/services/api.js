@@ -311,8 +311,8 @@ export const prescriptionService = {
 }
 
 export const pharmacyService = {
-  getAll: (params) => api.get('/farmacias', { params }),
-  getById: (id) => api.get(`/farmacias/${id}`),
+  getAll: (params) => cachedGet('/farmacias', { params }),
+  getById: (id) => cachedGet(`/farmacias/${id}`),
   getPharmacists: (id) => api.get(`/farmacias/${id}/pharmacists`),
   getProducts: (id, params) => cachedGet(`/farmacias/${id}/products`, { params }),
   updateAddress: (id, data) => api.patch(`/farmacias/${id}/endereco`, data),

@@ -32,35 +32,49 @@ const MONGO_URI =
 
 const DEMO_SENHA = "SeedGyn@2026";
 
-/** Quatro farmácias já definidas em seed.js (primeiras entradas, Goiânia) */
+/** Seis farmácias definidas em seed.js (Goiânia) — um dono por farmácia */
 const DEMO_OWNERS = [
   {
-    nome: "Maria Silva (Jardim Goiás)",
-    email: "dono.jardim.demo@gyn.local",
+    nome: "Maria Silva (Drogasil Bueno)",
+    email: "dono.drogasil.demo@gyn.local",
     telefone: "62999991001",
     cpf: "52998224725",
     farmaciaIndex: 0,
   },
   {
-    nome: "João Santos (Bueno)",
-    email: "dono.bueno.demo@gyn.local",
+    nome: "João Santos (Pacheco Bueno)",
+    email: "dono.pacheco.demo@gyn.local",
     telefone: "62999991002",
     cpf: "39053344705",
     farmaciaIndex: 1,
   },
   {
-    nome: "Ana Costa (Marista)",
-    email: "dono.marista.demo@gyn.local",
+    nome: "Ana Costa (Droga Raia Oeste)",
+    email: "dono.dragaraia.demo@gyn.local",
     telefone: "62999991003",
     cpf: "11144477735",
     farmaciaIndex: 2,
   },
   {
-    nome: "Pedro Lima (Setor Oeste)",
-    email: "dono.oeste.demo@gyn.local",
+    nome: "Pedro Lima (Pague Menos Bueno)",
+    email: "dono.paguemenos.demo@gyn.local",
     telefone: "62999991004",
     cpf: "07388813090",
     farmaciaIndex: 3,
+  },
+  {
+    nome: "Fernanda Rocha (Santa Marta Jardim América)",
+    email: "dono.santamarta.demo@gyn.local",
+    telefone: "62999991005",
+    cpf: "32165498791",
+    farmaciaIndex: 4,
+  },
+  {
+    nome: "Rafael Lima (Medfacil Pedro Ludovico)",
+    email: "dono.medfacil.demo@gyn.local",
+    telefone: "62999991006",
+    cpf: "32165500010",
+    farmaciaIndex: 5,
   },
 ];
 
@@ -133,6 +147,8 @@ async function ensureOwnerAndStock(ownerRow) {
     horario_funcionamento: f.horario_funcionamento,
     avaliacao: f.avaliacao,
     total_avaliacoes: f.total_avaliacoes,
+    logo: f.logo,
+    foto: f.foto,
     ativa: true,
     descricao: `Farmácia atendendo Goiânia — ${f.bairro}.`,
     formas_pagamento: ["pix", "cartao_credito", "cartao_debito", "dinheiro"],

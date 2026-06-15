@@ -1,40 +1,68 @@
-USUARIOS CRIADOS - DONO E FARMACEUTICO POR FARMACIA
-(cada um responde apenas pela sua propria farmacia)
-
-Senha dono: Dono@123
-Senha farmaceutico: Farm@123
-
-------------------------------------------------------------
-Farmácia Saúde+ Bueno
-  Dono:         dono.farmaciasaudebue@saudenamao.com
-  Farmaceutico: farmaceutico.farmaciasaudebue@saudenamao.com
-
-Droga Raia - Marista
-  Dono:         dono.drogaraiamarista@saudenamao.com
-  Farmaceutico: farmaceutico.drogaraiamarista@saudenamao.com
-
-Farmácia Popular - Oeste
-  Dono:         dono.farmaciapopularo@saudenamao.com
-  Farmaceutico: farmaceutico.farmaciapopularo@saudenamao.com
-
-Drogasil - Park Lozandes
-  Dono:         dono.drogasilparkloza@saudenamao.com
-  Farmaceutico: farmaceutico.drogasilparkloza@saudenamao.com
-
-Farmácia Pague Menos - Central
-  Dono:         dono.farmaciapaguemen@saudenamao.com
-  Farmaceutico: farmaceutico.farmaciapaguemen@saudenamao.com
+USUARIOS DEMO - SAUDE NA MAO
+(cada dono/farmaceutico responde apenas pela sua propria farmacia)
 
 ============================================================
-CLIENTES (senha: Cliente@123)
+DONOS DE FARMACIA  (senha: SeedGyn@2026)
+============================================================
+  Drogasil - Setor Bueno
+    dono.drogasil.demo@gyn.local
+
+  Drogarias Pacheco - Setor Bueno
+    dono.pacheco.demo@gyn.local
+
+  Droga Raia - Setor Oeste
+    dono.dragaraia.demo@gyn.local
+
+  Farmacia Pague Menos - Setor Bueno
+    dono.paguemenos.demo@gyn.local
+
+  Drogaria Santa Marta - Jardim America
+    dono.santamarta.demo@gyn.local
+
+  Drogaria Medfacil - Setor Pedro Ludovico
+    dono.medfacil.demo@gyn.local
+
+  Dono generico (Drogasil) ....... dono@farmacia.com  (senha: Dono@123)
+
+============================================================
+FARMACEUTICOS  (senha: SeedGyn@2026)
+============================================================
+  Drogasil - Setor Bueno
+    farm.drogasil@gyn.local
+
+  Drogarias Pacheco - Setor Bueno
+    farm.pacheco@gyn.local
+
+  Droga Raia - Setor Oeste
+    farm.dragaraia@gyn.local
+
+  Farmacia Pague Menos - Setor Bueno
+    farm.paguemenos@gyn.local
+
+  Drogaria Santa Marta - Jardim America
+    farm.santamarta@gyn.local
+
+  Drogaria Medfacil - Setor Pedro Ludovico
+    farm.medfacil@gyn.local
+
+  Farmaceutico generico (Drogasil) ... farmaceutico@saudenamao.com  (senha: Farm@123)
+
+============================================================
+CLIENTES  (senha: Cliente@123)
 ============================================================
   cliente.ana@saudenamao.com
   cliente.bruno@saudenamao.com
   cliente.carla@saudenamao.com
+  teste@teste.com  (senha: Teste@123)
 
 ============================================================
-ENTREGADORES (senha: Entrega@123)
+ENTREGADORES  (senha: Entrega@123)
 ============================================================
   entregador.diego@saudenamao.com
   entregador.eduardo@saudenamao.com
   entregador.felipe@saudenamao.com
+
+============================================================
+ADMIN  (senha: Admin@123)
+============================================================
+  admin@saudenamao.com

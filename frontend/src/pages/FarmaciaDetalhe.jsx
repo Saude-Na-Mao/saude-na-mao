@@ -124,8 +124,17 @@ export default function FarmaciaDetalhe() {
           </Link>
 
           <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:gap-6">
-            <div className="w-20 h-20 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center flex-shrink-0">
-              <span className="text-4xl font-bold">{initial}</span>
+            <div className="w-20 h-20 bg-white rounded-2xl flex items-center justify-center flex-shrink-0 overflow-hidden shadow-md">
+              {pharmacy.logo ? (
+                <img
+                  src={pharmacy.logo}
+                  alt={pharmacy.nome}
+                  className="w-full h-full object-contain p-1.5"
+                  onError={(e) => { e.currentTarget.replaceWith(Object.assign(document.createElement('span'), { className: 'text-4xl font-bold text-gray-700', textContent: initial })) }}
+                />
+              ) : (
+                <span className="text-4xl font-bold text-gray-700">{initial}</span>
+              )}
             </div>
             <div className="flex-1">
               <h1 className="text-3xl font-bold mb-2">{pharmacy.nome}</h1>

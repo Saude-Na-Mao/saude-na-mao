@@ -68,6 +68,8 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
   const [farmaciaAvaliacao, setFarmaciaAvaliacao] = useState(null);
   const [creatingTicket, setCreatingTicket] = useState(false);
   const [erro, setErro] = useState(null);
+  const [pharmacistOnline, setPharmacistOnline] = useState(null);
+  const [showRxWarning, setShowRxWarning] = useState(false);
 
   // Carrega detalhes completos do produto ao abrir
   useEffect(() => {
@@ -112,6 +114,8 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
     if (!isOpen) {
       setErro(null);
       setCreatingTicket(false);
+      setShowRxWarning(false);
+      setPharmacistOnline(null);
     }
   }, [isOpen]);
 
@@ -142,6 +146,18 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
     detalhes.imagem || detalhes.imagem_url || detalhes.imagens?.[0],
   );
 
+  const doAddToCart = () => {
+    addItem({
+      ...detalhes,
+      preco: displayPrice,
+      estoque,
+      receita_obrigatoria: requiresRx,
+      quantity: 1,
+    });
+    setShowRxWarning(false);
+    onClose?.();
+  };
+
   const handleAdicionarCarrinho = () => {
     if (isOutOfStock) {
       setErro("Medicamento indisponível nesta farmácia.");
@@ -153,14 +169,13 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
       return;
     }
 
-    addItem({
-      ...detalhes,
-      preco: displayPrice,
-      estoque,
-      receita_obrigatoria: requiresRx,
-      quantity: 1,
-    });
-    onClose?.();
+    // Produto com receita + nenhum farmacêutico online → avisa que a análise pode demorar.
+    if (requiresRx && pharmacistOnline === false) {
+      setShowRxWarning(true);
+      return;
+    }
+
+    doAddToCart();
   };
 
   const abrirChat = async () => {
@@ -390,6 +405,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
                       <PharmacistStatus
                         pharmacyId={farmacia._id}
                         compact
+                        onAvailabilityChange={setPharmacistOnline}
                       />
                     </div>
                   )}
@@ -440,6 +456,49 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
           )}
         </div>
       </div>
+
+      {showRxWarning && (
+        <div
+          className="absolute inset-0 z-10 flex items-center justify-center p-4 bg-black/50"
+          onClick={(e) => {
+            e.stopPropagation();
+            setShowRxWarning(false);
+          }}
+        >
+          <div
+            className="bg-white rounded-2xl shadow-2xl w-full max-w-md p-6 text-center"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="w-14 h-14 mx-auto mb-4 rounded-full bg-amber-100 flex items-center justify-center">
+              <Clock className="w-7 h-7 text-amber-500" />
+            </div>
+            <h3 className="text-lg font-bold text-gray-900 mb-2">
+              Farmacêutico indisponível no momento
+            </h3>
+            <p className="text-sm text-gray-600 mb-5">
+              Não há nenhum farmacêutico online nesta farmácia agora. Você pode
+              continuar, mas a análise da sua receita pode demorar mais até que
+              um farmacêutico fique disponível.
+            </p>
+            <div className="flex flex-col-reverse sm:flex-row gap-2">
+              <button
+                type="button"
+                onClick={() => setShowRxWarning(false)}
+                className="flex-1 py-2.5 px-4 rounded-xl border border-gray-200 font-semibold text-gray-700 hover:bg-gray-50 transition"
+              >
+                Cancelar
+              </button>
+              <button
+                type="button"
+                onClick={doAddToCart}
+                className="flex-1 py-2.5 px-4 rounded-xl bg-primary text-white font-semibold hover:bg-secondary transition"
+              >
+                Continuar mesmo assim
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 
