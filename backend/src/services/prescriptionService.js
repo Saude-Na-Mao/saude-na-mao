@@ -803,6 +803,23 @@ async function uploadPrescription(
 
   if (productId && mongoose.Types.ObjectId.isValid(String(productId))) {
     dadosCriacao.id_produto = productId;
+    // Deriva o tipo de receita da classificação do produto, para compatibilidade
+    // SNGPC (antimicrobiano exige receita de antimicrobiano na validação do pedido).
+    try {
+      const Product = require("../models/Product");
+      const prod = await Product.findById(productId).select(
+        "classificacao_receita",
+      );
+      const tipoPorClasse = {
+        antimicrobiano: "antimicrobiano",
+        tarja_preta: "especial_b",
+        controlado_a: "especial_c1",
+      };
+      const tipo = tipoPorClasse[prod?.classificacao_receita];
+      if (tipo) dadosCriacao.tipo_receita = tipo;
+    } catch {
+      /* mantém o default do schema */
+    }
   }
 
   // Modo chat_ao_vivo gera um identificador de sessão único

@@ -66,6 +66,16 @@ function rxCandidataParaProduto(rx, productId, pharmacyId) {
   return receitaVinculadaAoProduto(rx, productId)
 }
 
+const RX_STATUS_ATIVO = ['Pendente', 'Em Análise', 'Aprovada']
+/** Receita já enviada (qualquer status ativo) vinculada ao produto, mesma farmácia.
+ * Permite criar o pedido em modo "aguardando validação" antes da aprovação. */
+function rxEnviadaParaProduto(rx, productId, pharmacyId) {
+  if (!rx || !RX_STATUS_ATIVO.includes(rx.status)) return false
+  const fid = rx.id_farmacia?._id || rx.id_farmacia
+  if (fid && pharmacyId && String(fid) !== String(pharmacyId)) return false
+  return receitaVinculadaAoProduto(rx, productId)
+}
+
 export default function Checkout() {
   const navigate = useNavigate()
   const clearPrescricoes = usePrescriptionStore((s) => s.clearPrescricoes)
@@ -94,6 +104,7 @@ export default function Checkout() {
   const [selectedAddressId, setSelectedAddressId] = useState(null)
   const [addressMode, setAddressMode] = useState('loading') // 'loading' | 'saved' | 'new'
   const [rxApproved, setRxApproved] = useState(false)
+  const [rxUploaded, setRxUploaded] = useState(false)
   const [rxChecking, setRxChecking] = useState(true)
   const [rxPorProduto, setRxPorProduto] = useState({})
 
@@ -124,6 +135,7 @@ export default function Checkout() {
     if (!token || !precisaReceitaNoPedido) {
       setRxChecking(false)
       setRxApproved(!precisaReceitaNoPedido)
+      setRxUploaded(!precisaReceitaNoPedido)
       setRxPorProduto({})
       return
     }
@@ -154,28 +166,41 @@ export default function Checkout() {
         })
         const itensReceita = items.filter((i) => itemExigeReceita(i))
         const map = {}
-        let ok = true
+        let todasEnviadas = true
+        let todasAprovadas = true
         for (const ci of itensReceita) {
-          const cand = farmFiltered.find((r) =>
+          // 1ª opção: receita aprovada e disponível para uso imediato
+          const aprovada = farmFiltered.find((r) =>
             rxCandidataParaProduto(r, ci.id, pharmacyIdCart),
           )
-          if (!cand) {
-            ok = false
-            break
+          if (aprovada) {
+            const resultado = await verificarDisponibilidade(aprovada._id)
+            if (resultado.disponivel) {
+              map[ci.id] = aprovada._id
+              continue
+            }
           }
-          const resultado = await verificarDisponibilidade(cand._id)
-          if (!resultado.disponivel) {
-            ok = false
-            break
+          // 2ª opção: receita já enviada, aguardando validação (fluxo pedido-primeiro)
+          const enviada = farmFiltered.find((r) =>
+            rxEnviadaParaProduto(r, ci.id, pharmacyIdCart),
+          )
+          if (enviada) {
+            map[ci.id] = enviada._id
+            todasAprovadas = false
+          } else {
+            todasEnviadas = false
+            todasAprovadas = false
           }
-          map[ci.id] = cand._id
         }
         if (cancelled) return
+        const temItens = itensReceita.length > 0
         setRxPorProduto(map)
-        setRxApproved(ok && itensReceita.length > 0)
-        if (!ok) navigate('/receita')
+        setRxUploaded(todasEnviadas && temItens)
+        setRxApproved(todasAprovadas && temItens)
+        if (!todasEnviadas) navigate('/receita')
       } catch {
         if (!cancelled) {
+          setRxUploaded(false)
           setRxApproved(false)
           navigate('/receita')
         }
@@ -275,7 +300,7 @@ export default function Checkout() {
       setError('Por segurança regulatória, medicamentos controlados exigem atendimento da farmácia.')
       return
     }
-    if (precisaReceitaNoPedido && !rxApproved) return
+    if (precisaReceitaNoPedido && !rxUploaded) return
 
     if (needsAddress && (!address.logradouro || !address.numero || !address.bairro)) {
       return
@@ -283,6 +308,8 @@ export default function Checkout() {
 
     try {
       setLoading(true)
+      // Pedido com receita ainda não aprovada: cria aguardando validação da farmácia (sem pagar)
+      const aguardarValidacao = precisaReceitaNoPedido && !rxApproved
       const orderData = {
         id_farmacia: pharmacyId,
         tipo_entrega: deliveryType,
@@ -291,6 +318,7 @@ export default function Checkout() {
         taxa_entrega: taxaEntrega,
         total,
         metodo_pagamento: paymentMethod,
+        aguardar_validacao_receita: aguardarValidacao,
         cupom: couponData
           ? { codigo: couponData.cupom?.codigo, desconto, frete_gratis: couponData.frete_gratis }
           : {},
@@ -319,17 +347,26 @@ export default function Checkout() {
 
       const res = await orderService.create(orderData)
       const pedido = res.data?.data?.pedido
-      const paymentRes = await paymentService.confirmTest(pedido._id)
-      const pedidoPago = paymentRes.data?.data?.pedido || pedido
+
+      // Só cobra quando a farmácia já liberou (sem receita pendente).
+      // Pedido aguardando validação: pagamento fica para depois (em Meus Pedidos).
+      const aguardandoReceita =
+        pedido?.status === 'aguardando_confirmacao_receita_farmacia'
+      let pedidoFinal = pedido
+      if (!aguardandoReceita) {
+        const paymentRes = await paymentService.confirmTest(pedido._id)
+        pedidoFinal = paymentRes.data?.data?.pedido || pedido
+      }
 
       orderDoneRef.current = true
       setOrderCreated({
-        ...pedidoPago,
+        ...pedidoFinal,
         _pharmacyName: pharmacyName,
         _total: total,
         _paymentMethod: paymentMethod,
         _hasControlled: items.some((i) => i.controlado),
-        _paymentApproved: pedidoPago?.status_pagamento === 'aprovado',
+        _aguardandoReceita: aguardandoReceita,
+        _paymentApproved: pedidoFinal?.status_pagamento === 'aprovado',
       })
       clearCart()
       clearPrescricoes()
@@ -346,12 +383,20 @@ export default function Checkout() {
     return (
       <div className="mx-auto max-w-2xl px-4 py-16 text-center">
         <div className="bg-white rounded-2xl shadow-lg p-10">
-          <div className="w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mx-auto mb-6">
-            <CheckCircle className="w-10 h-10 text-emerald-500" />
+          <div className={`w-20 h-20 ${orderCreated._aguardandoReceita ? 'bg-amber-100' : 'bg-emerald-100'} rounded-full flex items-center justify-center mx-auto mb-6`}>
+            {orderCreated._aguardandoReceita ? (
+              <Clock className="w-10 h-10 text-amber-500" />
+            ) : (
+              <CheckCircle className="w-10 h-10 text-emerald-500" />
+            )}
           </div>
-          <h1 className="text-3xl font-bold mb-2">Pagamento aprovado!</h1>
+          <h1 className="text-3xl font-bold mb-2">
+            {orderCreated._aguardandoReceita ? 'Pedido enviado!' : 'Pagamento aprovado!'}
+          </h1>
           <p className="text-gray-500 mb-6">
-            Seu pedido foi pago e enviado para a farmácia preparar.
+            {orderCreated._aguardandoReceita
+              ? 'Sua receita foi enviada para o farmacêutico validar. Assim que for aprovada, você poderá pagar em Meus Pedidos.'
+              : 'Seu pedido foi pago e enviado para a farmácia preparar.'}
           </p>
 
           <div className="bg-gray-50 rounded-xl p-6 mb-6 text-left space-y-3">
@@ -371,8 +416,10 @@ export default function Checkout() {
             </div>
             <div className="flex justify-between text-sm">
               <span className="text-gray-500">Status</span>
-              <span className="font-bold text-emerald-600">
-                {orderCreated._paymentApproved ? 'Aprovado' : 'Pendente'}
+              <span className={`font-bold ${orderCreated._aguardandoReceita ? 'text-amber-600' : 'text-emerald-600'}`}>
+                {orderCreated._aguardandoReceita
+                  ? 'Aguardando receita'
+                  : orderCreated._paymentApproved ? 'Aprovado' : 'Pendente'}
               </span>
             </div>
             <div className="flex justify-between text-sm">
@@ -391,23 +438,36 @@ export default function Checkout() {
           )}
 
           <div className="flex flex-col sm:flex-row gap-3">
-            <Link
-              to={`/rastreamento/${orderCreated._id}`}
-              className="flex-1 bg-primary text-white py-3 rounded-xl font-semibold hover:bg-secondary transition flex items-center justify-center gap-2"
-            >
-              <Truck className="w-4 h-4" /> Acompanhar Pedido
-            </Link>
-            <Link
-              to="/pedidos"
-              className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center justify-center gap-2"
-            >
-              Meus Pedidos
-            </Link>
+            {orderCreated._aguardandoReceita ? (
+              <Link
+                to="/pedidos"
+                className="flex-1 bg-primary text-white py-3 rounded-xl font-semibold hover:bg-secondary transition flex items-center justify-center gap-2"
+              >
+                Ir para Meus Pedidos
+              </Link>
+            ) : (
+              <>
+                <Link
+                  to={`/rastreamento/${orderCreated._id}`}
+                  className="flex-1 bg-primary text-white py-3 rounded-xl font-semibold hover:bg-secondary transition flex items-center justify-center gap-2"
+                >
+                  <Truck className="w-4 h-4" /> Acompanhar Pedido
+                </Link>
+                <Link
+                  to="/pedidos"
+                  className="flex-1 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition flex items-center justify-center gap-2"
+                >
+                  Meus Pedidos
+                </Link>
+              </>
+            )}
           </div>
 
-          <div className="mt-6 flex items-center justify-center gap-4 text-xs text-gray-400">
-            <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Tempo estimado: 45-60 min</span>
-          </div>
+          {!orderCreated._aguardandoReceita && (
+            <div className="mt-6 flex items-center justify-center gap-4 text-xs text-gray-400">
+              <span className="flex items-center gap-1"><Clock className="w-3 h-3" /> Tempo estimado: 45-60 min</span>
+            </div>
+          )}
         </div>
       </div>
     )
@@ -758,7 +818,7 @@ export default function Checkout() {
                 !paymentMethod ||
                 loading ||
                 temBloqueioRemoto ||
-                (precisaReceitaNoPedido && !rxApproved)
+                (precisaReceitaNoPedido && !rxUploaded)
               }
               className="w-full bg-primary text-white py-3.5 rounded-xl font-semibold hover:bg-secondary transition disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-center gap-2"
             >

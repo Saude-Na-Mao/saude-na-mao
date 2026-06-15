@@ -237,6 +237,13 @@ export default function Receita() {
   ).length
   const todasAprovadas =
     itensReceitaPedido.length > 0 && itensAprovados === itensReceitaPedido.length
+  // Fluxo pedido-primeiro: basta a receita estar ENVIADA para seguir ao checkout;
+  // o farmacêutico valida depois, no próprio pedido.
+  const itensEnviados = itensReceitaPedido.filter((i) =>
+    ['Pendente', 'Em Análise', 'Aprovada'].includes(prescByItem[i.id]?.status),
+  ).length
+  const todasEnviadas =
+    itensReceitaPedido.length > 0 && itensEnviados === itensReceitaPedido.length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -512,9 +519,9 @@ export default function Receita() {
       {/* Continue button */}
       <button
         onClick={() => navigate('/checkout')}
-        disabled={!todasAprovadas}
+        disabled={!todasEnviadas}
         className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
-          todasAprovadas
+          todasEnviadas
             ? 'bg-primary text-white hover:bg-secondary'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
@@ -524,9 +531,14 @@ export default function Receita() {
             <ShoppingCart className="w-4 h-4" />
             Continuar para Pagamento
           </>
+        ) : todasEnviadas ? (
+          <>
+            <ShoppingCart className="w-4 h-4" />
+            Enviar pedido para a farmácia validar
+          </>
         ) : (
           <>
-            Aguardando aprovação das receitas
+            Envie a receita de todos os itens
             <ArrowRight className="w-4 h-4" />
           </>
         )}
