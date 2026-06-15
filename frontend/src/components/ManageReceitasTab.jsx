@@ -308,7 +308,7 @@ export function ManageReceitasTab({ id_farmacia }) {
                 <tr>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Paciente</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Status</th>
-                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Validação</th>
+                  <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Resposta</th>
                   <th className="px-6 py-3 text-left text-xs font-medium text-gray-600 uppercase">Data</th>
                 </tr>
               </thead>
@@ -322,7 +322,7 @@ export function ManageReceitasTab({ id_farmacia }) {
                       {item.status || 'PENDENTE'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-700">
-                      {item.validado_em ? 'Validada' : 'Aguardando'}
+                      {item.validado_em ? 'Respondida' : 'Aguardando'}
                     </td>
                     <td className="px-6 py-4 text-sm text-gray-600">
                       {new Date(item.createdAt).toLocaleDateString('pt-BR')}

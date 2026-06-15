@@ -1463,7 +1463,7 @@ export function PharmacistDashboard() {
           color="red"
         />
         <StatCard
-          title="Receitas Validadas Hoje"
+          title="Receitas Respondidas Hoje"
           value={stats.receitas_validadas_hoje}
           icon="✓"
           color="green"

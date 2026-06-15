@@ -208,7 +208,7 @@ export default function Receita() {
           },
         },
       }))
-      setPrescricaoProduto?.(itemId, {
+      setPrescricao(itemId, {
         _id: dados._id || dados.id,
         status: dados.status || 'Em Análise',
         id_produto: itemId,
