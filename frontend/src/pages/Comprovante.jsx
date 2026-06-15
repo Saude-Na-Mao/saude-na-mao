@@ -101,14 +101,28 @@ export default function Comprovante() {
 
   return (
     <div className="max-w-2xl mx-auto px-4 py-8">
+      <style>{`
+        @media print {
+          @page { size: A4 portrait; margin: 10mm; }
+          html, body { background: #fff !important; }
+          body * { visibility: hidden !important; }
+          #comprovante-print, #comprovante-print * { visibility: visible !important; }
+          #comprovante-print {
+            position: absolute; left: 0; top: 0; width: 100%;
+            box-shadow: none !important; border: 1px solid #e5e7eb;
+          }
+          .no-print { display: none !important; }
+          * { -webkit-print-color-adjust: exact !important; print-color-adjust: exact !important; }
+        }
+      `}</style>
       <Link
         to="/pedidos"
-        className="inline-flex items-center gap-2 text-gray-500 hover:text-primary transition mb-6 text-sm"
+        className="no-print inline-flex items-center gap-2 text-gray-500 hover:text-primary transition mb-6 text-sm"
       >
         <ArrowLeft className="w-4 h-4" /> Voltar aos Pedidos
       </Link>
 
-      <div className="bg-white rounded-2xl shadow-lg overflow-hidden">
+      <div id="comprovante-print" className="bg-white rounded-2xl shadow-lg overflow-hidden">
         {/* Header */}
         <div className="bg-gradient-to-r from-primary to-secondary p-6 text-white text-center">
           <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-3">
@@ -233,7 +247,7 @@ export default function Comprovante() {
           </div>
 
           {/* Ações */}
-          <div className="flex gap-3 pt-2">
+          <div className="no-print flex gap-3 pt-2">
             <button
               onClick={() => window.print()}
               className="flex-1 flex items-center justify-center gap-2 border border-gray-200 text-gray-700 py-3 rounded-xl font-semibold hover:bg-gray-50 transition text-sm"
@@ -246,6 +260,17 @@ export default function Comprovante() {
             >
               <Package className="w-4 h-4" /> Rastrear
             </Link>
+          </div>
+
+          {/* Rodapé (somente impressão) */}
+          <div className="hidden print:block border-t border-gray-200 pt-4 text-center">
+            <p className="text-sm font-bold text-primary">Saúde na Mão</p>
+            <p className="text-[11px] text-gray-500">
+              Medicamentos com entrega rápida e confiável · contato@saudenamao.com.br
+            </p>
+            <p className="text-[10px] text-gray-400 mt-1">
+              Comprovante gerado em {formatDate(new Date())} · Pedido #{shortId}
+            </p>
           </div>
         </div>
       </div>

@@ -13,6 +13,7 @@ import {
   RefreshCw, Bike, Car, Award, Store, Clipboard, Camera,
 } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
+import { maskCep, maskUf, onlyLetters } from '../utils/inputMasks'
 import { setSupportToastSuppressed } from '../utils/supportTicketStorage'
 import { useSupportTicketRoom } from '../hooks/useSupportTicketRoom'
 import {
@@ -937,11 +938,12 @@ function EnderecosTab() {
                 placeholder="00000-000"
                 value={form.cep}
                 onChange={(e) => {
-                  const val = e.target.value
+                  const val = maskCep(e.target.value)
                   setForm({ ...form, cep: val })
                   if (val.replace(/\D/g, '').length === 8) handleCepSearch(val)
                 }}
                 required
+                inputMode="numeric"
                 maxLength={9}
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -989,7 +991,7 @@ function EnderecosTab() {
               <input
                 type="text"
                 value={form.cidade}
-                onChange={(e) => setForm({ ...form, cidade: e.target.value })}
+                onChange={(e) => setForm({ ...form, cidade: onlyLetters(e.target.value) })}
                 required
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />
@@ -1000,7 +1002,7 @@ function EnderecosTab() {
                 type="text"
                 maxLength={2}
                 value={form.estado}
-                onChange={(e) => setForm({ ...form, estado: e.target.value.toUpperCase() })}
+                onChange={(e) => setForm({ ...form, estado: maskUf(e.target.value) })}
                 required
                 className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
               />

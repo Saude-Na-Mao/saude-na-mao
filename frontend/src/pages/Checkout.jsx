@@ -4,6 +4,7 @@ import { useCartStore, useAuthStore, usePrescriptionStore } from '../stores/stor
 import { orderService, geoService, userService, prescriptionService, paymentService } from '../services/api'
 import AddressNumberInput from '../components/AddressNumberInput'
 import { itemExigeReceita, receitaVinculadaAoProduto } from '../utils/receitaCart'
+import { maskCep } from '../utils/inputMasks'
 import {
   CreditCard,
   Banknote,
@@ -620,8 +621,10 @@ export default function Checkout() {
                     <input
                       type="text"
                       value={address.cep}
-                      onChange={(e) => setAddress({ ...address, cep: e.target.value })}
+                      onChange={(e) => setAddress({ ...address, cep: maskCep(e.target.value) })}
                       onBlur={handleCepBlur}
+                      inputMode="numeric"
+                      maxLength={9}
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       placeholder="74000-000"
                     />

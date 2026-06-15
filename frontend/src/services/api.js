@@ -238,6 +238,7 @@ export const orderService = {
   },
   getById: (id) => api.get(`/pedidos/${id}`),
   create: (data) => api.post('/pedidos', data),
+  cancel: (id) => api.post(`/pedidos/${id}/cancel`),
   updateStatus: (id, status, extra = {}) => api.patch(`/pedidos/${id}/status`, { ...extra, novoStatus: status, status }),
   track: (id) => api.get(`/pedidos/${id}/rastreamento`),
   getPharmacyOrders: (pharmacyId, params = {}) =>

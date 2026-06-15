@@ -9,7 +9,7 @@ import LoadingSpinner from '../components/LoadingSpinner'
 import Alert from '../components/Alert'
 import ReviewModal from '../components/ReviewModal'
 import DeliveryReviewModal from '../components/DeliveryReviewModal'
-import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, CheckCircle, Clock } from 'lucide-react'
+import { Package, MapPin, Calendar, Truck, FileText, RefreshCw, AlertCircle, Star, RotateCcw, CheckCircle, Clock, X } from 'lucide-react'
 import {
   PEDIDOS_TAB,
   orderMatchesPedidosTab,
@@ -111,6 +111,7 @@ export default function Pedidos() {
   const [reviewOrder, setReviewOrder] = useState(null)
   const [deliveryReview, setDeliveryReview] = useState(null)
   const [processingPaymentOrderId, setProcessingPaymentOrderId] = useState(null)
+  const [cancelingOrderId, setCancelingOrderId] = useState(null)
   const addNotification = useUiStore(s => s.addNotification)
 
   const loadOrders = useCallback(async ({ silent } = {}) => {
@@ -224,6 +225,29 @@ export default function Pedidos() {
       setError(err?.message || 'Não foi possível confirmar pagamento')
     } finally {
       setProcessingPaymentOrderId(null)
+    }
+  }
+
+  const handleCancelOrder = async (orderId) => {
+    const id = orderId != null ? String(orderId) : ''
+    if (!id || id === 'undefined') return
+    if (!window.confirm('Tem certeza que deseja cancelar este pedido?')) return
+    try {
+      setError(null)
+      setCancelingOrderId(id)
+      await orderService.cancel(id)
+      addNotification({
+        type: 'success',
+        title: 'Pedido cancelado',
+        message: 'Seu pedido foi cancelado. Nenhuma cobrança será mantida.',
+        duration: 8000,
+      })
+      await loadOrders({ silent: true })
+    } catch (err) {
+      console.error('cancelOrder', err)
+      setError(err?.response?.data?.message || err?.message || 'Não foi possível cancelar o pedido')
+    } finally {
+      setCancelingOrderId(null)
     }
   }
 
@@ -399,6 +423,19 @@ export default function Pedidos() {
                       </button>
                     </div>
                   )}
+                  {!['a_caminho', 'entregue', 'cancelado', 'rejeitado'].includes(String(order.status || '').trim()) && (
+                    <button
+                      type="button"
+                      onClick={() => handleCancelOrder(oid)}
+                      disabled={cancelingOrderId === oid}
+                      className="inline-flex items-center justify-center gap-2 border border-red-300 text-red-600 px-4 py-2 rounded-lg hover:bg-red-50 transition w-full justify-center disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      <span className="text-sm font-semibold">
+                        {cancelingOrderId === oid ? 'Cancelando...' : 'Cancelar pedido'}
+                      </span>
+                    </button>
+                  )}
                 </div>
               </div>
 
@@ -409,17 +446,19 @@ export default function Pedidos() {
                     {getOrderProgressSteps(order).map((step) => (
                       <div
                         key={step.id}
-                        className={`rounded-lg px-3 py-2 text-xs font-semibold border ${
+                        className={`rounded-lg px-3 py-2 text-xs font-semibold border transition ${
                           step.state === 'completed'
                             ? 'bg-emerald-50 border-emerald-200 text-emerald-800'
                             : step.state === 'current'
-                            ? 'bg-primary/10 border-primary/20 text-primary'
+                            ? 'bg-primary/10 border-primary/30 text-primary animate-pulse'
                             : 'bg-white border-gray-200 text-gray-500'
                         }`}
                       >
                         <div className="flex items-center gap-1.5">
                           {step.state === 'completed' ? (
                             <CheckCircle className="w-3.5 h-3.5" />
+                          ) : step.state === 'current' ? (
+                            <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                           ) : (
                             <Clock className="w-3.5 h-3.5" />
                           )}
