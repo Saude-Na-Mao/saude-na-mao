@@ -9,6 +9,7 @@ import Logger from '../utils/logger'
 import { getApiErrorMessage } from '../utils/apiErrorMessage'
 import { getGoogleClientId } from '../config/env'
 import { SELF_REGISTER_TYPES } from '../constants'
+import { LGPD_CONTRACT_FLAG } from '../components/LgpdConsentModal'
 import {
   User,
   Mail,
@@ -202,6 +203,11 @@ export default function Registro() {
       try {
         setApiError(null)
 
+        if (!termsAccepted) {
+          setApiError('É necessário aceitar os Termos de Uso e a Política de Privacidade (LGPD) para criar a conta.')
+          return
+        }
+
         logger.info('Attempting registration', { email: formData.email, tipo: tipoUsuario })
 
         const payload = {
@@ -211,8 +217,8 @@ export default function Registro() {
           cpf: formData.cpf,
           senha: formData.senha,
           tipo_usuario: tipoUsuario,
-          // O consentimento LGPD é registrado logo após o cadastro, no modal de
-          // privacidade (com "Li e concordo"), gravando data/IP no servidor.
+          // Assinatura do consentimento no momento da criação da conta.
+          lgpd_consentimento: { aceito: true, versao_termo: '2.0' },
         }
 
         if (tipoUsuario === 'entregador') {
@@ -236,6 +242,14 @@ export default function Registro() {
         }
 
         const response = await authService.register(payload)
+        // Apresenta o contrato LGPD completo uma única vez, logo após criar a conta.
+        if (tipoUsuario === 'cliente') {
+          try {
+            window.sessionStorage?.setItem(LGPD_CONTRACT_FLAG, '1')
+          } catch {
+            /* ignore */
+          }
+        }
         completeAuth(response)
       } catch (error) {
         setApiError(getApiErrorMessage(error, 'Erro ao registrar'))
@@ -507,19 +521,28 @@ export default function Registro() {
                 </section>
               )}
 
-              <p className="text-xs text-gray-500 leading-relaxed rounded-xl border border-gray-200 p-3">
-                Ao criar a conta, na sequência você confirmará o consentimento de
-                privacidade (LGPD). Consulte os{' '}
-                <Link to="/legal" className="text-primary font-medium hover:underline">
-                  termos de uso e a política de privacidade
-                </Link>
-                .
-              </p>
+              <label className="flex items-start gap-3 text-xs text-gray-600 leading-relaxed rounded-xl border border-gray-200 p-3 cursor-pointer">
+                <input
+                  type="checkbox"
+                  checked={termsAccepted}
+                  onChange={(e) => setTermsAccepted(e.target.checked)}
+                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30 flex-shrink-0"
+                  disabled={isSubmitting}
+                />
+                <span>
+                  Li e aceito os{' '}
+                  <Link to="/legal" target="_blank" className="text-primary font-medium hover:underline">
+                    Termos de Uso e a Política de Privacidade (LGPD)
+                  </Link>
+                  , e consinto com o tratamento dos meus dados pessoais conforme descrito.
+                  Logo após criar a conta, você verá o contrato completo.
+                </span>
+              </label>
 
               <button
                 type="submit"
-                disabled={isSubmitting}
-                className="w-full btn-primary flex items-center justify-center gap-2 py-3"
+                disabled={isSubmitting || !termsAccepted}
+                className="w-full btn-primary flex items-center justify-center gap-2 py-3 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 {isSubmitting ? (
                   <>

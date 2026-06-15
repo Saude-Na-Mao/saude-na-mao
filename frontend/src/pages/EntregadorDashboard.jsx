@@ -1,4 +1,6 @@
-import { lazy, Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { lazy, Suspense, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { io } from "socket.io-client";
+import { getSocketUrl, SOCKET_TRANSPORTS } from "../config/env";
 import { useAuthStore } from "../stores/store";
 import {
   deliveryService,
@@ -178,6 +180,7 @@ function mapsHrefFromAddressSnapshot(addr) {
 
 export default function EntregadorDashboard() {
   const { user, setUser } = useAuthStore();
+  const token = useAuthStore((s) => s.token);
   const [loading, setLoading] = useState(true);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState(null);
@@ -365,6 +368,67 @@ export default function EntregadorDashboard() {
 
     return () => clearInterval(intervalo);
   }, [emEntrega, activeDelivery?._id]);
+
+  // Recarrega o painel a partir de eventos em tempo real (sem precisar atualizar
+  // a página) — principalmente quando o farmacêutico libera a coleta (código) e
+  // quando o cliente fecha a venda com o código de confirmação.
+  const realtimeReloadRef = useRef(() => {});
+  useEffect(() => {
+    realtimeReloadRef.current = async () => {
+      try {
+        await loadActiveFromApi();
+        const isAvailable = Boolean(
+          useAuthStore.getState().user?.dados_entregador?.disponivel,
+        );
+        const aindaEmEntrega = Boolean(activeDeliveryRef.current);
+        if (!aindaEmEntrega && isAvailable) {
+          await loadDisponiveis();
+        }
+        await loadGanhosHoje();
+      } catch {
+        /* ignore */
+      }
+    };
+  }, [loadActiveFromApi, loadDisponiveis, loadGanhosHoje]);
+
+  const activeDeliveryRef = useRef(null);
+  useEffect(() => {
+    activeDeliveryRef.current = activeDelivery;
+  }, [activeDelivery]);
+
+  const driverId = user?.id || user?._id || null;
+  const activeDeliveryId = activeDelivery?._id ? String(activeDelivery._id) : null;
+  useEffect(() => {
+    if (!token || !driverId) return undefined;
+
+    const socket = io(getSocketUrl(), {
+      auth: { token },
+      transports: SOCKET_TRANSPORTS,
+    });
+
+    const reload = () => {
+      realtimeReloadRef.current?.();
+    };
+
+    socket.on("connect", () => {
+      socket.emit("join:driver", { driverId });
+      socket.emit("join:user", driverId);
+      if (activeDeliveryId) {
+        socket.emit("join:delivery", { deliveryId: activeDeliveryId });
+      }
+    });
+
+    socket.on("delivery:status", reload);
+    socket.on("delivery:accepted", reload);
+    socket.on("delivery:ready", reload);
+    socket.on("delivery:order-ready", reload);
+    socket.on("delivery:arrived", reload);
+    socket.on("order:status", reload);
+
+    return () => {
+      socket.disconnect();
+    };
+  }, [token, driverId, activeDeliveryId]);
 
   const toggleDisponibilidade = async () => {
     if (busy) return;

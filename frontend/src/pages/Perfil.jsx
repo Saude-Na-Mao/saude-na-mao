@@ -67,6 +67,7 @@ export default function Perfil() {
     email: user?.email || '',
     telefone: formatTelefone(user?.telefone || ''),
     cpf: formatCpf(user?.cpf || ''),
+    rg: user?.rg || '',
     dados_entregador: {
       tipo_veiculo: user?.dados_entregador?.tipo_veiculo || '',
       placa: user?.dados_entregador?.placa || '',
@@ -168,6 +169,7 @@ export default function Perfil() {
         nome: formData.nome,
         telefone: telefoneDigits,
         cpf: cpfDigits,
+        rg: (formData.rg || '').trim(),
       }
       if (isDriver) {
         const tipoVeiculo = formData.dados_entregador?.tipo_veiculo || ''
@@ -207,6 +209,7 @@ export default function Perfil() {
         fd.append('nome', payload.nome)
         if (payload.telefone) fd.append('telefone', payload.telefone)
         if (payload.cpf) fd.append('cpf', payload.cpf)
+        if (payload.rg) fd.append('rg', payload.rg)
         if (payload.dados_entregador) {
           fd.append('dados_entregador', JSON.stringify(payload.dados_entregador))
         }
@@ -488,6 +491,25 @@ export default function Perfil() {
                   />
                 </div>
 
+                {isClientOnly && (
+                  <div>
+                    <label className="block text-xs font-medium text-gray-500 mb-1.5">RG</label>
+                    <input
+                      type="text"
+                      name="rg"
+                      value={formData.rg}
+                      onChange={handleChange}
+                      disabled={!editMode || loading}
+                      maxLength={20}
+                      placeholder="0000000"
+                      className="w-full px-4 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 disabled:bg-gray-50"
+                    />
+                    <p className="text-[11px] text-gray-400 mt-1">
+                      Usado automaticamente no registro SNGPC de medicamentos controlados.
+                    </p>
+                  </div>
+                )}
+
                 {editMode && (
                   <div className="flex gap-3 pt-4 border-t border-gray-100">
                     <button
@@ -508,6 +530,7 @@ export default function Perfil() {
                           email: user?.email || '',
                           telefone: formatTelefone(user?.telefone || ''),
                           cpf: formatCpf(user?.cpf || ''),
+                          rg: user?.rg || '',
                           dados_entregador: {
                             tipo_veiculo: user?.dados_entregador?.tipo_veiculo || '',
                             placa: user?.dados_entregador?.placa || '',
@@ -1522,6 +1545,7 @@ export function ChatsTab({ initialOpenTicketId, onConsumedOpenTicket }) {
 }
 
 export function ReceitasTab() {
+  const navigate = useNavigate()
   const [prescriptions, setPrescriptions] = useState([])
   const [loading, setLoading] = useState(true)
 
@@ -1532,7 +1556,7 @@ export function ReceitasTab() {
   const loadPrescriptions = async () => {
     try {
       setLoading(true)
-      const res = await prescriptionService.getAll()
+      const res = await prescriptionService.getAll({ params: { limit: 100 } })
       const data = res.data?.data
       setPrescriptions(Array.isArray(data) ? data : (data?.docs || data?.receitas || []))
     } catch {
@@ -1546,17 +1570,44 @@ export function ReceitasTab() {
     const colors = {
       'Aprovada': 'bg-green-100 text-green-700',
       'Pendente': 'bg-yellow-100 text-yellow-700',
+      'Em Análise': 'bg-blue-100 text-blue-700',
       'Rejeitada': 'bg-red-100 text-red-700',
-      'Em análise': 'bg-blue-100 text-blue-700',
+      'Cancelada': 'bg-gray-100 text-gray-500',
+      'Expirada': 'bg-gray-100 text-gray-500',
     }
     return colors[status] || 'bg-gray-100 text-gray-700'
   }
+
+  const temAprovada = prescriptions.some((rx) => rx.status === 'Aprovada')
 
   return (
     <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
       <div className="flex justify-between items-center mb-4">
         <h2 className="text-xl font-bold">Minhas Receitas</h2>
+        <button
+          onClick={loadPrescriptions}
+          disabled={loading}
+          className="p-2 text-gray-400 hover:text-primary hover:bg-primary/5 rounded-xl transition"
+          title="Atualizar"
+        >
+          <RefreshCw className={`w-4 h-4 ${loading ? 'animate-spin' : ''}`} />
+        </button>
       </div>
+
+      {temAprovada && (
+        <div className="mb-4 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 rounded-xl border border-emerald-200 bg-emerald-50 p-4">
+          <div className="flex items-center gap-2 text-sm text-emerald-800">
+            <CheckCircle className="w-5 h-5 flex-shrink-0" />
+            <span>Você tem receita(s) aprovada(s). Avance para o pagamento do pedido.</span>
+          </div>
+          <button
+            onClick={() => navigate('/pedidos')}
+            className="inline-flex items-center justify-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-semibold hover:bg-secondary transition whitespace-nowrap"
+          >
+            Avançar para o pagamento
+          </button>
+        </div>
+      )}
 
       {loading ? (
         <div className="flex justify-center py-8">
@@ -1570,25 +1621,58 @@ export function ReceitasTab() {
         </div>
       ) : (
         <div className="space-y-3">
-          {prescriptions.map((rx) => (
-            <div key={rx._id} className="flex items-center gap-4 p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
-              <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
-                <FileText className="w-5 h-5 text-amber-500" />
+          {prescriptions.map((rx) => {
+            const pdfUrl = resolveMediaUrl(rx.url_imagem_publica || rx.url_arquivo)
+            return (
+              <div key={rx._id} className="p-4 border border-gray-100 rounded-xl hover:bg-gray-50 transition">
+                <div className="flex items-center gap-4">
+                  <div className="w-10 h-10 bg-amber-50 rounded-xl flex items-center justify-center flex-shrink-0">
+                    <FileText className="w-5 h-5 text-amber-500" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-semibold text-sm text-gray-900 truncate">
+                      {rx.nome_arquivo || rx.arquivo || 'Receita médica'}
+                    </p>
+                    <p className="text-xs text-gray-400">
+                      {new Date(rx.createdAt).toLocaleDateString('pt-BR')}
+                      {rx.validade && ` · Válida até ${new Date(rx.validade).toLocaleDateString('pt-BR')}`}
+                    </p>
+                  </div>
+                  {pdfUrl && (
+                    <a
+                      href={pdfUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-xs font-semibold text-primary hover:underline flex-shrink-0"
+                    >
+                      Ver PDF
+                    </a>
+                  )}
+                  <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${getStatusColor(rx.status)}`}>
+                    {rx.status === 'Aprovada' ? 'Validada' : rx.status}
+                  </span>
+                </div>
+
+                {/* Aviso por PDF: validado x rejeitado */}
+                {rx.status === 'Aprovada' && (
+                  <p className="mt-2 text-xs text-emerald-700 bg-emerald-50 border border-emerald-100 rounded-lg px-3 py-2 flex items-center gap-1.5">
+                    <CheckCircle className="w-3.5 h-3.5" /> Validada pelo farmacêutico.
+                  </p>
+                )}
+                {rx.status === 'Rejeitada' && (
+                  <p className="mt-2 text-xs text-red-700 bg-red-50 border border-red-100 rounded-lg px-3 py-2">
+                    <span className="font-semibold">Rejeitada.</span>{' '}
+                    {rx.observacoes ? `Motivo: ${rx.observacoes}` : 'Envie uma nova receita válida para este medicamento.'}
+                  </p>
+                )}
+                {(rx.status === 'Pendente' || rx.status === 'Em Análise') && (
+                  <p className="mt-2 text-xs text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                    Em análise pelo farmacêutico.
+                  </p>
+                )}
               </div>
-              <div className="flex-1 min-w-0">
-                <p className="font-semibold text-sm text-gray-900 truncate">
-                  {rx.nome_arquivo || rx.arquivo || 'Receita médica'}
-                </p>
-                <p className="text-xs text-gray-400">
-                  {new Date(rx.createdAt).toLocaleDateString('pt-BR')}
-                  {rx.validade && ` · Válida até ${new Date(rx.validade).toLocaleDateString('pt-BR')}`}
-                </p>
-              </div>
-              <span className={`text-xs font-bold px-2.5 py-1 rounded-full flex-shrink-0 ${getStatusColor(rx.status)}`}>
-                {rx.status}
-              </span>
-            </div>
-          ))}
+            )
+          })}
         </div>
       )}
     </div>

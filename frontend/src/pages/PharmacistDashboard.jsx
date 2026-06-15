@@ -143,6 +143,33 @@ function availableBatchesForItem(item) {
     .sort((a, b) => new Date(a.expirationDate || 0) - new Date(b.expirationDate || 0));
 }
 
+/**
+ * Lotes já comprometidos por outros pedidos ativos (dispensação registrada),
+ * para não oferecer o mesmo lote duas vezes. Pedido rejeitado/cancelado libera
+ * o lote (o backend restaura a quantidade), então não entra aqui.
+ */
+function committedBatchNumbers(orders, { excludeOrderId = null, productId = null } = {}) {
+  const set = new Set();
+  const exclude = excludeOrderId ? String(excludeOrderId) : null;
+  const pid = productId ? String(productId) : null;
+  for (const o of orders || []) {
+    if (['cancelado', 'rejeitado'].includes(String(o?.status || '').trim())) continue;
+    if (exclude && String(o?._id) === exclude) continue;
+    const sd = o?.sngpcData;
+    if (sd?.selectedBatchNumber) {
+      const sameProduct = !pid || String(sd.productId || '') === pid;
+      if (sameProduct) set.add(String(sd.selectedBatchNumber).trim());
+    }
+    for (const it of o?.itens || []) {
+      const lote = it?.lote_consumido?.batchNumber;
+      if (!lote) continue;
+      const itemPid = String(it?.id_produto?._id || it?.id_produto || '');
+      if (!pid || itemPid === pid) set.add(String(lote).trim());
+    }
+  }
+  return set;
+}
+
 function formatBatchDate(value) {
   if (!value) return '-';
   const date = new Date(value);
@@ -813,6 +840,12 @@ export function PharmacistDashboard() {
       fetchOrders({ silent: true });
     });
 
+    // Atualiza a lista de pedidos em tempo real (entregador aceitou, coleta
+    // liberada, pedido entregue, etc.) sem esperar o polling.
+    socket.on('pharmacy:order:updated', () => {
+      fetchOrders({ silent: true });
+    });
+
     socket.on('prescription:chat_request', (payload) => {
       setChatRequests((prev) => {
         if (prev.some((r) => r.prescriptionId === payload.prescriptionId)) {
@@ -1156,6 +1189,13 @@ export function PharmacistDashboard() {
     const order = linkedOrderFromPrescription(receita, orders);
     const item = controlledItemForPrescription(receita, order);
     const batches = availableBatchesForItem(item);
+    const committed = committedBatchNumbers(orders, {
+      excludeOrderId: order?._id,
+      productId: objectIdValue(item?.id_produto),
+    });
+    const livres = batches.filter(
+      (b) => !committed.has(String(b.batchNumber).trim()),
+    );
     const ocr = receita?.dados_ocr || {};
     return {
       productId: objectIdValue(item?.id_produto),
@@ -1163,7 +1203,7 @@ export function PharmacistDashboard() {
       doctorCrm: ocr?.crm || '',
       doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
       digitalSignatureCode: digitalSignatureCodeFromPrescription(receita),
-      selectedBatchNumber: batches[0]?.batchNumber || '',
+      selectedBatchNumber: (livres[0] || batches[0])?.batchNumber || '',
     };
   };
 
@@ -1347,6 +1387,19 @@ export function PharmacistDashboard() {
   const selectedBatches = selectedControlledItem
     ? availableBatchesForItem(selectedControlledItem)
     : availableBatchesForItem({ id_produto: selectedProductFromPrescription });
+  const selectedCommittedBatches = committedBatchNumbers(orders, {
+    excludeOrderId: selectedLinkedOrder?._id,
+    productId:
+      objectIdValue(selectedControlledItem?.id_produto) ||
+      objectIdValue(selectedProductFromPrescription?._id),
+  });
+  // Lotes oferecidos: tira os já escolhidos por outro pedido ativo, mas mantém
+  // o lote atualmente selecionado nesta tela.
+  const selectableBatches = selectedBatches.filter(
+    (b) =>
+      !selectedCommittedBatches.has(String(b.batchNumber).trim()) ||
+      String(b.batchNumber).trim() === String(sngpcForm.selectedBatchNumber).trim(),
+  );
   const selectedRequiresControlledFlow = selectedReceita
     ? prescriptionRequiresControlledFlow(
         selectedReceita,
@@ -2304,7 +2357,7 @@ export function PharmacistDashboard() {
                         className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                       >
                         <option value="">Selecione um lote</option>
-                        {selectedBatches.map((batch) => (
+                        {selectableBatches.map((batch) => (
                           <option key={batch.batchNumber} value={batch.batchNumber}>
                             {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
                           </option>

@@ -76,6 +76,30 @@ async function getOrderOrThrow(orderId, userId) {
   return pedido;
 }
 
+/**
+ * Bloqueia o pagamento enquanto a(s) receita(s) do pedido não forem validadas
+ * pelo farmacêutico da unidade (RN ANVISA: dispensação antes da cobrança).
+ */
+function assertOrderPayable(pedido) {
+  if (pedido.status === "aguardando_confirmacao_receita_farmacia") {
+    throw createError(
+      "A receita ainda não foi validada pelo farmacêutico da unidade. O pagamento será liberado após a aprovação.",
+      400,
+    );
+  }
+
+  const requerFarmaceutico = (pedido.itens || []).some(
+    (item) => item.controlado || item.receita_obrigatoria || item.id_receita,
+  );
+
+  if (requerFarmaceutico && pedido.aprovado_farmaceutico !== true) {
+    throw createError(
+      "A receita ainda não foi validada pelo farmacêutico da unidade. O pagamento será liberado após a aprovação.",
+      400,
+    );
+  }
+}
+
 async function getUserOrThrow(userId) {
   const usuario = await User.findById(userId).select(
     "nome email cpf +fcmToken",
@@ -192,6 +216,7 @@ async function initiatePayment({
   dadosCartao,
 }) {
   const pedido = await getOrderOrThrow(orderId, userId);
+  assertOrderPayable(pedido);
 
   if (pedido.status_pagamento !== "pendente") {
     throw createError("Este pedido já foi pago ou está sendo processado", 400);
@@ -365,6 +390,7 @@ async function confirmTestPayment(orderId, userId) {
   if (pedido.status_pagamento === "aprovado") {
     return { pedido, pagamento: await Payment.findOne({ id_pedido: pedido._id }) };
   }
+  assertOrderPayable(pedido);
 
   let pagamento = await Payment.findOne({ id_pedido: pedido._id });
   if (!pagamento) {

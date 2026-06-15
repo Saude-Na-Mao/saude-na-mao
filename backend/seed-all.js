@@ -9,7 +9,11 @@ require("dotenv").config({ path: require("path").resolve(__dirname, ".env") });
 
 const mongoose = require("mongoose");
 const { run: seedGynDonosEProdutos } = require("./src/scripts/seedGynPharmacyOwners");
-const { ensureCuponsDemo } = require("./src/scripts/seed");
+const {
+  ensureCuponsDemo,
+  ensureControlledProductBatchesForPharmacy,
+} = require("./src/scripts/seed");
+const Pharmacy = require("./src/models/Pharmacy");
 const { seedUsers } = require("./seed");
 
 function mongoUri() {
@@ -30,10 +34,20 @@ async function seedAll() {
   console.log("► Passo 1/3 — Farmácias demo (Goiânia), produtos e cadastro dos donos...\n");
   await seedGynDonosEProdutos();
 
-  console.log("\n► Passo 2/3 — Cupons de demonstração (apenas se não houver cupons)...\n");
+  console.log("\n► Passo 2/3 — Cupons + lotes/estoque de TODOS os controlados (tarja preta, controlado A, antimicrobiano)...\n");
   await mongoose.connect(uri);
   try {
     await ensureCuponsDemo();
+
+    // Garante estoque + lotes válidos para todos os medicamentos controlados
+    // de todas as farmácias (tarja preta inclusive), em qualquer origem.
+    const pharmacies = await Pharmacy.find({}).select("_id nome");
+    let totalFarmacias = 0;
+    for (const ph of pharmacies) {
+      await ensureControlledProductBatchesForPharmacy(ph._id);
+      totalFarmacias += 1;
+    }
+    console.log(`  ✅ Lotes/estoque verificados em ${totalFarmacias} farmácia(s)`);
   } finally {
     await mongoose.disconnect();
   }

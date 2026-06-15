@@ -309,6 +309,7 @@ export const prescriptionService = {
   },
   checkAvailability: (prescriptionId) =>
     api.get(`/receitas/check-availability/${prescriptionId}`),
+  cancel: (id) => api.delete(`/receitas/${id}/cancel`),
 }
 
 export const pharmacyService = {

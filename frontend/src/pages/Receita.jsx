@@ -67,6 +67,7 @@ export default function Receita() {
   // itemId -> File
   const [fileByItem, setFileByItem] = useState({})
   const [uploadingItem, setUploadingItem] = useState(null)
+  const [reenviandoItem, setReenviandoItem] = useState(null)
   const fileInputs = useRef({})
 
   const itensReceitaPedido = items.filter((i) => itemExigeReceita(i))
@@ -230,6 +231,32 @@ export default function Receita() {
       return next
     })
     removeFile(itemId)
+  }
+
+  /** Cancela a receita enviada (Pendente/Em Análise) e volta ao envio para reenviar outro arquivo. */
+  const handleReenviar = async (itemId, prescId) => {
+    if (!prescId) {
+      resetItem(itemId)
+      return
+    }
+    if (!window.confirm('Cancelar a receita enviada e enviar outro arquivo para este medicamento?')) {
+      return
+    }
+    try {
+      setReenviandoItem(itemId)
+      setError('')
+      await prescriptionService.cancel(prescId)
+      setPrescricao?.(itemId, null)
+      resetItem(itemId)
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Não foi possível cancelar a receita enviada. Tente novamente.',
+      )
+    } finally {
+      setReenviandoItem(null)
+    }
   }
 
   const itensAprovados = itensReceitaPedido.filter(
@@ -412,6 +439,18 @@ export default function Receita() {
                       ? 'Aguardando o farmacêutico iniciar o chat.'
                       : 'Receita em análise pelo farmacêutico. Esta página atualiza sozinha.'}
                   </div>
+                  <div className="flex items-center justify-between gap-2 text-xs">
+                    <span className="text-gray-400">Enviou o arquivo errado?</span>
+                    <button
+                      type="button"
+                      onClick={() => handleReenviar(item.id, data?._id)}
+                      disabled={reenviandoItem === item.id}
+                      className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg border border-amber-300 text-amber-700 font-medium hover:bg-amber-50 transition disabled:opacity-50"
+                    >
+                      <X className="w-3.5 h-3.5" />
+                      {reenviandoItem === item.id ? 'Cancelando...' : 'Cancelar e reenviar'}
+                    </button>
+                  </div>
                   {data?.modo_validacao === 'chat_ao_vivo' && data?.chat_sessao_id && (
                     <div className="bg-white rounded-xl border border-gray-200 p-4 text-left">
                       <div className="flex items-center gap-2 text-sm font-bold text-green-700 mb-2">
@@ -529,7 +568,7 @@ export default function Receita() {
         {todasAprovadas ? (
           <>
             <ShoppingCart className="w-4 h-4" />
-            Continuar para Pagamento
+            Avançar para o pagamento
           </>
         ) : todasEnviadas ? (
           <>

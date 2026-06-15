@@ -12,6 +12,7 @@ function normalizeUser(user) {
     email: userObj.email,
     telefone: userObj.telefone,
     cpf: userObj.cpf,
+    rg: userObj.rg,
     role: userObj.tipo_usuario || userObj.role,
     tipo_usuario: userObj.tipo_usuario,
     id_farmacia: userObj.id_farmacia,
@@ -37,10 +38,13 @@ async function getProfile(req, res, next) {
 
 async function updateProfile(req, res, next) {
   try {
-    const { nome, telefone, cpf, dados_entregador } = req.body;
+    const { nome, telefone, cpf, rg, dados_entregador } = req.body;
     const updateData = { nome, telefone };
     if (cpf !== undefined) {
       updateData.cpf = String(cpf).replace(/\D/g, "") || undefined;
+    }
+    if (rg !== undefined) {
+      updateData.rg = String(rg).trim() || undefined;
     }
     if (dados_entregador !== undefined) {
       // Em upload multipart o objeto chega como string JSON.

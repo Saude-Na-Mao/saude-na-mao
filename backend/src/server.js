@@ -52,6 +52,7 @@ const { setupStockSocket } = require("./sockets/stockSocket");
 const { setupOrderSocket } = require("./sockets/orderSocket");
 const { setupChatSocket } = require("./sockets/chatSocket");
 const { setupPrescriptionSocket } = require("./sockets/prescriptionSocket");
+const { setupDeliverySocket } = require("./sockets/deliverySocket");
 const { setupCronJobs } = require("./scripts/cronJobs");
 const app = require("./app");
 
@@ -64,6 +65,7 @@ const startServer = async () => {
   setupOrderSocket(io);
   setupChatSocket(io);
   setupPrescriptionSocket(io);
+  setupDeliverySocket(io);
 
   server.listen(PORT, () => {
     console.log(`Servidor rodando em http://localhost:${PORT}`);

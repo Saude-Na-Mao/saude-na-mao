@@ -139,7 +139,9 @@ export function getOrderProgressIndex(order) {
   const payApproved = String(order?.status_pagamento || '').trim() === 'aprovado'
   const hasDelivery = hasCourierAssigned(order)
 
-  if (st === 'entregue') return 4
+  // Entregue é a última etapa concluída: índice além do último passo para
+  // marcar TODOS como "completed" (sem spinner girando no passo "Chegou").
+  if (st === 'entregue') return ORDER_PROGRESS_STEPS.length
   if (st === 'a_caminho' || st === 'aguardando_confirmacao_receita_farmacia') return 3
   if (st === 'confirmado') return 2
   if (st === 'em_processamento') return hasDelivery ? 2 : 1

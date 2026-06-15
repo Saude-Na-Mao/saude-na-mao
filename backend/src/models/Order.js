@@ -227,7 +227,7 @@ const orderSchema = new mongoose.Schema(
     },
     tipo_entrega: {
       type: String,
-      enum: ["moto", "drone", "retirada", "drive-thru"],
+      enum: ["moto", "drone", "retirada", "drive-thru", "emergencia"],
       required: true,
     },
     endereco_entrega: {

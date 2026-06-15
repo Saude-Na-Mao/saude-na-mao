@@ -6,9 +6,9 @@ const connectDB = require("../config/database");
 const User = require("../models/User");
 
 const CLIENTES = [
-  { nome: "Cliente Ana Souza", email: "cliente.ana@saudenamao.com", cpf: "11111111111", telefone: "62990000001", foto: "/imagens/pessoas/cliente-ana.png" },
-  { nome: "Cliente Bruno Lima", email: "cliente.bruno@saudenamao.com", cpf: "22222222222", telefone: "62990000002", foto: "/imagens/pessoas/cliente-bruno.png" },
-  { nome: "Cliente Carla Dias", email: "cliente.carla@saudenamao.com", cpf: "33333333333", telefone: "62990000003", foto: "/imagens/pessoas/cliente-carla.png" },
+  { nome: "Cliente Ana Souza", email: "cliente.ana@saudenamao.com", cpf: "11111111111", rg: "1234567", telefone: "62990000001", foto: "/imagens/pessoas/cliente-ana.png" },
+  { nome: "Cliente Bruno Lima", email: "cliente.bruno@saudenamao.com", cpf: "22222222222", rg: "2345678", telefone: "62990000002", foto: "/imagens/pessoas/cliente-bruno.png" },
+  { nome: "Cliente Carla Dias", email: "cliente.carla@saudenamao.com", cpf: "33333333333", rg: "3456789", telefone: "62990000003", foto: "/imagens/pessoas/cliente-carla.png" },
 ];
 const SENHA_CLIENTE = "Cliente@123";
 
@@ -19,11 +19,12 @@ const ENTREGADORES = [
 ];
 const SENHA_ENTREGADOR = "Entrega@123";
 
-async function upsert({ email, nome, cpf, telefone, tipo, senha, dados, foto }) {
+async function upsert({ email, nome, cpf, rg, telefone, tipo, senha, dados, foto }) {
   let user = await User.findOne({ email });
   if (!user) user = new User({ email });
   user.nome = nome;
   user.cpf = cpf;
+  if (rg) user.rg = rg;
   user.telefone = telefone;
   user.tipo_usuario = tipo;
   user.role = tipo === "entregador" ? "entregador" : "cliente";

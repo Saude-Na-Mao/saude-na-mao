@@ -1065,6 +1065,32 @@ const formatBatchDate = (value) => {
   return date.toLocaleDateString('pt-BR')
 }
 
+/**
+ * Lotes já escolhidos por outros pedidos ativos (dispensação registrada),
+ * para não oferecer o mesmo lote duas vezes. Pedido rejeitado/cancelado libera
+ * o lote (o backend devolve a quantidade) e ele volta a aparecer aqui.
+ */
+const committedBatchNumbers = (orders, { excludeOrderId = null, productId = null } = {}) => {
+  const set = new Set()
+  const exclude = excludeOrderId ? String(excludeOrderId) : null
+  const pid = productId ? String(productId) : null
+  for (const o of orders || []) {
+    if (['cancelado', 'rejeitado'].includes(String(o?.status || '').trim())) continue
+    if (exclude && String(o?._id) === exclude) continue
+    const sd = o?.sngpcData
+    if (sd?.selectedBatchNumber && (!pid || String(sd.productId || '') === pid)) {
+      set.add(String(sd.selectedBatchNumber).trim())
+    }
+    for (const it of o?.itens || []) {
+      const lote = it?.lote_consumido?.batchNumber
+      if (!lote) continue
+      const itemPid = String(it?.id_produto?._id || it?.id_produto || '')
+      if (!pid || itemPid === pid) set.add(String(lote).trim())
+    }
+  }
+  return set
+}
+
 const getOrderPrescription = (order) => {
   const itemWithPrescription =
     getControlledItems(order).find((item) => item?.id_receita) ||
@@ -1089,6 +1115,7 @@ const digitalSignatureCodeFromPrescription = (prescription) => {
 
 function SngpcDispensationPanel({
   order,
+  orders = [],
   form,
   setForm,
   onClose,
@@ -1099,7 +1126,17 @@ function SngpcDispensationPanel({
   if (!order) return null
   const item = getPrimaryControlledItem(order)
   const product = productFromItem(item)
-  const batches = getAvailableBatchesForItem(item)
+  const allBatches = getAvailableBatchesForItem(item)
+  const committed = committedBatchNumbers(orders, {
+    excludeOrderId: order?._id,
+    productId: objectIdValue(item?.id_produto),
+  })
+  // Tira lotes já escolhidos por outro pedido ativo, mantendo o lote já selecionado nesta tela.
+  const batches = allBatches.filter(
+    (b) =>
+      !committed.has(String(b.batchNumber).trim()) ||
+      String(b.batchNumber).trim() === String(form?.selectedBatchNumber || '').trim(),
+  )
   const prescription = getOrderPrescription(order)
   const prescriptionUrl = normalizeOrderFileUrl(prescription?.url_arquivo)
   const prescriptionKind = String(prescription?.tipo_arquivo || prescriptionUrl).toLowerCase()
@@ -1419,6 +1456,11 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
   const openSngpcOrder = (order) => {
     const item = getPrimaryControlledItem(order)
     const batches = getAvailableBatchesForItem(item)
+    const committed = committedBatchNumbers(orders, {
+      excludeOrderId: order?._id,
+      productId: objectIdValue(item?.id_produto),
+    })
+    const livres = batches.filter((b) => !committed.has(String(b.batchNumber).trim()))
     const ocr = getPrescriptionOcr(order)
     const prescription = getOrderPrescription(order)
     setSngpcForm({
@@ -1427,7 +1469,7 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
       doctorCrm: ocr?.crm || '',
       doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
       digitalSignatureCode: digitalSignatureCodeFromPrescription(prescription),
-      selectedBatchNumber: batches[0]?.batchNumber || '',
+      selectedBatchNumber: (livres[0] || batches[0])?.batchNumber || '',
     })
     setSelectedSngpcOrder(order)
     setError(null)
@@ -1724,6 +1766,7 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
       {viewMode === 'historico' && selectedSngpcOrder && (
         <SngpcDispensationPanel
           order={selectedSngpcOrder}
+          orders={orders}
           form={sngpcForm}
           setForm={setSngpcForm}
           saving={sngpcSaving}

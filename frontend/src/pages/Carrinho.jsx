@@ -62,7 +62,7 @@ export default function Carrinho() {
 
   // Update delivery fee when delivery type changes
   useEffect(() => {
-    const fees = { moto: 8.00, retirada: 0 }
+    const fees = { moto: 8.00, retirada: 0, emergencia: 20.00 }
     let taxa = fees[deliveryType] ?? 8.00
     const subtotal = getTotal()
     if (subtotal >= 150 && deliveryType === 'moto') taxa = 0

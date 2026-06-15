@@ -1020,16 +1020,45 @@ async function updateOrderStatus(
 
     await prescriptionService.releasePrescriptionsLinkedToOrder(order);
 
-    if (order.tipo_entrega !== "retirada" && order.estoque_baixado === true) {
-      for (const item of order.itens) {
-        if (!item.id_produto || !item.quantidade) {
-          continue;
-        }
+    const estoqueBaixado = order.estoque_baixado === true;
+    let restaurouLote = false;
+    // IDs de itens cujo estoque já foi devolvido via lote (evita devolver 2x).
+    const estoqueDevolvidoViaLote = new Set();
 
+    // Devolve o lote escolhido na dispensação SNGPC para a lista de seleção do
+    // farmacêutico: rejeitado/cancelado → lote volta a ficar disponível.
+    for (const item of order.itens || []) {
+      const batchNumber = item?.lote_consumido?.batchNumber;
+      if (!item.id_produto || !batchNumber) continue;
+      const quantity = Number(item.lote_consumido.quantity || item.quantidade || 0);
+      await Product.updateOne(
+        { _id: item.id_produto, "batches.batchNumber": batchNumber },
+        {
+          $inc: {
+            "batches.$.quantity": quantity,
+            ...(estoqueBaixado ? { estoque: quantity } : {}),
+          },
+        },
+      );
+      item.lote_consumido = undefined;
+      restaurouLote = true;
+      if (estoqueBaixado) estoqueDevolvidoViaLote.add(String(item.id_produto));
+    }
+    if (restaurouLote) {
+      order.markModified("itens");
+      order.sngpcData = undefined;
+    }
+
+    if (order.tipo_entrega !== "retirada" && estoqueBaixado) {
+      for (const item of order.itens) {
+        if (!item.id_produto || !item.quantidade) continue;
+        if (estoqueDevolvidoViaLote.has(String(item.id_produto))) continue;
         await Product.findByIdAndUpdate(item.id_produto, {
           $inc: { estoque: item.quantidade },
         });
       }
+    }
+    if (estoqueBaixado || restaurouLote) {
       order.estoque_baixado = false;
     }
   }
@@ -1732,4 +1761,5 @@ module.exports = {
   emitOrderStatus,
   notifyOrderStatus,
   notifyPharmacyPedidoPendenteSocket,
+  emitPharmacyOrderUpdated,
 };

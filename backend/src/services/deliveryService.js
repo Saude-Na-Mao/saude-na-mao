@@ -7,7 +7,11 @@ const Pharmacy = require("../models/Pharmacy");
 const crypto = require("crypto");
 const { getIO } = require("../config/socket");
 const { haversineDistance } = require("../utils/haversine");
-const { emitOrderStatus, notifyOrderStatus } = require("./orderService");
+const {
+  emitOrderStatus,
+  notifyOrderStatus,
+  emitPharmacyOrderUpdated,
+} = require("./orderService");
 const {
   isOrderEligibleForDispatch,
   buildEligibleOrderDispatchFilter,
@@ -51,10 +55,16 @@ async function findDeliveryOrThrow(filter, populate = null) {
   return delivery;
 }
 
-function emitDeliveryUpdate(deliveryId, event, data) {
+function emitDeliveryUpdate(deliveryId, event, data, { driverId } = {}) {
   try {
     const io = getIO();
-    io.to("delivery:" + deliveryId).emit(event, { deliveryId, ...data });
+    const payload = { deliveryId, ...data };
+    io.to("delivery:" + deliveryId).emit(event, payload);
+    // Espelha no canal pessoal do entregador, mesmo que ele ainda não tenha
+    // entrado na sala da entrega (ex.: farmacêutico liberou a coleta).
+    if (driverId) {
+      io.to("driver:" + String(driverId)).emit(event, payload);
+    }
   } catch (_) {
     // Socket não inicializado em testes
   }
@@ -557,10 +567,17 @@ async function acceptDelivery(deliveryId, entregadorId) {
     }
   }
 
-  emitDeliveryUpdate(deliveryId, "delivery:accepted", {
-    entregadorId,
-    status: "aceita",
-  });
+  emitDeliveryUpdate(
+    deliveryId,
+    "delivery:accepted",
+    { entregadorId, status: "aceita" },
+    { driverId: entregadorId },
+  );
+  if (order) {
+    try {
+      emitPharmacyOrderUpdated(order, "driver_accepted");
+    } catch (_) {}
+  }
 
   return stripConfirmationCodeForEntregador(delivery);
 }
@@ -627,6 +644,9 @@ async function updateDeliveryStatus(
       await order.save();
       await emitOrderStatus(String(order._id), "entregue", "Pedido entregue ao cliente");
       await notifyOrderStatus(order, "entregue");
+      try {
+        emitPharmacyOrderUpdated(order, "delivered");
+      } catch (_) {}
     }
     // Incrementar entregas do entregador
     await User.findByIdAndUpdate(delivery.id_entregador, {
@@ -667,11 +687,12 @@ async function updateDeliveryStatus(
 
   await delivery.save();
 
-  emitDeliveryUpdate(deliveryId, "delivery:status", {
-    status: novoStatus,
-    atualizadoEm: new Date(),
-    observacao,
-  });
+  emitDeliveryUpdate(
+    deliveryId,
+    "delivery:status",
+    { status: novoStatus, atualizadoEm: new Date(), observacao },
+    { driverId: delivery.id_entregador },
+  );
 
   const viewerRole =
     explicitResponseRole !== undefined
@@ -1152,6 +1173,15 @@ async function markReadyForPickup(orderId, pharmacyId) {
     status: delivery.status,
     pronto_para_retirada: true,
   });
+  // Avisa os entregadores online que há uma nova entrega disponível na fila.
+  try {
+    getIO().to("drivers:available").emit("delivery:order-ready", {
+      deliveryId: String(delivery._id),
+      orderId: String(order._id),
+      pharmacyId: String(order.id_farmacia),
+      reason: "ready_for_pickup",
+    });
+  } catch (_) {}
 
   return delivery;
 }
@@ -1206,10 +1236,19 @@ async function confirmPickupWithCode(orderId, pharmacyId, codigo) {
     } catch (_) {}
   }
 
-  emitDeliveryUpdate(String(delivery._id), "delivery:status", {
-    status: "em_transito",
-    coleta_confirmada: true,
-  });
+  emitDeliveryUpdate(
+    String(delivery._id),
+    "delivery:status",
+    {
+      status: "em_transito",
+      coleta_confirmada: true,
+      rota_simulada: delivery.rota_simulada,
+    },
+    { driverId: delivery.id_entregador },
+  );
+  try {
+    emitPharmacyOrderUpdated(order, "pickup_released");
+  } catch (_) {}
 
   return stripConfirmationCodeForEntregador(delivery);
 }
