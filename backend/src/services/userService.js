@@ -370,6 +370,75 @@ async function requestAccountDeletion(userId) {
   return { message: "Conta excluída com sucesso. Dados pessoais foram anonimizados." };
 }
 
+/** Registra o consentimento LGPD do usuário (Art. 7º, I e 8º da LGPD). */
+async function recordLgpdConsent(userId, ip) {
+  const user = await User.findById(userId).select("-senha");
+  if (!user) {
+    throw createError("Usuário não encontrado", 404);
+  }
+  user.lgpd_consentimento = {
+    aceito: true,
+    data_aceite: new Date(),
+    ip_aceite: ip || user.lgpd_consentimento?.ip_aceite || null,
+    versao_termo: "1.0",
+  };
+  await user.save();
+  return user;
+}
+
+async function listCards(userId) {
+  const user = await User.findById(userId).select("cartoes");
+  if (!user) {
+    throw createError("Usuário não encontrado", 404);
+  }
+  return user.cartoes || [];
+}
+
+/** Salva um cartão. Por segurança, guarda apenas bandeira/últimos 4/titular/validade. */
+async function addCard(userId, dados = {}) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw createError("Usuário não encontrado", 404);
+  }
+  if (!Array.isArray(user.cartoes)) user.cartoes = [];
+  if (user.cartoes.length >= 5) {
+    throw createError("Limite de 5 cartões atingido", 400);
+  }
+  const ultimos4 = String(dados.ultimos4 || "").replace(/\D/g, "").slice(-4);
+  if (ultimos4.length !== 4) {
+    throw createError("Informe os últimos 4 dígitos do cartão", 400);
+  }
+  const titular = String(dados.titular || "").trim();
+  if (!titular) {
+    throw createError("Informe o nome do titular", 400);
+  }
+  user.cartoes.push({
+    apelido: dados.apelido ? String(dados.apelido).trim() : undefined,
+    bandeira: dados.bandeira ? String(dados.bandeira).trim() : "Cartão",
+    ultimos4,
+    titular,
+    validade: dados.validade ? String(dados.validade).trim() : undefined,
+  });
+  await user.save();
+  return user.cartoes[user.cartoes.length - 1];
+}
+
+async function removeCard(userId, cardId) {
+  const user = await User.findById(userId);
+  if (!user) {
+    throw createError("Usuário não encontrado", 404);
+  }
+  const antes = (user.cartoes || []).length;
+  user.cartoes = (user.cartoes || []).filter(
+    (c) => String(c._id) !== String(cardId),
+  );
+  if (user.cartoes.length === antes) {
+    throw createError("Cartão não encontrado", 404);
+  }
+  await user.save();
+  return { message: "Cartão removido" };
+}
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -380,4 +449,8 @@ module.exports = {
   getOrderHistory,
   exportUserData,
   requestAccountDeletion,
+  recordLgpdConsent,
+  listCards,
+  addCard,
+  removeCard,
 };

@@ -799,18 +799,161 @@ export default function Perfil() {
 
           {activeTab === 'enderecos' && <EnderecosTab />}
 
-          {activeTab === 'pagamentos' && (
-            <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-              <h2 className="text-xl font-bold mb-4">Métodos de Pagamento</h2>
-              <div className="text-center py-12">
-                <CreditCard className="w-12 h-12 text-gray-300 mx-auto mb-3" />
-                <p className="text-gray-500 mb-2">Nenhum cartão cadastrado</p>
-                <p className="text-xs text-gray-400">O pagamento é feito na finalização de cada pedido</p>
-              </div>
-            </div>
-          )}
+          {activeTab === 'pagamentos' && <CartoesTab />}
         </main>
       </div>
+    </div>
+  )
+}
+
+function detectarBandeira(numero) {
+  const d = String(numero || '').replace(/\D/g, '')
+  if (/^4/.test(d)) return 'Visa'
+  if (/^(5[1-5]|2[2-7])/.test(d)) return 'Mastercard'
+  if (/^3[47]/.test(d)) return 'Amex'
+  if (/^(4011|4312|4514|4576|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(d)) return 'Elo'
+  if (/^(606282|3841)/.test(d)) return 'Hipercard'
+  return 'Cartão'
+}
+
+function CartoesTab() {
+  const [cards, setCards] = useState([])
+  const [loading, setLoading] = useState(true)
+  const [showForm, setShowForm] = useState(false)
+  const [saving, setSaving] = useState(false)
+  const [erro, setErro] = useState(null)
+  const [form, setForm] = useState({ numero: '', titular: '', validade: '' })
+
+  const load = async () => {
+    try {
+      setLoading(true)
+      const res = await userService.getCards()
+      setCards(res.data?.data?.cartoes || [])
+    } catch {
+      /* ignore */
+    } finally {
+      setLoading(false)
+    }
+  }
+  useEffect(() => { load() }, [])
+
+  const handleAdd = async (e) => {
+    e.preventDefault()
+    const digits = form.numero.replace(/\D/g, '')
+    if (digits.length < 13) { setErro('Número do cartão inválido'); return }
+    if (!form.titular.trim()) { setErro('Informe o nome do titular'); return }
+    try {
+      setSaving(true); setErro(null)
+      await userService.addCard({
+        bandeira: detectarBandeira(digits),
+        ultimos4: digits.slice(-4),
+        titular: form.titular,
+        validade: form.validade,
+      })
+      setForm({ numero: '', titular: '', validade: '' })
+      setShowForm(false)
+      await load()
+    } catch (err) {
+      setErro(err?.response?.data?.message || 'Não foi possível salvar o cartão')
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const handleRemove = async (id) => {
+    if (!window.confirm('Remover este cartão?')) return
+    try { await userService.deleteCard(id); await load() } catch { /* ignore */ }
+  }
+
+  return (
+    <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-bold">Meus Cartões</h2>
+        {!showForm && (
+          <button
+            onClick={() => { setShowForm(true); setErro(null) }}
+            className="inline-flex items-center gap-1.5 text-sm font-semibold text-primary hover:text-secondary"
+          >
+            <Plus className="w-4 h-4" /> Adicionar
+          </button>
+        )}
+      </div>
+
+      <p className="text-xs text-gray-400 mb-4">
+        Guardamos apenas a bandeira, os últimos 4 dígitos, o titular e a validade — nunca o número completo nem o CVV.
+      </p>
+
+      {loading ? (
+        <p className="text-sm text-gray-400">Carregando...</p>
+      ) : (
+        <div className="space-y-2 mb-4">
+          {cards.length === 0 && !showForm && (
+            <p className="text-sm text-gray-500">Nenhum cartão salvo ainda.</p>
+          )}
+          {cards.map((c) => (
+            <div key={c._id} className="flex items-center gap-3 p-3 rounded-lg border border-gray-200">
+              <CreditCard className="w-5 h-5 text-gray-500" />
+              <div className="flex-1">
+                <div className="text-sm font-semibold text-gray-900">{c.bandeira} •••• {c.ultimos4}</div>
+                <div className="text-xs text-gray-500">{c.titular}{c.validade ? ` · ${c.validade}` : ''}</div>
+              </div>
+              <button onClick={() => handleRemove(c._id)} className="text-gray-400 hover:text-red-600" title="Remover">
+                <Trash2 className="w-4 h-4" />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {showForm && (
+        <form onSubmit={handleAdd} className="space-y-3 border-t border-gray-100 pt-4">
+          {erro && <p className="text-sm text-red-600">{erro}</p>}
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Número do Cartão</label>
+            <input
+              type="text"
+              inputMode="numeric"
+              value={form.numero}
+              onChange={(e) => setForm({ ...form, numero: e.target.value.replace(/\D/g, '').slice(0, 16).replace(/(\d{4})(?=\d)/g, '$1 ') })}
+              placeholder="0000 0000 0000 0000"
+              maxLength={19}
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div>
+            <label className="block text-xs font-medium text-gray-500 mb-1">Nome do Titular</label>
+            <input
+              type="text"
+              value={form.titular}
+              onChange={(e) => setForm({ ...form, titular: e.target.value.replace(/[^A-Za-zÀ-ÿ\s]/g, '').toUpperCase() })}
+              placeholder="NOME SOBRENOME"
+              className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+            />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">Validade</label>
+              <input
+                type="text"
+                inputMode="numeric"
+                value={form.validade}
+                onChange={(e) => setForm({ ...form, validade: e.target.value.replace(/\D/g, '').slice(0, 4).replace(/(\d{2})(?=\d)/, '$1/') })}
+                placeholder="MM/AA"
+                maxLength={5}
+                className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+              />
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button type="submit" disabled={saving} className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-secondary transition disabled:opacity-50">
+              {saving ? 'Salvando...' : 'Salvar cartão'}
+            </button>
+            <button type="button" onClick={() => { setShowForm(false); setErro(null) }} className="px-4 py-2 border border-gray-200 text-gray-700 rounded-lg text-sm font-semibold hover:bg-gray-50 transition">
+              Cancelar
+            </button>
+          </div>
+        </form>
+      )}
     </div>
   )
 }

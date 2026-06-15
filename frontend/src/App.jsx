@@ -37,6 +37,7 @@ import EntregadorDashboard from './pages/EntregadorDashboard'
 import Comprovante from './pages/Comprovante'
 import Legal from './pages/Legal'
 import MobileApp from './pages/MobileApp'
+import LgpdConsentModal from './components/LgpdConsentModal'
 import './App.css'
 
 const logger = new Logger('App')
@@ -71,6 +72,7 @@ function AppContent() {
     <div className="flex flex-col min-h-screen">
       {!isMobileAppRoute && <Navbar />}
       <NotificationToast />
+      {!isMobileAppRoute && <LgpdConsentModal />}
       <main id="main-content" className="flex-1 min-w-0">
         <Routes>
           <Route path="/" element={<Home />} />

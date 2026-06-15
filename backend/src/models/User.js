@@ -120,6 +120,17 @@ const UserSchema = new mongoose.Schema({
     ip_aceite: { type: String },
     versao_termo: { type: String, default: "1.0" },
   },
+  // Cartões salvos para pagamento. NUNCA armazenar o número completo nem o CVV.
+  cartoes: [
+    {
+      apelido: { type: String, trim: true },
+      bandeira: { type: String, trim: true },
+      ultimos4: { type: String, trim: true },
+      titular: { type: String, trim: true },
+      validade: { type: String, trim: true }, // MM/AA
+      criado_em: { type: Date, default: Date.now },
+    },
+  ],
   // NOVO: Verificação de Proprietário de Farmácia (LGPD e Falsidade Ideológica)
   isPharmacyOwner: {
     type: Boolean,

@@ -202,11 +202,6 @@ export default function Registro() {
       try {
         setApiError(null)
 
-        if (!termsAccepted) {
-          setApiError('Aceite os termos de uso e a política de privacidade para continuar')
-          return
-        }
-
         logger.info('Attempting registration', { email: formData.email, tipo: tipoUsuario })
 
         const payload = {
@@ -216,11 +211,8 @@ export default function Registro() {
           cpf: formData.cpf,
           senha: formData.senha,
           tipo_usuario: tipoUsuario,
-          lgpd_consentimento: {
-            aceito: true,
-            data_aceite: new Date().toISOString(),
-            versao_termo: '1.0',
-          },
+          // O consentimento LGPD é registrado logo após o cadastro, no modal de
+          // privacidade (com "Li e concordo"), gravando data/IP no servidor.
         }
 
         if (tipoUsuario === 'entregador') {
@@ -515,26 +507,14 @@ export default function Registro() {
                 </section>
               )}
 
-              <label className="flex items-start gap-3 rounded-xl border border-gray-200 p-3 cursor-pointer">
-                <input
-                  type="checkbox"
-                  checked={termsAccepted}
-                  onChange={(event) => setTermsAccepted(event.target.checked)}
-                  className="mt-0.5 w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30"
-                  disabled={isSubmitting}
-                />
-                <span className="text-xs text-gray-500 leading-relaxed">
-                  Concordo com os{' '}
-                  <Link to="/legal" className="text-primary font-medium hover:underline">
-                    termos de uso
-                  </Link>{' '}
-                  e a{' '}
-                  <Link to="/legal" className="text-primary font-medium hover:underline">
-                    política de privacidade
-                  </Link>
-                  .
-                </span>
-              </label>
+              <p className="text-xs text-gray-500 leading-relaxed rounded-xl border border-gray-200 p-3">
+                Ao criar a conta, na sequência você confirmará o consentimento de
+                privacidade (LGPD). Consulte os{' '}
+                <Link to="/legal" className="text-primary font-medium hover:underline">
+                  termos de uso e a política de privacidade
+                </Link>
+                .
+              </p>
 
               <button
                 type="submit"

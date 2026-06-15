@@ -20,6 +20,8 @@ function normalizeUser(user) {
     dados_entregador: userObj.dados_entregador,
     foto_perfil: userObj.foto_perfil,
     fotoPerfil: userObj.foto_perfil,
+    lgpd_consentimento: userObj.lgpd_consentimento,
+    cartoes: userObj.cartoes,
     criado_em: userObj.createdAt,
   };
 }
@@ -171,6 +173,49 @@ async function deleteAccount(req, res, next) {
   }
 }
 
+async function recordConsent(req, res, next) {
+  try {
+    const ip = req.ip || req.socket?.remoteAddress;
+    const user = await userService.recordLgpdConsent(req.user.id, ip);
+    res.json({
+      success: true,
+      message: "Consentimento registrado",
+      data: { user: normalizeUser(user) },
+    });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function listCards(req, res, next) {
+  try {
+    const cartoes = await userService.listCards(req.user.id);
+    res.json({ success: true, data: { cartoes } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function addCard(req, res, next) {
+  try {
+    const cartao = await userService.addCard(req.user.id, req.body);
+    res
+      .status(201)
+      .json({ success: true, message: "Cartão salvo", data: { cartao } });
+  } catch (error) {
+    next(error);
+  }
+}
+
+async function deleteCard(req, res, next) {
+  try {
+    await userService.removeCard(req.user.id, req.params.cardId);
+    res.json({ success: true, message: "Cartão removido" });
+  } catch (error) {
+    next(error);
+  }
+}
+
 module.exports = {
   getProfile,
   updateProfile,
@@ -183,4 +228,8 @@ module.exports = {
   searchCep,
   exportData,
   deleteAccount,
+  recordConsent,
+  listCards,
+  addCard,
+  deleteCard,
 };

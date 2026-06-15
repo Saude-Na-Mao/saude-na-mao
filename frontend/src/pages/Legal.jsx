@@ -95,31 +95,43 @@ Esta política descreve como a plataforma trata dados pessoais durante cadastro,
 - **Receita**: arquivo enviado e metadados de validação, quando o fluxo for usado.
 - **Segurança**: logs técnicos necessários para autenticação, auditoria e prevenção de abuso.
 
-## 3. Dados Sensíveis
-Receitas médicas podem conter dados pessoais sensíveis e são tratadas com controle de acesso e finalidade específica.
+## 3. Dados Sensíveis e Confidencialidade da Saúde
+Receitas, princípios ativos e medicamentos solicitados são **dados pessoais sensíveis** (art. 5º, II da LGPD) e recebem tratamento reforçado:
+- O conteúdo da receita e a condição de saúde do paciente são **confidenciais**.
+- Apenas **o próprio paciente** e o **farmacêutico responsável pela farmácia do pedido** têm acesso ao documento e aos dados clínicos.
+- Entregadores e demais usuários **nunca** visualizam a condição de saúde, o diagnóstico ou o medicamento sensível — recebem apenas os dados necessários para a entrega.
+- Exemplo: um cliente que compra um medicamento de uso contínuo ou de condição estigmatizante não tem essa informação exposta a terceiros.
 
 ## 4. Uso dos Dados
 Os dados são usados para autenticar usuários, processar pedidos, validar regras do carrinho, registrar histórico, prestar suporte e proteger a plataforma.
 
 ## 5. Compartilhamento
-Dados podem ser compartilhados com farmácias, entregadores e serviços necessários ao processamento do pedido, sempre conforme finalidade, base legal e medidas de segurança.
+Dados podem ser compartilhados com a farmácia do pedido e o entregador designado, **limitados ao mínimo necessário** para o processamento e a entrega, sempre conforme finalidade, base legal e medidas de segurança. Não vendemos dados pessoais.
 
 ## 6. Direitos do Titular
 Você tem direito a:
-- Confirmar tratamento e acessar dados.
+- Confirmar tratamento e acessar dados (exportação disponível no Perfil).
 - Corrigir informações.
-- Solicitar anonimização, bloqueio ou exclusão quando aplicável.
+- Solicitar anonimização, bloqueio ou exclusão quando aplicável (exclusão de conta no Perfil).
 - Revogar consentimento quando ele for a base legal utilizada.
 
-Para exercer esses direitos, contate o responsável pela plataforma.
-
 ## 7. Retenção
-Dados são mantidos pelo tempo necessário para execução do serviço, cumprimento legal, auditoria e segurança.
+Dados são mantidos pelo tempo necessário para execução do serviço, cumprimento legal, auditoria e segurança. Na exclusão de conta, os dados pessoais são anonimizados, preservando apenas registros exigidos por obrigação legal/fiscal.
 
-## 8. Segurança
-O projeto usa autenticação, controle de acesso, validações de backend e registro de eventos relevantes.
+## 8. Segurança e Controle de Acesso
+Medidas técnicas adotadas pela plataforma:
+- **Autenticação** por tokens JWT (acesso + atualização) e login com Google.
+- **Controle de acesso por papel** (cliente, farmacêutico, dono de farmácia, entregador, admin): cada perfil só acessa os dados pertinentes à sua função.
+- **Escopo por farmácia**: farmacêutico e dono enxergam apenas pedidos e receitas da própria farmácia.
+- **Criptografia** de dados pessoais sensíveis (ex.: CPF e RG) em repouso.
+- **Registro de auditoria imutável** das ações críticas (dispensação, validação de receita).
+- Arquivos de receita armazenados com acesso controlado.
 
-## 9. Alterações
+## 9. Conformidade Regulatória
+- **LGPD (Lei 13.709/2018)**: consentimento informado, finalidade específica, minimização de dados e direitos do titular.
+- **ANVISA RDC 344/98 e SNGPC**: retenção e validação de receita para controlados, débito de lote rastreável e prazo de validade da receita por tipo de medicamento.
+
+## 10. Alterações
 Esta política pode ser atualizada conforme evolução do serviço.
 `.trim()
 
@@ -298,8 +310,8 @@ export default function Legal() {
           <div className="space-y-2">
             <p className="text-sm">
               Email:{' '}
-              <a href="mailto:legal@saudenamaao.com" className="text-blue-600 hover:underline">
-                legal@saudenamaao.com
+              <a href="mailto:contato@saudenamao.com.br" className="text-blue-600 hover:underline">
+                contato@saudenamao.com.br
               </a>
             </p>
             <p className="text-sm">

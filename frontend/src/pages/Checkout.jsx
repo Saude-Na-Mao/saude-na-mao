@@ -77,6 +77,17 @@ function rxEnviadaParaProduto(rx, productId, pharmacyId) {
   return receitaVinculadaAoProduto(rx, productId)
 }
 
+/** Detecta a bandeira pelos primeiros dígitos (uso só visual/armazenamento). */
+function detectarBandeira(numero) {
+  const d = String(numero || '').replace(/\D/g, '')
+  if (/^4/.test(d)) return 'Visa'
+  if (/^(5[1-5]|2[2-7])/.test(d)) return 'Mastercard'
+  if (/^3[47]/.test(d)) return 'Amex'
+  if (/^(4011|4312|4514|4576|5041|5066|5067|509|6277|6362|6363|650|6516|6550)/.test(d)) return 'Elo'
+  if (/^(606282|3841)/.test(d)) return 'Hipercard'
+  return 'Cartão'
+}
+
 export default function Checkout() {
   const navigate = useNavigate()
   const clearPrescricoes = usePrescriptionStore((s) => s.clearPrescricoes)
@@ -85,6 +96,9 @@ export default function Checkout() {
 
   const [paymentMethod, setPaymentMethod] = useState('')
   const [cardData, setCardData] = useState({ numero: '', nome: '', validade: '', cvv: '' })
+  const [savedCards, setSavedCards] = useState([])
+  const [selectedCardId, setSelectedCardId] = useState('new')
+  const [saveCard, setSaveCard] = useState(false)
   const [changeFor, setChangeFor] = useState('')
   const [address, setAddress] = useState({
     logradouro: '',
@@ -242,6 +256,18 @@ export default function Checkout() {
     })
   }, [token])
 
+  useEffect(() => {
+    if (!token) return
+    userService.getCards()
+      .then((res) => {
+        const cards = res.data?.data?.cartoes || []
+        setSavedCards(cards)
+        if (cards.length > 0) setSelectedCardId(String(cards[0]._id))
+        else setSelectedCardId('new')
+      })
+      .catch(() => {})
+  }, [token])
+
   const handleSelectSavedAddress = (addr) => {
     setSelectedAddressId(addr._id)
     setAddress({
@@ -369,6 +395,25 @@ export default function Checkout() {
         _aguardandoReceita: aguardandoReceita,
         _paymentApproved: pedidoFinal?.status_pagamento === 'aprovado',
       })
+
+      // Salva o cartão para próximas compras (somente bandeira/últimos 4/titular/validade)
+      if (
+        (paymentMethod === 'cartao_credito' || paymentMethod === 'cartao_debito') &&
+        selectedCardId === 'new' &&
+        saveCard &&
+        cardData.numero
+      ) {
+        const digits = cardData.numero.replace(/\D/g, '')
+        userService
+          .addCard({
+            bandeira: detectarBandeira(digits),
+            ultimos4: digits.slice(-4),
+            titular: cardData.nome,
+            validade: cardData.validade,
+          })
+          .catch(() => {})
+      }
+
       clearCart()
       clearPrescricoes()
       localStorage.removeItem('checkout_data')
@@ -676,55 +721,142 @@ export default function Checkout() {
               })}
             </div>
 
-            {/* Dados do Cartão (visual only) */}
+            {/* Cartão: cartões salvos + cadastrar novo */}
             {(paymentMethod === 'cartao_credito' || paymentMethod === 'cartao_debito') && (
               <div className="mt-5 p-4 bg-gray-50 rounded-xl space-y-3">
-                <p className="text-xs text-gray-400 mb-2">Informe os dados do cartão para confirmar o pedido.</p>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Número do Cartão</label>
-                  <input
-                    type="text"
-                    value={cardData.numero}
-                    onChange={(e) => setCardData({ ...cardData, numero: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    placeholder="0000 0000 0000 0000"
-                    maxLength={19}
-                  />
-                </div>
-                <div>
-                  <label className="block text-xs font-medium text-gray-500 mb-1">Nome no Cartão</label>
-                  <input
-                    type="text"
-                    value={cardData.nome}
-                    onChange={(e) => setCardData({ ...cardData, nome: e.target.value })}
-                    className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                    placeholder="NOME SOBRENOME"
-                  />
-                </div>
-                <div className="grid grid-cols-2 gap-3">
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">Validade</label>
-                    <input
-                      type="text"
-                      value={cardData.validade}
-                      onChange={(e) => setCardData({ ...cardData, validade: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      placeholder="MM/AA"
-                      maxLength={5}
-                    />
+                {savedCards.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-xs font-medium text-gray-500">Seus cartões salvos</p>
+                    {savedCards.map((c) => (
+                      <label
+                        key={c._id}
+                        className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
+                          selectedCardId === String(c._id)
+                            ? 'border-primary bg-primary/5'
+                            : 'border-gray-200 bg-white'
+                        }`}
+                      >
+                        <input
+                          type="radio"
+                          name="savedCard"
+                          checked={selectedCardId === String(c._id)}
+                          onChange={() => setSelectedCardId(String(c._id))}
+                          className="sr-only"
+                        />
+                        <CreditCard className="w-5 h-5 text-gray-500" />
+                        <div className="flex-1">
+                          <div className="text-sm font-semibold text-gray-900">
+                            {c.bandeira} •••• {c.ultimos4}
+                          </div>
+                          <div className="text-xs text-gray-500">
+                            {c.titular}{c.validade ? ` · ${c.validade}` : ''}
+                          </div>
+                        </div>
+                        {selectedCardId === String(c._id) && (
+                          <CheckCircle className="w-5 h-5 text-primary" />
+                        )}
+                      </label>
+                    ))}
+                    <label
+                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer ${
+                        selectedCardId === 'new'
+                          ? 'border-primary bg-primary/5'
+                          : 'border-gray-200 bg-white'
+                      }`}
+                    >
+                      <input
+                        type="radio"
+                        name="savedCard"
+                        checked={selectedCardId === 'new'}
+                        onChange={() => setSelectedCardId('new')}
+                        className="sr-only"
+                      />
+                      <Plus className="w-5 h-5 text-gray-500" />
+                      <span className="text-sm font-semibold text-gray-900">Usar outro cartão</span>
+                    </label>
                   </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">CVV</label>
-                    <input
-                      type="text"
-                      value={cardData.cvv}
-                      onChange={(e) => setCardData({ ...cardData, cvv: e.target.value })}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
-                      placeholder="000"
-                      maxLength={4}
-                    />
+                )}
+
+                {selectedCardId === 'new' && (
+                  <div className="space-y-3">
+                    <p className="text-xs text-gray-400">Informe os dados do cartão para confirmar o pedido.</p>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Número do Cartão</label>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        value={cardData.numero}
+                        onChange={(e) =>
+                          setCardData({
+                            ...cardData,
+                            numero: e.target.value
+                              .replace(/\D/g, '')
+                              .slice(0, 16)
+                              .replace(/(\d{4})(?=\d)/g, '$1 '),
+                          })
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder="0000 0000 0000 0000"
+                        maxLength={19}
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-xs font-medium text-gray-500 mb-1">Nome no Cartão</label>
+                      <input
+                        type="text"
+                        value={cardData.nome}
+                        onChange={(e) =>
+                          setCardData({ ...cardData, nome: e.target.value.replace(/[^A-Za-zÀ-ÿ\s]/g, '').toUpperCase() })
+                        }
+                        className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                        placeholder="NOME SOBRENOME"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-3">
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">Validade</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cardData.validade}
+                          onChange={(e) =>
+                            setCardData({
+                              ...cardData,
+                              validade: e.target.value
+                                .replace(/\D/g, '')
+                                .slice(0, 4)
+                                .replace(/(\d{2})(?=\d)/, '$1/'),
+                            })
+                          }
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          placeholder="MM/AA"
+                          maxLength={5}
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-xs font-medium text-gray-500 mb-1">CVV</label>
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          value={cardData.cvv}
+                          onChange={(e) => setCardData({ ...cardData, cvv: e.target.value.replace(/\D/g, '').slice(0, 4) })}
+                          className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30"
+                          placeholder="000"
+                          maxLength={4}
+                        />
+                      </div>
+                    </div>
+                    <label className="flex items-center gap-2 text-xs text-gray-600 cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={saveCard}
+                        onChange={(e) => setSaveCard(e.target.checked)}
+                        className="w-4 h-4 rounded border-gray-300 text-primary focus:ring-primary/30"
+                      />
+                      Salvar este cartão para próximas compras
+                    </label>
                   </div>
-                </div>
+                )}
               </div>
             )}
 

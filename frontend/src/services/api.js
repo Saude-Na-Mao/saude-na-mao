@@ -346,6 +346,10 @@ export const userService = {
   getAddresses: () => api.get('/users/addresses'),
   deleteAddress: (id) => api.delete(`/users/addresses/${id}`),
   setDefaultAddress: (id) => api.patch(`/users/addresses/${id}/default`),
+  recordLgpdConsent: () => api.post('/users/lgpd/consent'),
+  getCards: () => api.get('/users/cards'),
+  addCard: (data) => api.post('/users/cards', data),
+  deleteCard: (id) => api.delete(`/users/cards/${id}`),
 }
 
 export const interactionService = {

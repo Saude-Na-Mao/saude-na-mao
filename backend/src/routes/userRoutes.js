@@ -82,6 +82,18 @@ router.get(
   userController.searchCep,
 );
 
+// LGPD - Registrar consentimento (Art. 7º/8º)
+router.post("/lgpd/consent", authMiddleware.protect, userController.recordConsent);
+
+// Cartões salvos (apenas bandeira/últimos 4/titular/validade)
+router.get("/cards", authMiddleware.protect, userController.listCards);
+router.post("/cards", authMiddleware.protect, userController.addCard);
+router.delete(
+  "/cards/:cardId",
+  authMiddleware.protect,
+  userController.deleteCard,
+);
+
 // LGPD - Exportar dados pessoais (Art. 18, V)
 router.get("/lgpd/export", authMiddleware.protect, userController.exportData);
 
