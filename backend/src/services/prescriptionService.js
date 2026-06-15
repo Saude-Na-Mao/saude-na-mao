@@ -1093,8 +1093,19 @@ async function validatePrescription(
     prescription.consumida = false;
   }
 
-  if (aprovado && validade) {
-    prescription.validade = validade;
+  if (aprovado) {
+    // Validade legal: máx. emissão + 10 dias (antimicrobiano) ou + 30 dias (demais).
+    // RDC ANVISA — a contagem parte da data de emissão da receita (dados_ocr).
+    const base = prescription.dados_ocr?.data_emissao
+      ? new Date(prescription.dados_ocr.data_emissao)
+      : new Date();
+    const diasLegais = prescription.tipo_receita === "antimicrobiano" ? 10 : 30;
+    const limiteLegal = new Date(base);
+    limiteLegal.setDate(limiteLegal.getDate() + diasLegais);
+    // Usa a validade informada, mas nunca além do limite legal.
+    const informada = validade ? new Date(validade) : null;
+    prescription.validade =
+      informada && informada < limiteLegal ? informada : limiteLegal;
   }
 
   await prescription.save();
