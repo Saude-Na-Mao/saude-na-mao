@@ -16,6 +16,7 @@ const compliance = require("../config/compliance");
 const path = require("path");
 const crypto = require("crypto");
 const fs = require("fs");
+const { isR2Enabled, uploadFileToR2 } = require("../config/r2");
 
 let getIO = null;
 try {
@@ -784,9 +785,20 @@ async function uploadPrescription(
     }
   }
 
+  // Persiste o arquivo no R2 (disco do Render é efêmero). Em dev sem R2 cai no disco local.
+  let urlArquivo = urlPath;
+  if (isR2Enabled()) {
+    try {
+      const r2Key = `receitas/${path.basename(filePath)}`;
+      urlArquivo = await uploadFileToR2(filePath, r2Key, file.mimetype);
+    } catch (err) {
+      console.error("Falha ao enviar receita ao R2; mantendo disco local:", err.message);
+    }
+  }
+
   const dadosCriacao = {
     id_usuario: userId,
-    url_arquivo: urlPath,
+    url_arquivo: urlArquivo,
     nome_arquivo: file.originalname,
     hash_arquivo: fileHash,
     tipo_arquivo: file.mimetype,
@@ -1491,7 +1503,17 @@ async function reuploadChatImage(prescriptionId, user, file) {
     .update(fs.readFileSync(filePath))
     .digest("hex");
 
-  prescription.url_arquivo = urlPath;
+  let urlArquivo = urlPath;
+  if (isR2Enabled()) {
+    try {
+      const r2Key = `receitas/${path.basename(filePath)}`;
+      urlArquivo = await uploadFileToR2(filePath, r2Key, file.mimetype);
+    } catch (err) {
+      console.error("Falha ao enviar receita ao R2; mantendo disco local:", err.message);
+    }
+  }
+
+  prescription.url_arquivo = urlArquivo;
   prescription.nome_arquivo = file.originalname;
   prescription.hash_arquivo = fileHash;
   prescription.tipo_arquivo = file.mimetype;
@@ -1515,7 +1537,7 @@ async function reuploadChatImage(prescriptionId, user, file) {
 
   await prescription.save();
 
-  const urlImagemPublica = buildPublicImageUrl(urlPath);
+  const urlImagemPublica = buildPublicImageUrl(urlArquivo);
   if (prescription.chat_sessao_id) {
     safeEmit(
       `prescription-chat:${prescription.chat_sessao_id}`,
