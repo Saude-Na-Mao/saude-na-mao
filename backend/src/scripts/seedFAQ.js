@@ -8,9 +8,9 @@ const faqsIniciais = [
   {
     pergunta: "Como fazer o upload da minha receita médica?",
     resposta:
-      "Acesse seu perfil, vá em 'Minhas Receitas' e toque em 'Enviar Receita'. Aceitamos fotos em JPG, PNG ou arquivos PDF de até 15MB.",
+      "Acesse seu perfil, vá em 'Minhas Receitas' e toque em 'Enviar Receita'. Aceitamos apenas PDF ou XML assinado eletronicamente com certificado ICP-Brasil, até 15MB.",
     categoria: "receitas",
-    tags: ["upload", "receita", "foto", "pdf"],
+    tags: ["upload", "receita", "digital", "pdf", "xml"],
     ordem: 1,
   },
   {
@@ -24,7 +24,7 @@ const faqsIniciais = [
   {
     pergunta: "Minha receita foi rejeitada. O que fazer?",
     resposta:
-      "Verifique o motivo na notificação recebida. Os motivos mais comuns são foto ilegível, receita vencida ou CRM do médico inválido. Tire uma nova foto bem iluminada e reenvie.",
+      "Verifique o motivo na notificação recebida. Os motivos mais comuns são assinatura digital inválida, receita vencida ou CRM do médico divergente. Envie uma nova receita digital assinada.",
     categoria: "receitas",
     tags: ["rejeitada", "motivo", "reenviar"],
     ordem: 3,

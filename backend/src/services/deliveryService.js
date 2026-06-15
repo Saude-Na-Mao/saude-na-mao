@@ -187,7 +187,7 @@ async function createDelivery(orderIdStr, pharmacyId) {
   );
   if (!pharmacy) throw createError("Farmácia não encontrada", 404);
 
-  const codigoConfirmacao = crypto.randomInt(100000, 999999).toString();
+  const codigoConfirmacao = crypto.randomInt(10000000, 99999999).toString();
 
   const endereco_coleta = {
     logradouro: pharmacy.logradouro || "",
@@ -324,6 +324,7 @@ async function getAvailableDeliveries({
   const baseFilter = {
     status: "disponivel",
     id_entregador: null,
+    pronto_para_retirada: true,
   };
   const lat = Number(latitude);
   const lng = Number(longitude);
@@ -512,7 +513,13 @@ async function acceptDelivery(deliveryId, entregadorId) {
 
   delivery.id_entregador = entregadorId;
   delivery.aceita_em = new Date();
-  delivery.adicionarHistorico("aceita", "Entrega aceita pelo entregador");
+  // Código de 8 dígitos que o entregador informa ao farmacêutico para liberar a coleta
+  delivery.codigo_coleta = crypto.randomInt(10000000, 99999999).toString();
+  delivery.coleta_confirmada_em = null;
+  delivery.adicionarHistorico(
+    "aceita",
+    "Entrega aceita — entregador a caminho da farmácia",
+  );
 
   await delivery.save();
 
@@ -734,7 +741,7 @@ async function updateLocation(
 }
 
 /**
- * Entregador confirma que conferiu a receita física com o cliente (remédios controlados).
+ * Entregador confirma o código com o cliente para pedidos sujeitos ao SNGPC.
  */
 async function confirmReceiptAtCustomer(deliveryId, entregadorId) {
   const delivery = await findDeliveryOrThrow({ _id: deliveryId });
@@ -803,48 +810,12 @@ async function confirmDelivery(deliveryId, entregadorId, codigo) {
     throw createError("Código de confirmação inválido", 400);
   }
 
-  const order = await Order.findById(delivery.id_pedido);
-  if (orderNeedsPharmacyReceiptReturn(order)) {
-    const now = new Date();
-    delivery.receita_fisica_cliente_confirmada_em = now;
-    delivery.receita_aguardando_confirmacao_farmacia_em = now;
-    delivery.historico_status.push({
-      status: "em_transito",
-      alterado_em: now,
-      observacao:
-        "Código confirmado com o cliente; aguardando conferência da receita física na farmácia",
-    });
-    await delivery.save();
-
-    if (order.status !== "aguardando_confirmacao_receita_farmacia") {
-      order.adicionarHistoricoStatus(
-        "aguardando_confirmacao_receita_farmacia",
-        "Código confirmado pelo entregador; aguardando conferência da receita física na farmácia",
-      );
-      await order.save();
-      await emitOrderStatus(
-        String(order._id),
-        "aguardando_confirmacao_receita_farmacia",
-        "Aguardando confirmação da receita na farmácia",
-      );
-      await notifyOrderStatus(order, "aguardando_confirmacao_receita_farmacia");
-    }
-
-    emitDeliveryUpdate(deliveryId, "delivery:status", {
-      status: delivery.status,
-      atualizadoEm: now,
-      aguardando_confirmacao_farmacia: true,
-    });
-
-    return {
-      entrega: stripConfirmationCodeForEntregador(delivery),
-      aguardando_confirmacao_farmacia: true,
-    };
-  }
-
+  // Código do cliente conferido pelo entregador → conclui a venda (fluxo único).
+  const now = new Date();
+  delivery.receita_fisica_cliente_confirmada_em = now;
   const finalDelivery = await updateDeliveryStatus(deliveryId, "entregue", {
     entregadorId,
-    observacao: "Entrega confirmada com código",
+    observacao: "Entrega confirmada com o código do cliente",
     responseRole: "entregador",
   });
   return {
@@ -1099,8 +1070,188 @@ async function syncPickupAddressFromPharmacy(pharmacyId) {
   return { modifiedCount: result.modifiedCount };
 }
 
+function buildSimulatedRoute(delivery) {
+  const c = delivery.endereco_coleta || {};
+  const e = delivery.endereco_entrega || {};
+  const origem =
+    [c.logradouro, c.numero].filter(Boolean).join(", ") || "a farmácia";
+  const destino =
+    [e.logradouro, e.numero].filter(Boolean).join(", ") || "o endereço do cliente";
+  const bairroDest = e.bairro ? ` — ${e.bairro}` : "";
+  const dist = delivery.distancia_km ? `${delivery.distancia_km} km` : "cerca de 3 km";
+  return [
+    `Saia da farmácia (${origem}).`,
+    `Siga pela via principal no sentido ${e.bairro || "do destino"}.`,
+    `Percorra ${dist} mantendo-se na rota indicada.`,
+    `Chegue ao destino: ${destino}${bairroDest}.`,
+    `Ao chegar, toque em "Cheguei" e finalize com o código de 8 dígitos do cliente.`,
+  ];
+}
+
+/**
+ * Farmacêutico marca o pedido como separado / pronto para retirada.
+ * Libera a entrega para os entregadores (pronto_para_retirada = true).
+ */
+async function markReadyForPickup(orderId, pharmacyId) {
+  const order = await Order.findById(orderId);
+  if (!order) throw createError("Pedido não encontrado", 404);
+  if (String(order.id_farmacia) !== String(pharmacyId)) {
+    throw createError("Pedido não pertence a esta farmácia", 403);
+  }
+  if (NON_DISPATCH_TYPES.includes(order.tipo_entrega)) {
+    throw createError(
+      "Pedidos de retirada/drive-thru não passam por entregador",
+      400,
+    );
+  }
+
+  let delivery = await Delivery.findOne({
+    id_pedido: order._id,
+    status: { $ne: "cancelada" },
+  });
+  if (!delivery) {
+    delivery = await ensureDispatchDeliveryForOrder(order._id);
+  }
+  if (!delivery) {
+    throw createError(
+      "Não foi possível preparar a entrega. Verifique pagamento e validação farmacêutica do pedido.",
+      400,
+    );
+  }
+
+  const now = new Date();
+  if (!delivery.pronto_para_retirada) {
+    delivery.pronto_para_retirada = true;
+    delivery.separado_em = now;
+    delivery.historico_status.push({
+      status: delivery.status,
+      alterado_em: now,
+      observacao: "Pedido separado e pronto para retirada",
+    });
+    await delivery.save();
+  }
+
+  if (!order.separado_em) {
+    order.separado_em = now;
+    order.historico_status.push({
+      status: order.status,
+      alterado_em: now,
+      observacao: "Pedido separado e pronto para retirada",
+    });
+    await order.save();
+  }
+
+  try {
+    await emitOrderStatus(
+      String(order._id),
+      order.status,
+      "Pedido separado e pronto para retirada",
+    );
+  } catch (_) {}
+  emitDeliveryUpdate(String(delivery._id), "delivery:ready", {
+    status: delivery.status,
+    pronto_para_retirada: true,
+  });
+
+  return delivery;
+}
+
+/**
+ * Farmacêutico confere o código de 8 dígitos informado pelo entregador e libera a coleta.
+ * A entrega passa para "em_transito" (pedido a caminho) e o entregador recebe a rota simulada.
+ */
+async function confirmPickupWithCode(orderId, pharmacyId, codigo) {
+  const order = await Order.findById(orderId);
+  if (!order) throw createError("Pedido não encontrado", 404);
+  if (String(order.id_farmacia) !== String(pharmacyId)) {
+    throw createError("Pedido não pertence a esta farmácia", 403);
+  }
+
+  const delivery = await Delivery.findOne({
+    id_pedido: order._id,
+    status: { $nin: ["cancelada", "entregue"] },
+  });
+  if (!delivery) throw createError("Não há entrega ativa para este pedido", 404);
+  if (!delivery.id_entregador) {
+    throw createError("Aguardando um entregador aceitar a corrida", 400);
+  }
+  if (delivery.coleta_confirmada_em) {
+    throw createError("A coleta deste pedido já foi liberada", 400);
+  }
+
+  const esperado = String(delivery.codigo_coleta || "").trim();
+  const informado = String(codigo ?? "").trim();
+  if (!esperado || esperado !== informado) {
+    throw createError("Código de coleta inválido", 400);
+  }
+
+  const now = new Date();
+  delivery.coleta_confirmada_em = now;
+  delivery.coletada_em = now;
+  delivery.rota_simulada = buildSimulatedRoute(delivery);
+  delivery.adicionarHistorico("coletando", "Entregador identificado na farmácia");
+  delivery.adicionarHistorico(
+    "coletada",
+    "Coleta liberada pelo farmacêutico (código de 8 dígitos conferido)",
+  );
+  delivery.adicionarHistorico("em_transito", "Pedido a caminho do cliente");
+  await delivery.save();
+
+  if (order.status !== "a_caminho" && order.status !== "entregue") {
+    order.adicionarHistoricoStatus("a_caminho", "Pedido a caminho do cliente");
+    await order.save();
+    try {
+      await emitOrderStatus(String(order._id), "a_caminho", "Pedido a caminho do cliente");
+      await notifyOrderStatus(order, "a_caminho");
+    } catch (_) {}
+  }
+
+  emitDeliveryUpdate(String(delivery._id), "delivery:status", {
+    status: "em_transito",
+    coleta_confirmada: true,
+  });
+
+  return stripConfirmationCodeForEntregador(delivery);
+}
+
+/**
+ * Entregador marca que chegou ao endereço do cliente (simulação, sem GPS).
+ */
+async function markArrivedAtCustomer(deliveryId, entregadorId) {
+  const delivery = await findDeliveryOrThrow({ _id: deliveryId });
+  if (String(delivery.id_entregador) !== String(entregadorId)) {
+    throw createError("Você não é o entregador desta entrega", 403);
+  }
+  if (delivery.status !== "em_transito") {
+    throw createError("A entrega precisa estar a caminho para registrar a chegada", 400);
+  }
+  if (!delivery.entregador_chegou_em) {
+    delivery.entregador_chegou_em = new Date();
+    delivery.historico_status.push({
+      status: "em_transito",
+      observacao: "Entregador chegou ao endereço do cliente",
+    });
+    await delivery.save();
+  }
+
+  emitDeliveryUpdate(String(delivery._id), "delivery:status", {
+    status: "em_transito",
+    chegou: true,
+  });
+  try {
+    getIO()
+      .to("order:" + delivery.id_pedido)
+      .emit("delivery:arrived", { orderId: String(delivery.id_pedido) });
+  } catch (_) {}
+
+  return stripConfirmationCodeForEntregador(delivery);
+}
+
 module.exports = {
   createDelivery,
+  markReadyForPickup,
+  confirmPickupWithCode,
+  markArrivedAtCustomer,
   ensureDispatchDeliveryForOrder,
   getAvailableDeliveries,
   getMyDeliveries,

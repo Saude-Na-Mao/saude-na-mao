@@ -429,18 +429,27 @@ export default function EntregadorDashboard() {
     }
   };
 
+  const handleCheguei = async () => {
+    if (!activeDelivery?._id) return;
+    setBusy(true);
+    setError(null);
+    try {
+      await deliveryService.marcarCheguei(activeDelivery._id);
+      await loadActiveFromApi();
+    } catch (e) {
+      setError(e?.response?.data?.message || e?.message || "Erro ao registrar chegada");
+    } finally {
+      setBusy(false);
+    }
+  };
+
   const handleEntregar = async () => {
     if (!activeDelivery?._id || !codigoEntrega.trim()) return;
     setBusy(true);
     setError(null);
     try {
-      if (activeDelivery.status === "coletada") {
-        await deliveryService.updateStatus(activeDelivery._id, {
-          novoStatus: "em_transito",
-        });
-        await loadActiveFromApi();
-      } else if (activeDelivery.status !== "em_transito") {
-        setError("Confirme a coleta na farmácia antes de finalizar a entrega.");
+      if (activeDelivery.status !== "em_transito") {
+        setError("Aguarde o farmacêutico liberar a coleta antes de finalizar a entrega.");
         setBusy(false);
         return;
       }
@@ -818,66 +827,89 @@ export default function EntregadorDashboard() {
               </div>
             )}
 
-            <p className="mt-3 text-sm text-slate-700 bg-slate-100 rounded-lg px-3 py-2">
-              O código de 6 dígitos aparece para o cliente em Meus pedidos e
-              em Rastrear. Confira com o cliente e digite abaixo.
-            </p>
+            {activeDelivery.status === "aceita" && (
+              <div className="mt-3 rounded-lg border border-indigo-200 bg-indigo-50 px-4 py-3">
+                <p className="text-xs font-semibold text-indigo-700 uppercase tracking-wide">
+                  Código de coleta — informe ao farmacêutico
+                </p>
+                <p className="text-3xl font-mono font-bold tracking-widest text-indigo-900">
+                  {activeDelivery.codigo_coleta || "--------"}
+                </p>
+                <p className="text-xs text-indigo-700 mt-1">
+                  Você está a caminho da farmácia. Ao chegar, informe este código de 8 dígitos
+                  ao farmacêutico para liberar a coleta e receber a rota.
+                </p>
+              </div>
+            )}
 
             <div className="mt-4 flex flex-wrap gap-3">
-              {aguardandoConfirmacaoFarmacia && (
-                <div className="w-full rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
-                  Código confirmado com o cliente. Entregue a receita física na farmácia para o farmacêutico finalizar o pedido.
-                </div>
-              )}
-
-              {activeDelivery.status === "aceita" && (
-                <button
-                  type="button"
-                  disabled={busy}
-                  onClick={handleColetar}
-                  className="px-4 py-2 rounded-lg bg-emerald-600 text-white text-sm font-medium hover:bg-emerald-700 disabled:opacity-50"
-                >
-                  Cheguei na farmácia / Confirmar coleta
-                </button>
-              )}
-
               {(activeDelivery.status === "coletada" ||
-                activeDelivery.status === "em_transito") &&
-                !aguardandoConfirmacaoFarmacia && (
+                activeDelivery.status === "em_transito") && (
                 <div className="w-full space-y-3">
-                  <input
-                    type="text"
-                    inputMode="numeric"
-                    maxLength={6}
-                    placeholder="Código do cliente (6 dígitos)"
-                    value={codigoEntrega}
-                    onChange={(e) =>
-                      setCodigoEntrega(e.target.value.replace(/\D/g, ""))
-                    }
-                    className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-lg tracking-widest"
-                  />
-                  <div>
-                    <label className="block text-xs text-gray-500 mb-1">
-                      Foto do comprovante (opcional)
-                    </label>
-                    <input
-                      type="file"
-                      accept="image/*"
-                      capture="environment"
-                      onChange={(e) =>
-                        setFotoComprovante(e.target.files?.[0] || null)
-                      }
-                      className="text-sm text-gray-600"
-                    />
-                  </div>
-                  <button
-                    type="button"
-                    disabled={busy || codigoEntrega.length < 6}
-                    onClick={handleEntregar}
-                    className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
-                  >
-                    Confirmar entrega
-                  </button>
+                  {Array.isArray(activeDelivery.rota_simulada) &&
+                    activeDelivery.rota_simulada.length > 0 && (
+                    <div className="rounded-lg border border-purple-200 bg-purple-50 px-4 py-3">
+                      <p className="text-xs font-semibold text-purple-700 uppercase tracking-wide mb-1">
+                        Rota até o cliente
+                      </p>
+                      <ol className="list-decimal list-inside text-sm text-purple-900 space-y-0.5">
+                        {activeDelivery.rota_simulada.map((passo, i) => (
+                          <li key={i}>{passo}</li>
+                        ))}
+                      </ol>
+                    </div>
+                  )}
+
+                  {!activeDelivery.entregador_chegou_em ? (
+                    <button
+                      type="button"
+                      disabled={busy}
+                      onClick={handleCheguei}
+                      className="px-4 py-2 rounded-lg bg-purple-600 text-white text-sm font-medium hover:bg-purple-700 disabled:opacity-50"
+                    >
+                      Cheguei no endereço do cliente
+                    </button>
+                  ) : (
+                    <>
+                      <p className="text-sm text-slate-700 bg-slate-100 rounded-lg px-3 py-2">
+                        O código de 8 dígitos aparece para o cliente em Meus pedidos e em Rastrear.
+                        Confira com o cliente e digite abaixo para concluir a venda.
+                      </p>
+                      <input
+                        type="text"
+                        inputMode="numeric"
+                        maxLength={8}
+                        placeholder="Código do cliente (8 dígitos)"
+                        value={codigoEntrega}
+                        onChange={(e) =>
+                          setCodigoEntrega(e.target.value.replace(/\D/g, ""))
+                        }
+                        className="w-full max-w-xs border border-gray-300 rounded-lg px-3 py-2 text-lg tracking-widest"
+                      />
+                      <div>
+                        <label className="block text-xs text-gray-500 mb-1">
+                          Foto do comprovante (opcional)
+                        </label>
+                        <input
+                          type="file"
+                          accept="image/*"
+                          capture="environment"
+                          onChange={(e) =>
+                            setFotoComprovante(e.target.files?.[0] || null)
+                          }
+                          className="text-sm text-gray-600"
+                        />
+                      </div>
+                      <button
+                        type="button"
+                        disabled={busy || codigoEntrega.length < 8}
+                        onClick={handleEntregar}
+                        className="px-4 py-2 rounded-lg bg-gray-900 text-white text-sm font-medium hover:bg-gray-800 disabled:opacity-50"
+                      >
+                        Confirmar entrega
+                      </button>
+                    </>
+                  )}
                 </div>
               )}
             </div>

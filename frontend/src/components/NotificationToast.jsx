@@ -50,6 +50,8 @@ function normalizePrescriptionCartProduct(produto, fallbackPharmacyId) {
     id: produto._id || produto.id,
     nome: produto.nome,
     preco,
+    estoque: produto.estoque,
+    batches: produto.batches,
     imagem: produto.imagem || produto.imagem_url || produto.imagens?.[0],
     controlado: produto.controlado,
     receita_obrigatoria: produto.receita_obrigatoria,

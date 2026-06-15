@@ -1,6 +1,34 @@
 const mongoose = require("mongoose");
 const mongoosePaginate = require("mongoose-paginate-v2");
 
+const productBatchSchema = new mongoose.Schema(
+  {
+    batchNumber: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    expirationDate: {
+      type: Date,
+      required: true,
+    },
+    quantity: {
+      type: Number,
+      min: 0,
+      default: 0,
+    },
+    receivedAt: {
+      type: Date,
+      default: Date.now,
+    },
+    active: {
+      type: Boolean,
+      default: true,
+    },
+  },
+  { _id: false },
+);
+
 const productSchema = new mongoose.Schema(
   {
     nome: {
@@ -63,6 +91,10 @@ const productSchema = new mongoose.Schema(
     controlado: {
       type: Boolean,
       default: false,
+    },
+    batches: {
+      type: [productBatchSchema],
+      default: [],
     },
     classificacao_receita: {
       type: String,
@@ -139,6 +171,15 @@ productSchema.virtual("preco_final").get(function () {
   return this.preco;
 });
 
+productSchema
+  .virtual("isControlled")
+  .get(function () {
+    return Boolean(this.controlado);
+  })
+  .set(function (value) {
+    this.controlado = Boolean(value);
+  });
+
 productSchema.index(
   {
     nome: "text",
@@ -162,6 +203,7 @@ productSchema.index({ preco: 1 });
 productSchema.index({ estoque: 1 });
 productSchema.index({ controlado: 1 });
 productSchema.index({ classificacao_receita: 1 });
+productSchema.index({ "batches.batchNumber": 1 });
 
 productSchema.plugin(mongoosePaginate);
 

@@ -439,7 +439,7 @@ export default function Checkout() {
           <CheckCircle className="w-5 h-5 text-emerald-500 flex-shrink-0" />
           <div>
             <p className="text-sm font-semibold text-emerald-800">Receita aprovada</p>
-            <p className="text-xs text-emerald-600">O farmacêutico validou sua receita. O entregador recolherá a receita física na entrega.</p>
+            <p className="text-xs text-emerald-600">O farmacêutico validou sua receita digital. A farmácia usará a assinatura para registrar a baixa do lote.</p>
           </div>
         </div>
       )}

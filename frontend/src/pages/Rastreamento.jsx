@@ -146,6 +146,13 @@ export default function Rastreamento() {
     (typeof order.id_entrega === 'object' && order.id_entrega?.codigo_confirmacao) ||
     deliveryDetail?.codigo_confirmacao
 
+  const entregadorChegou = Boolean(
+    (typeof order.id_entrega === 'object' && order.id_entrega?.entregador_chegou_em) ||
+      deliveryDetail?.entregador_chegou_em,
+  )
+  const pedidoSeparado = Boolean(order.separado_em)
+  const entregadorAceitou = Boolean(order.entregador?.nome)
+
   const pharmacyLocation =
     pointToLatLng(deliveryDetail?.endereco_coleta?.location) ||
     pointToLatLng(order.id_farmacia?.location)
@@ -255,8 +262,27 @@ export default function Rastreamento() {
             <div className="bg-blue-50 border border-blue-200 rounded-xl p-6 mb-6 flex items-center gap-4">
               <Clock className="w-10 h-10 text-blue-500 flex-shrink-0 animate-pulse" />
               <div>
-                <h3 className="font-bold text-blue-800 text-lg">Em Processamento</h3>
-                <p className="text-sm text-blue-600">A farmácia está preparando seu pedido.</p>
+                <h3 className="font-bold text-blue-800 text-lg">
+                  {pedidoSeparado ? 'Pedido separado' : 'Em Processamento'}
+                </h3>
+                <p className="text-sm text-blue-600">
+                  {pedidoSeparado
+                    ? 'Seu pedido está pronto para retirada, aguardando um entregador aceitar a corrida.'
+                    : 'A farmácia está preparando seu pedido.'}
+                </p>
+              </div>
+            </div>
+          )}
+
+          {order.status === 'confirmado' && (
+            <div className="bg-indigo-50 border border-indigo-200 rounded-xl p-6 mb-6 flex items-center gap-4">
+              <Truck className="w-10 h-10 text-indigo-500 flex-shrink-0 animate-pulse" />
+              <div>
+                <h3 className="font-bold text-indigo-800 text-lg">Entregador a caminho da farmácia</h3>
+                <p className="text-sm text-indigo-600">
+                  {order.entregador?.nome ? `${order.entregador.nome} ` : 'O entregador '}
+                  aceitou sua entrega e está indo até a farmácia retirar o pedido.
+                </p>
               </div>
             </div>
           )}
@@ -267,7 +293,7 @@ export default function Rastreamento() {
               <div>
                 <h3 className="font-bold text-amber-900 text-lg">Aguardando confirmação na farmácia</h3>
                 <p className="text-sm text-amber-800">
-                  O entregador confirmou o código com você. A farmácia precisa conferir a receita física para finalizar.
+                  O entregador confirmou o código com você. A farmácia precisa concluir a baixa digital do lote para finalizar.
                 </p>
               </div>
             </div>
@@ -292,8 +318,14 @@ export default function Rastreamento() {
                 }`} />
               </div>
               <div className="pt-2">
-                <h3 className="font-bold text-lg">Pedido Confirmado</h3>
-                <p className="text-gray-600">Seu pedido foi confirmado e está sendo preparado</p>
+                <h3 className="font-bold text-lg">
+                  {pedidoSeparado ? 'Pedido separado' : 'Pedido Confirmado'}
+                </h3>
+                <p className="text-gray-600">
+                  {pedidoSeparado
+                    ? 'Pronto para retirada na farmácia'
+                    : 'Seu pedido foi confirmado e está sendo preparado'}
+                </p>
               </div>
             </div>
 
@@ -316,8 +348,12 @@ export default function Rastreamento() {
                 }`} />
               </div>
               <div className="pt-2">
-                <h3 className="font-bold text-lg">Enviado para Entrega</h3>
-                <p className="text-gray-600">Seu pedido saiu para entrega</p>
+                <h3 className="font-bold text-lg">Entregador a caminho da farmácia</h3>
+                <p className="text-gray-600">
+                  {entregadorAceitou
+                    ? 'O entregador aceitou e está indo retirar o pedido'
+                    : 'Aguardando um entregador aceitar a corrida'}
+                </p>
               </div>
             </div>
 
@@ -339,8 +375,14 @@ export default function Rastreamento() {
                 }`} />
               </div>
               <div className="pt-2">
-                <h3 className="font-bold text-lg">A Caminho</h3>
-                <p className="text-gray-600">Seu pedido está a caminho do endereço de entrega</p>
+                <h3 className="font-bold text-lg">
+                  {entregadorChegou ? 'Entregador chegou' : 'A Caminho'}
+                </h3>
+                <p className="text-gray-600">
+                  {entregadorChegou
+                    ? 'O entregador chegou ao seu endereço. Informe o código de 8 dígitos para concluir.'
+                    : 'Seu pedido está a caminho do endereço de entrega'}
+                </p>
               </div>
             </div>
 
@@ -357,8 +399,8 @@ export default function Rastreamento() {
                 </div>
               </div>
               <div className="pt-2">
-                <h3 className="font-bold text-lg">Entregue</h3>
-                <p className="text-gray-600">Seu pedido foi entregue com sucesso</p>
+                <h3 className="font-bold text-lg">Pedido concluído</h3>
+                <p className="text-gray-600">Seu pedido foi entregue e a venda foi concluída</p>
               </div>
             </div>
           </div>

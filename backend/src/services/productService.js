@@ -2,6 +2,7 @@ const mongoose = require("mongoose");
 const Product = require("../models/Product");
 const Pharmacy = require("../models/Pharmacy");
 const medicineCatalogService = require("./medicineCatalogService");
+const { buildControlledBatches, isControlledProduct } = require("../utils/batchAvailability");
 
 function createError(message, statusCode) {
   const error = new Error(message);
@@ -239,6 +240,9 @@ async function activateFromCatalog(pharmacyId, { id_catalogo, estoque, preco }) 
     imagens,
     preco: precoNum,
     estoque: estoqueNum,
+    batches: isControlledProduct(catalogItem)
+      ? buildControlledBatches(catalogItem, estoqueNum, 0, 0)
+      : [],
     id_farmacia: pharmacyId,
     tipo_produto: "medicamento_catalogo",
     id_catalogo: catalogItem._id,

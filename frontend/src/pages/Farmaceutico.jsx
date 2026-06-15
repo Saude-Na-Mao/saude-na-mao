@@ -39,6 +39,7 @@ import {
   getOrderCancellationReason,
   isPreparandoEnvioSemEntregador,
 } from '../utils/orderStatusDisplay'
+import { isSngpcProduct } from '../utils/compliance'
 import { io } from 'socket.io-client'
 import { getSocketUrl } from '../config/env'
 
@@ -111,11 +112,16 @@ export default function Farmaceutico() {
       })
       window.dispatchEvent(new CustomEvent(PHARMACY_ORDERS_SOCKET_REFRESH))
     }
+    const onUpdated = () => {
+      window.dispatchEvent(new CustomEvent(PHARMACY_ORDERS_SOCKET_REFRESH))
+    }
     socket.on('pharmacy:order:pending', onPending)
+    socket.on('pharmacy:order:updated', onUpdated)
 
     return () => {
       socket.off('connect', onConnect)
       socket.off('pharmacy:order:pending', onPending)
+      socket.off('pharmacy:order:updated', onUpdated)
       socket.disconnect()
     }
   }, [token, pharmacyId])
@@ -574,6 +580,58 @@ function AvaliacoesRespostasPanel({ pharmacyId, resolvingPharmacy = false }) {
           )}
         </div>
       )}
+
+      {rejectingOrder && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
+          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-100">
+            <div className="flex items-center justify-between p-5 border-b border-gray-100">
+              <div>
+                <h3 className="font-bold text-gray-900">Rejeitar Notificação</h3>
+                <p className="text-xs text-gray-500 mt-1">
+                  Pedido #{String(rejectingOrder._id || '').slice(-8).toUpperCase()}
+                </p>
+              </div>
+              <button
+                type="button"
+                onClick={() => setRejectingOrder(null)}
+                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
+                aria-label="Fechar"
+              >
+                <X className="w-5 h-5" />
+              </button>
+            </div>
+            <div className="p-5 space-y-4">
+              <div>
+                <label className="text-xs text-gray-500">Motivo</label>
+                <textarea
+                  value={rejectReason}
+                  onChange={(e) => setRejectReason(e.target.value)}
+                  rows={4}
+                  className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  placeholder="Descreva o motivo regulatório ou operacional"
+                />
+              </div>
+              <div className="flex justify-end gap-2">
+                <button
+                  type="button"
+                  onClick={() => setRejectingOrder(null)}
+                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+                >
+                  Cancelar
+                </button>
+                <button
+                  type="button"
+                  onClick={confirmarRejeicao}
+                  disabled={rejectSaving}
+                  className="px-4 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+                >
+                  {rejectSaving ? 'Salvando...' : 'Confirmar rejeição'}
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
@@ -954,6 +1012,312 @@ function SalesAnalysisPanel({ analysis, sortedProducts, sortConfig, onSort, stat
 }
 
 /* ────────── Histórico de Pedidos ────────── */
+const UF_OPTIONS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
+  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
+  'SP', 'SE', 'TO',
+]
+
+const normalizeOrderFileUrl = (value) => {
+  const raw = String(value || '').trim()
+  if (!raw) return ''
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw)
+      if (url.pathname.startsWith('/uploads/')) {
+        return `${url.pathname}${url.search}${url.hash}`
+      }
+    } catch {
+      return raw
+    }
+    return raw
+  }
+  return `/${raw.replace(/^\/+/, '').replace(/\\/g, '/')}`
+}
+
+const objectIdValue = (value) => {
+  const raw = value?._id || value?.id || value
+  return raw ? String(raw) : ''
+}
+
+const productFromItem = (item) => item?.id_produto || item?.produto || {}
+
+const isControlledOrderItem = (item) => {
+  const product = productFromItem(item)
+  return Boolean(isSngpcProduct(item) || isSngpcProduct(product))
+}
+
+const getControlledItems = (order) => (order?.itens || []).filter(isControlledOrderItem)
+
+const getPrimaryControlledItem = (order) => getControlledItems(order)[0] || null
+
+const getAvailableBatchesForItem = (item) => {
+  const product = productFromItem(item)
+  return [...(product?.batches || [])]
+    .filter((batch) => batch?.active !== false && Number(batch?.quantity || 0) > 0)
+    .sort((a, b) => new Date(a.expirationDate || 0) - new Date(b.expirationDate || 0))
+}
+
+const formatBatchDate = (value) => {
+  if (!value) return '-'
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return '-'
+  return date.toLocaleDateString('pt-BR')
+}
+
+const getOrderPrescription = (order) => {
+  const itemWithPrescription =
+    getControlledItems(order).find((item) => item?.id_receita) ||
+    (order?.itens || []).find((item) => item?.id_receita)
+  return itemWithPrescription?.id_receita || null
+}
+
+const getPrescriptionOcr = (order) => getOrderPrescription(order)?.dados_ocr || {}
+
+const digitalSignatureCodeFromPrescription = (prescription) => {
+  const ocr = prescription?.dados_ocr || {}
+  return (
+    prescription?.digitalSignatureCode ||
+    prescription?.codigo_validacao_assinatura ||
+    prescription?.hash_assinatura ||
+    ocr?.codigo_validacao_assinatura ||
+    ocr?.hash_assinatura ||
+    prescription?.hash_arquivo ||
+    ''
+  )
+}
+
+function SngpcDispensationPanel({
+  order,
+  form,
+  setForm,
+  onClose,
+  onConfirm,
+  onReject,
+  saving,
+}) {
+  if (!order) return null
+  const item = getPrimaryControlledItem(order)
+  const product = productFromItem(item)
+  const batches = getAvailableBatchesForItem(item)
+  const prescription = getOrderPrescription(order)
+  const prescriptionUrl = normalizeOrderFileUrl(prescription?.url_arquivo)
+  const prescriptionKind = String(prescription?.tipo_arquivo || prescriptionUrl).toLowerCase()
+  const isPdf = prescriptionKind.includes('pdf')
+  const isXml = prescriptionKind.includes('xml')
+  const ocr = getPrescriptionOcr(order)
+  const buyer = order?.id_usuario || {}
+
+  return (
+    <div className="m-4 rounded-xl border border-emerald-100 bg-white shadow-sm overflow-hidden">
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-3 px-5 py-4 border-b border-gray-100 bg-emerald-50/60">
+        <div>
+          <h3 className="font-bold text-gray-900">Registro de Dispensação ANVISA / SNGPC</h3>
+          <p className="text-xs text-gray-600 mt-1">
+            Pedido #{String(order._id || '').slice(-8).toUpperCase()} · {product?.nome || item?.nome_produto || 'Medicamento sujeito ao SNGPC'}
+          </p>
+        </div>
+        <button
+          type="button"
+          onClick={onClose}
+          className="self-start md:self-auto p-2 rounded-lg text-gray-500 hover:bg-white"
+          aria-label="Fechar registro"
+        >
+          <X className="w-5 h-5" />
+        </button>
+      </div>
+
+      <div className="grid grid-cols-1 xl:grid-cols-[minmax(0,1fr)_440px] min-h-[560px]">
+        <div className="p-5 bg-gray-50 border-r border-gray-100">
+          <div className="flex items-center justify-between gap-3 mb-3">
+            <div>
+              <p className="text-sm font-semibold text-gray-900">Documento da prescrição</p>
+              <p className="text-xs text-gray-500">{prescription?.nome_arquivo || 'Arquivo vinculado ao pedido'}</p>
+            </div>
+            {prescriptionUrl && (
+              <a
+                href={prescriptionUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex items-center gap-2 px-3 py-2 rounded-lg border border-gray-200 bg-white text-xs font-semibold text-gray-700 hover:bg-gray-50"
+              >
+                <Eye className="w-4 h-4" />
+                Abrir
+              </a>
+            )}
+          </div>
+
+          <div className="h-[500px] rounded-xl border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+            {prescriptionUrl ? (
+              isPdf ? (
+                <iframe title="Prescrição" src={prescriptionUrl} className="w-full h-full" />
+              ) : isXml ? (
+                <div className="text-center px-6">
+                  <FileText className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                  <p className="text-sm font-semibold text-gray-800">Receita digital em XML</p>
+                  <a
+                    href={prescriptionUrl}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="mt-3 inline-flex px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold"
+                  >
+                    Abrir XML
+                  </a>
+                </div>
+              ) : (
+                <img src={prescriptionUrl} alt="Prescrição" className="w-full h-full object-contain bg-white" />
+              )
+            ) : (
+              <div className="text-center px-6">
+                <FileText className="w-12 h-12 text-gray-300 mx-auto mb-3" />
+                <p className="text-sm font-medium text-gray-600">Nenhum documento vinculado ao pedido</p>
+              </div>
+            )}
+          </div>
+        </div>
+
+        <div className="p-5 space-y-5">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+            <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-800">
+              Entra: tarja preta, controle especial e antimicrobianos.
+            </div>
+            <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-600">
+              Não entra: tarja vermelha comum, MIPs e genérico sem ativo controlado.
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Comprador</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+              <ReadonlyField label="Nome completo" value={buyer?.nome || '-'} />
+              <ReadonlyField label="CPF" value={buyer?.cpf || '-'} />
+              <ReadonlyField label="RG + órgão emissor" value={buyer?.rg || '-'} />
+              <ReadonlyField label="Telefone" value={buyer?.telefone || '-'} />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor</p>
+            <div className="space-y-3">
+              <FormInput
+                label="Nome do médico"
+                value={form.doctorName}
+                placeholder={ocr?.nome_medico || 'Dr. Marcelo Andrade'}
+                onChange={(value) => setForm((prev) => ({ ...prev, doctorName: value }))}
+              />
+              <div className="grid grid-cols-2 gap-3">
+                <FormInput
+                  label="CRM"
+                  value={form.doctorCrm}
+                  placeholder={ocr?.crm || '18452'}
+                  onChange={(value) => setForm((prev) => ({ ...prev, doctorCrm: value }))}
+                />
+                <div>
+                  <label className="text-xs text-gray-500">UF do conselho</label>
+                  <select
+                    value={form.doctorUf}
+                    onChange={(e) => setForm((prev) => ({ ...prev, doctorUf: e.target.value }))}
+                    className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+                  >
+                    <option value="">{ocr?.uf_crm || 'UF'}</option>
+                    {UF_OPTIONS.map((uf) => (
+                      <option key={uf} value={uf}>{uf}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+              <FormInput
+                label="Código da assinatura digital ICP-Brasil"
+                value={form.digitalSignatureCode}
+                placeholder={(prescription?.hash_arquivo || '').slice(0, 32) || 'Hash ICP-Brasil'}
+                onChange={(value) => setForm((prev) => ({ ...prev, digitalSignatureCode: value }))}
+              />
+            </div>
+          </div>
+
+          <div>
+            <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Lote e rastreabilidade</p>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-3">
+              <ReadonlyField label="Medicamento" value={product?.nome || item?.nome_produto || '-'} />
+              <ReadonlyField label="Quantidade de caixas" value={String(item?.quantidade || 1)} />
+            </div>
+            <label className="text-xs text-gray-500">Número do lote selecionado</label>
+            <select
+              value={form.selectedBatchNumber}
+              onChange={(e) => setForm((prev) => ({ ...prev, selectedBatchNumber: e.target.value }))}
+              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+            >
+              <option value="">Selecione um lote</option>
+              {batches.map((batch) => (
+                <option key={batch.batchNumber} value={batch.batchNumber}>
+                  {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
+                </option>
+              ))}
+            </select>
+            <p className="text-[11px] text-gray-500 mt-2">
+              Regra FEFO: vencimento mais próximo primeiro.
+            </p>
+          </div>
+
+          <div className="pt-4 border-t border-gray-100 flex flex-col gap-2">
+            <button
+              type="button"
+              onClick={onConfirm}
+              disabled={
+                saving ||
+                !form.doctorName ||
+                !form.doctorCrm ||
+                !form.doctorUf ||
+                !form.digitalSignatureCode ||
+                !form.selectedBatchNumber
+              }
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-primary text-white text-sm font-semibold hover:bg-secondary disabled:opacity-50"
+            >
+              <ClipboardList className="w-4 h-4" />
+              {saving ? 'Registrando...' : 'Confirmar Dispensação e Rastreabilidade'}
+            </button>
+            <button
+              type="button"
+              onClick={onReject}
+              disabled={saving}
+              className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg border border-red-200 text-red-700 text-sm font-semibold hover:bg-red-50 disabled:opacity-50"
+            >
+              <XCircle className="w-4 h-4" />
+              Rejeitar Notificação
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function ReadonlyField({ label, value }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <div className="mt-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-800 min-h-[38px]">
+        {value}
+      </div>
+    </div>
+  )
+}
+
+function FormInput({ label, value, placeholder, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
+      />
+    </div>
+  )
+}
+
 function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
   const [orders, setOrders] = useState([])
   const [loading, setLoading] = useState(true)
@@ -971,6 +1335,19 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
   const [sortConfig, setSortConfig] = useState({ key: 'revenue', direction: 'desc' })
   const [pickupCompletingId, setPickupCompletingId] = useState(null)
   const [codigoRetiradaPorPedido, setCodigoRetiradaPorPedido] = useState({})
+  const [selectedSngpcOrder, setSelectedSngpcOrder] = useState(null)
+  const [sngpcForm, setSngpcForm] = useState({
+    productId: '',
+    doctorName: '',
+    doctorCrm: '',
+    doctorUf: '',
+    digitalSignatureCode: '',
+    selectedBatchNumber: '',
+  })
+  const [sngpcSaving, setSngpcSaving] = useState(false)
+  const [rejectingOrder, setRejectingOrder] = useState(null)
+  const [rejectReason, setRejectReason] = useState('')
+  const [rejectSaving, setRejectSaving] = useState(false)
 
   const loadOrders = useCallback(async (opts = {}) => {
     const silent = Boolean(opts.silent);
@@ -1036,6 +1413,72 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
       setError(apiMsg || 'Erro ao marcar retirada como entregue')
     } finally {
       setPickupCompletingId(null)
+    }
+  }
+
+  const openSngpcOrder = (order) => {
+    const item = getPrimaryControlledItem(order)
+    const batches = getAvailableBatchesForItem(item)
+    const ocr = getPrescriptionOcr(order)
+    const prescription = getOrderPrescription(order)
+    setSngpcForm({
+      productId: objectIdValue(item?.id_produto),
+      doctorName: ocr?.nome_medico || '',
+      doctorCrm: ocr?.crm || '',
+      doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
+      digitalSignatureCode: digitalSignatureCodeFromPrescription(prescription),
+      selectedBatchNumber: batches[0]?.batchNumber || '',
+    })
+    setSelectedSngpcOrder(order)
+    setError(null)
+  }
+
+  const confirmarSngpc = async () => {
+    if (!selectedSngpcOrder?._id || !pharmacyId || sngpcSaving) return
+    try {
+      setSngpcSaving(true)
+      setError(null)
+      await orderService.validateSngpc(selectedSngpcOrder._id, {
+        pharmacyId,
+        ...sngpcForm,
+        doctorUf: String(sngpcForm.doctorUf || '').toUpperCase(),
+        buyerRg: selectedSngpcOrder?.id_usuario?.rg || '',
+      })
+      setSelectedSngpcOrder(null)
+      await loadOrders({ silent: true })
+    } catch (err) {
+      const apiMsg = err.response?.data?.message || err.message
+      setError(apiMsg || 'Erro ao registrar dispensação')
+    } finally {
+      setSngpcSaving(false)
+    }
+  }
+
+  const openRejectModal = (order) => {
+    setRejectingOrder(order)
+    setRejectReason('')
+    setError(null)
+  }
+
+  const confirmarRejeicao = async () => {
+    if (!rejectingOrder?._id || !pharmacyId || rejectSaving) return
+    const motivo = rejectReason.trim()
+    if (!motivo) {
+      setError('Informe o motivo da rejeição.')
+      return
+    }
+    try {
+      setRejectSaving(true)
+      setError(null)
+      await orderService.rejectByPharmacist(rejectingOrder._id, pharmacyId, motivo)
+      setRejectingOrder(null)
+      setSelectedSngpcOrder(null)
+      await loadOrders({ silent: true })
+    } catch (err) {
+      const apiMsg = err.response?.data?.message || err.message
+      setError(apiMsg || 'Erro ao rejeitar notificação')
+    } finally {
+      setRejectSaving(false)
     }
   }
 
@@ -1278,6 +1721,18 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
 
       {error && <div className="px-5 pt-4"><Alert type="error" message={error} onClose={() => setError(null)} /></div>}
 
+      {viewMode === 'historico' && selectedSngpcOrder && (
+        <SngpcDispensationPanel
+          order={selectedSngpcOrder}
+          form={sngpcForm}
+          setForm={setSngpcForm}
+          saving={sngpcSaving}
+          onClose={() => setSelectedSngpcOrder(null)}
+          onConfirm={confirmarSngpc}
+          onReject={() => openRejectModal(selectedSngpcOrder)}
+        />
+      )}
+
       {loading ? (
         <div className="flex justify-center py-16">
           <div className="w-8 h-8 border-3 border-primary/30 border-t-primary rounded-full animate-spin" />
@@ -1328,6 +1783,10 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
                     order.status === 'cancelado' || order.status === 'rejeitado'
                       ? getOrderCancellationReason(order)
                       : null
+                  const hasControlledMedication = getControlledItems(order).length > 0
+                  const sngpcRegistered = Boolean(order?.sngpcData?.validatedAt)
+                  const sngpcBlocked = ['cancelado', 'rejeitado', 'entregue'].includes(String(order?.status || '').trim())
+                  const canOpenSngpc = hasControlledMedication && !sngpcRegistered && !sngpcBlocked
                   return (
                     <tr key={order._id} className="border-b hover:bg-gray-50">
                       <td className="px-4 py-3 font-mono text-xs">#{(order._id || '').slice(-8).toUpperCase()}</td>
@@ -1359,8 +1818,23 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
                       <td className="px-4 py-3 font-semibold">R$ {(Number(order.total || order.valorTotal || 0)).toFixed(2)}</td>
                       <td className="px-4 py-3 text-gray-500 text-xs">{new Date(order.createdAt).toLocaleString('pt-BR')}</td>
                       <td className="px-4 py-3">
-                        {podeFinalizarRetirada(order) ? (
-                          <div className="flex flex-col gap-1.5 min-w-[140px]">
+                        <div className="flex flex-col gap-1.5 min-w-[150px]">
+                          {canOpenSngpc && (
+                            <button
+                              type="button"
+                              onClick={() => openSngpcOrder(order)}
+                              className="px-2.5 py-1.5 text-xs font-medium rounded-lg border border-emerald-600 text-emerald-900 hover:bg-emerald-50"
+                            >
+                              Registro ANVISA
+                            </button>
+                          )}
+                          {sngpcRegistered && (
+                            <span className="px-2.5 py-1.5 text-xs font-medium rounded-lg bg-emerald-50 text-emerald-800 border border-emerald-100 text-center">
+                              Rastreabilidade registrada
+                            </span>
+                          )}
+                          {podeFinalizarRetirada(order) && (
+                            <>
                             <input
                               type="text"
                               inputMode="numeric"
@@ -1383,10 +1857,12 @@ function HistoricoPanel({ pharmacyId, resolvingPharmacy = false }) {
                             >
                               {pickupCompletingId === order._id ? 'Salvando…' : 'Confirmar retirada'}
                             </button>
-                          </div>
-                        ) : (
-                          <span className="text-gray-300 text-xs">—</span>
-                        )}
+                            </>
+                          )}
+                          {!canOpenSngpc && !sngpcRegistered && !podeFinalizarRetirada(order) && (
+                            <span className="text-gray-300 text-xs">—</span>
+                          )}
+                        </div>
                       </td>
                     </tr>
                   )
@@ -2801,32 +3277,43 @@ function ReceitasHistoryPanel() {
 
               {expandedId === rx._id && (
                 <div className="mt-4 ml-14 space-y-4">
-                  {/* Prescription image */}
-                  {(rx.url_imagem_publica || rx.url_arquivo) && (
-                    <div className="space-y-2 max-w-md">
-                      <a
-                        href={(rx.url_imagem_publica || rx.url_arquivo).startsWith('http')
-                          ? (rx.url_imagem_publica || rx.url_arquivo)
-                          : `/${(rx.url_imagem_publica || rx.url_arquivo).replace(/\\/g, '/')}`}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-secondary"
-                      >
-                        <Eye className="w-4 h-4" />
-                        Ver imagem da receita
-                      </a>
-                      <div className="rounded-xl overflow-hidden border border-gray-200">
-                      <img
-                        src={(rx.url_imagem_publica || rx.url_arquivo).startsWith('http')
-                          ? (rx.url_imagem_publica || rx.url_arquivo)
-                          : `/${(rx.url_imagem_publica || rx.url_arquivo).replace(/\\/g, '/')}`}
-                        alt="Receita"
-                        className="w-full object-contain max-h-96 bg-gray-50"
-                        onError={(e) => { e.target.style.display = 'none' }}
-                      />
+                  {(() => {
+                    const file = rx.url_imagem_publica || rx.url_arquivo
+                    if (!file) return null
+                    const fileUrl = file.startsWith('http')
+                      ? file
+                      : `/${file.replace(/^\/+/, '').replace(/\\/g, '/')}`
+                    const fileKind = String(file).toLowerCase()
+                    const canPreviewAsImage =
+                      !fileKind.includes('.pdf') &&
+                      !fileKind.includes('.xml') &&
+                      !fileKind.includes('application/pdf') &&
+                      !fileKind.includes('application/xml') &&
+                      !fileKind.includes('text/xml')
+                    return (
+                      <div className="space-y-2 max-w-md">
+                        <a
+                          href={fileUrl}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-2 px-3 py-2 rounded-lg bg-primary text-white text-xs font-semibold hover:bg-secondary"
+                        >
+                          <Eye className="w-4 h-4" />
+                          Abrir receita digital
+                        </a>
+                        {canPreviewAsImage && (
+                          <div className="rounded-xl overflow-hidden border border-gray-200">
+                            <img
+                              src={fileUrl}
+                              alt="Receita"
+                              className="w-full object-contain max-h-96 bg-gray-50"
+                              onError={(e) => { e.target.style.display = 'none' }}
+                            />
+                          </div>
+                        )}
                       </div>
-                    </div>
-                  )}
+                    )
+                  })()}
 
                   {/* OCR Data */}
                   {rx.dados_ocr && (

@@ -289,10 +289,23 @@ async function processPaymentStatus(paymentId, novoStatus) {
   if (novoStatus === "aprovado") {
     payment.pago_em = new Date();
     pedido.status_pagamento = "aprovado";
+    const requerFarmaceutico = (pedido.itens || []).some(
+      (item) => item.controlado || item.receita_obrigatoria || item.id_receita,
+    );
     if (pedido.aprovado_farmaceutico && pedido.status === "aguardando_pagamento") {
       pedido.adicionarHistoricoStatus(
         "em_processamento",
         "Pagamento aprovado e pedido já validado pelo farmacêutico — entrega disponível para entregadores; confirmado após o entregador aceitar",
+      );
+    } else if (
+      pedido.status === "aguardando_pagamento" &&
+      !requerFarmaceutico
+    ) {
+      // Fluxo 1 (venda livre): nada a validar pelo farmacêutico — segue para preparação
+      pedido.aprovado_farmaceutico = true;
+      pedido.adicionarHistoricoStatus(
+        "em_processamento",
+        "Pagamento aprovado — pedido em preparação para entrega",
       );
     } else {
       pedido.historico_status.push({

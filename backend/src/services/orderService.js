@@ -7,6 +7,7 @@ const Payment = require("../models/Payment");
 const Delivery = require("../models/Delivery");
 const Review = require("../models/Review");
 const Prescription = require("../models/Prescription");
+const AuditLog = require("../models/AuditLog");
 const prescriptionService = require("./prescriptionService");
 const couponService = require("./couponService");
 const compliance = require("../config/compliance");
@@ -17,11 +18,16 @@ const { getIO } = require("../config/socket");
 const crypto = require("crypto");
 const QRCode = require("qrcode");
 const { isOrderEligibleForDispatch } = require("../utils/deliveryEligibility");
+const {
+  hasAvailableBatchForQuantity,
+  isControlledProduct,
+  isSngpcProduct,
+} = require("../utils/batchAvailability");
 
 const DRIVER_READY_NOTIFICATION_TAG = "entregadores_notificados_pedido_pronto";
 
 const ENTREGA_CLIENT_POPULATE_SELECT =
-  "codigo_confirmacao status avaliacao_cliente endereco_coleta endereco_entrega historico_status valor_entrega tempo_estimado_min id_entregador";
+  "codigo_confirmacao status avaliacao_cliente endereco_coleta endereco_entrega historico_status valor_entrega tempo_estimado_min id_entregador pronto_para_retirada separado_em entregador_chegou_em coleta_confirmada_em";
 
 function pharmacyIdStringFromOrderDoc(order) {
   const f = order?.id_farmacia;
@@ -88,7 +94,7 @@ const ALLOWED_STATUS_TRANSITIONS = {
   // "confirmado" só após o entregador aceitar (acceptDelivery); não via PATCH manual.
   em_processamento: ["cancelado"],
   a_caminho: ["entregue", "aguardando_confirmacao_receita_farmacia", "cancelado"],
-  aguardando_confirmacao_receita_farmacia: ["entregue", "cancelado"],
+  aguardando_confirmacao_receita_farmacia: ["aguardando_pagamento", "entregue", "cancelado"],
 };
 
 function createError(message, statusCode) {
@@ -133,6 +139,27 @@ function normalizeOrderQuantity(value) {
 
 function orderItemProductId(item) {
   return item?.id_produto || item?.produto_id || item?.id;
+}
+
+function objectIdString(value) {
+  const raw = value?._id || value?.id || value;
+  return raw != null ? String(raw) : "";
+}
+
+function requiredText(value, label) {
+  const text = String(value ?? "").trim();
+  if (!text) {
+    throw createError(`${label} é obrigatório`, 400);
+  }
+  return text;
+}
+
+function normalizeUf(value) {
+  const uf = requiredText(value, "UF do CRM").toUpperCase();
+  if (!/^[A-Z]{2}$/.test(uf)) {
+    throw createError("UF do CRM inválida", 400);
+  }
+  return uf;
 }
 
 function effectiveProductPrice(product) {
@@ -213,7 +240,7 @@ async function buildCompliantOrderItems(idFarmacia, rawItems) {
     _id: { $in: productIds },
     id_farmacia: idFarmacia,
   }).select(
-    "nome preco preco_promocional estoque ativo id_farmacia controlado receita_obrigatoria classificacao_receita registro_anvisa",
+    "nome preco preco_promocional estoque ativo id_farmacia controlado receita_obrigatoria classificacao_receita registro_anvisa batches",
   );
 
   const productsById = new Map(
@@ -233,6 +260,16 @@ async function buildCompliantOrderItems(idFarmacia, rawItems) {
 
     if (Number(product.estoque || 0) < quantity) {
       throw createError(`Estoque insuficiente para "${product.nome}"`, 400);
+    }
+
+    if (
+      compliance.isControlledMedication(product) &&
+      !hasAvailableBatchForQuantity(product, quantity)
+    ) {
+      throw createError(
+        `Medicamento "${product.nome}" indisponível: sem lote disponível para rastreabilidade.`,
+        400,
+      );
     }
   }
 
@@ -352,6 +389,21 @@ function orderHasLinkedPrescriptionItems(order) {
   return (order.itens || []).some((i) => i.id_receita || i.receita_obrigatoria);
 }
 
+function orderHasSngpcItems(order) {
+  return (order.itens || []).some(
+    (item) => isSngpcProduct(item) || isSngpcProduct(item?.id_produto),
+  );
+}
+
+function assertControlledOrderSngpcRegistered(order) {
+  if (orderHasSngpcItems(order) && !order.sngpcData?.validatedAt) {
+    throw createError(
+      "Registre a dispensação ANVISA/SNGPC e vincule o lote antes de aprovar ou rejeitar o pedido.",
+      400,
+    );
+  }
+}
+
 /** Espelho da regra `pedidoNaFilaDaFarmacia` no PharmacistDashboard (fila Pedidos). */
 function pedidoNaFilaFarmaciaParaNotificacao(order) {
   if (!order) return false;
@@ -407,6 +459,23 @@ function notifyPharmacyPedidoPendenteSocket(order) {
     statusPagamento: order.status_pagamento,
     total: order.total,
   });
+}
+
+function emitPharmacyOrderUpdated(order, reason = "order_updated") {
+  const roomId = pharmacyIdStringFromOrderDoc(order);
+  if (!roomId) return;
+  try {
+    const io = getIO();
+    io.to("pharmacy:orders:" + roomId).emit("pharmacy:order:updated", {
+      orderId: String(order._id),
+      status: order.status,
+      statusPagamento: order.status_pagamento,
+      reason,
+      updatedAt: new Date(),
+    });
+  } catch (_) {
+    // Socket indisponível fora do runtime HTTP.
+  }
 }
 
 /** Gera código de retirada quando o pedido está em processamento (retirada/drive-thru). */
@@ -646,6 +715,8 @@ async function createOrder(userId, orderData) {
     taxa_entrega,
     cupom,
     metodo_pagamento,
+    deferPrescriptionApproval,
+    aguardar_validacao_receita,
   } = orderData;
 
   if (!itens || itens.length === 0) {
@@ -680,11 +751,29 @@ async function createOrder(userId, orderData) {
     cupom,
   );
 
-  await prescriptionService.validateOrderItemsPrescriptions(
+  const allowPendingPrescriptions =
+    deferPrescriptionApproval === true || aguardar_validacao_receita === true;
+
+  const linkedPrescriptions = await prescriptionService.validateOrderItemsPrescriptions(
     userId,
     id_farmacia,
     sanitizedItems,
+    { allowPending: allowPendingPrescriptions },
   );
+
+  const hasPrescriptionItems = sanitizedItems.some(
+    (item) => item.receita_obrigatoria || item.controlado || item.id_receita,
+  );
+  const hasPendingPrescriptionValidation =
+    hasPrescriptionItems &&
+    allowPendingPrescriptions &&
+    linkedPrescriptions.some((receita) => receita.status !== "Aprovada");
+  const initialStatus = hasPendingPrescriptionValidation
+    ? "aguardando_confirmacao_receita_farmacia"
+    : "aguardando_pagamento";
+  const initialHistoryObservation = hasPendingPrescriptionValidation
+    ? "Pedido criado e aguardando validação digital das receitas pela farmácia"
+    : "Pedido criado e aguardando pagamento";
 
   const order = new Order({
     id_usuario: userId,
@@ -697,10 +786,11 @@ async function createOrder(userId, orderData) {
     total: totals.total,
     cupom: totals.cupom,
     metodo_pagamento: metodo_pagamento || "pix",
-    status: "aguardando_pagamento",
+    status: initialStatus,
     status_pagamento: "pendente",
     aprovado_farmaceutico: false,
     modo_demo: compliance.academicDemoMode,
+    estoque_baixado: !hasPendingPrescriptionValidation,
     compliance_status: compliance.academicDemoMode
       ? "demo_academico"
       : compliance.requirePharmacyComplianceDocs
@@ -710,19 +800,25 @@ async function createOrder(userId, orderData) {
       ? "Protótipo acadêmico: pedido não representa dispensação real de medicamento."
       : undefined,
     historico_status: [
-      { status: "aguardando_pagamento", observacao: "Pedido criado e aguardando pagamento" },
+      { status: initialStatus, observacao: initialHistoryObservation },
     ],
   });
 
   await order.save();
 
-  await prescriptionService.consumePrescriptionsLinkedToOrder(order);
+  if (hasPendingPrescriptionValidation) {
+    await prescriptionService.linkPrescriptionsToPendingOrder(order);
+  } else {
+    await prescriptionService.consumePrescriptionsLinkedToOrder(order);
+  }
 
-  for (const item of sanitizedItems) {
-    if (item.id_produto) {
-      await Product.findByIdAndUpdate(item.id_produto, {
-        $inc: { estoque: -item.quantidade },
-      });
+  if (!hasPendingPrescriptionValidation) {
+    for (const item of sanitizedItems) {
+      if (item.id_produto) {
+        await Product.findByIdAndUpdate(item.id_produto, {
+          $inc: { estoque: -item.quantidade },
+        });
+      }
     }
   }
 
@@ -851,7 +947,19 @@ async function getPharmacyOrders(
     .sort({ createdAt: -1 })
     .skip((pagination.page - 1) * pagination.limit)
     .limit(pagination.limit)
-    .populate({ path: "id_usuario", select: "nome telefone" });
+    .populate({
+      path: "id_usuario",
+      select: "nome telefone cpf rg lgpd_consentimento",
+    })
+    .populate({
+      path: "itens.id_produto",
+      select:
+        "nome controlado receita_obrigatoria classificacao_receita registro_anvisa batches",
+    })
+    .populate({
+      path: "itens.id_receita",
+      select: "url_arquivo nome_arquivo tipo_arquivo hash_arquivo dados_ocr status",
+    });
 
   return {
     pedidos,
@@ -912,7 +1020,7 @@ async function updateOrderStatus(
 
     await prescriptionService.releasePrescriptionsLinkedToOrder(order);
 
-    if (order.tipo_entrega !== "retirada") {
+    if (order.tipo_entrega !== "retirada" && order.estoque_baixado === true) {
       for (const item of order.itens) {
         if (!item.id_produto || !item.quantidade) {
           continue;
@@ -922,6 +1030,7 @@ async function updateOrderStatus(
           $inc: { estoque: item.quantidade },
         });
       }
+      order.estoque_baixado = false;
     }
   }
 
@@ -941,6 +1050,7 @@ async function approveOrderByPharmacist(orderId, pharmacyId, observacao) {
   }
 
   const hasPrescriptionItems = orderHasLinkedPrescriptionItems(order);
+  assertControlledOrderSngpcRegistered(order);
   if (hasPrescriptionItems) {
     await assertLinkedPrescriptionsApproved(order);
   }
@@ -962,6 +1072,16 @@ async function approveOrderByPharmacist(orderId, pharmacyId, observacao) {
         ? "Pagamento ok, receita validada e pedido separado — entrega liberada para entregadores"
         : "Pagamento ok e pedido validado pelo farmacêutico — entrega liberada para entregadores; confirmado quando um entregador aceitar",
     );
+    if (order.estoque_baixado === false) {
+      for (const item of order.itens) {
+        if (item.id_produto && item.quantidade) {
+          await Product.findByIdAndUpdate(item.id_produto, {
+            $inc: { estoque: -item.quantidade },
+          });
+        }
+      }
+      order.estoque_baixado = true;
+    }
   }
 
   assignPickupCodeIfNeeded(order);
@@ -974,6 +1094,230 @@ async function approveOrderByPharmacist(orderId, pharmacyId, observacao) {
     const deliveryService = require("./deliveryService");
     await deliveryService.ensureDispatchDeliveryForOrder(order._id);
   }
+  return order;
+}
+
+function selectSngpcOrderItem(order, requestedProductId) {
+  const sngpcItems = (order.itens || []).filter(
+    (item) => isSngpcProduct(item) || isSngpcProduct(item?.id_produto),
+  );
+
+  if (sngpcItems.length === 0) {
+    throw createError("Pedido sem medicamento sujeito ao SNGPC", 400);
+  }
+
+  if (requestedProductId) {
+    const match = sngpcItems.find(
+      (item) => objectIdString(item.id_produto) === String(requestedProductId),
+    );
+    if (!match) {
+      throw createError("Produto sujeito ao SNGPC não encontrado no pedido", 404);
+    }
+    return match;
+  }
+
+  if (sngpcItems.length > 1) {
+    throw createError("Informe o produto sujeito ao SNGPC para validação", 400);
+  }
+
+  return sngpcItems[0];
+}
+
+async function auditSngpcDispensation({
+  order,
+  batchNumber,
+  user,
+  ip,
+  userAgent,
+}) {
+  try {
+    await AuditLog.create({
+      usuario_id: user?.id || user?._id || null,
+      usuario_email: user?.email || "sistema",
+      usuario_tipo: user?.tipo_usuario || user?.role || "sistema",
+      ip_origem: ip || "sistema",
+      user_agent: userAgent,
+      acao: "SNGPC_DISPENSATION_VALIDATED",
+      recurso: "Order",
+      recurso_id: String(order._id),
+      valores_novos: {
+        sngpcData: order.sngpcData,
+      },
+      descricao: `Dispensação de medicamento controlado - Lote ${batchNumber} associado ao pedido ${order._id}`,
+      status: "sucesso",
+    });
+  } catch (error) {
+    console.error("Erro ao registrar auditoria SNGPC:", error.message);
+  }
+}
+
+async function validateSngpcDispensation(
+  orderId,
+  pharmacyId,
+  payload = {},
+  context = {},
+) {
+  const order = await findOrderOrThrow(
+    { _id: orderId, id_farmacia: pharmacyId },
+    {
+      path: "id_usuario",
+      select: "nome cpf rg telefone lgpd_consentimento",
+    },
+  );
+
+  if (order.status === "cancelado" || order.status === "rejeitado" || order.status === "entregue") {
+    throw createError("Pedido não pode receber dispensação neste status", 400);
+  }
+
+  if (order.sngpcData?.validatedAt) {
+    throw createError("Dispensação já registrada para este pedido", 400);
+  }
+
+  const doctorName = requiredText(payload.doctorName, "Nome do prescritor");
+  const doctorCrm = requiredText(payload.doctorCrm, "CRM do prescritor");
+  const doctorUf = normalizeUf(payload.doctorUf);
+  const digitalSignatureCode = requiredText(
+    payload.digitalSignatureCode || payload.signatureValidationCode,
+    "Código de validação da assinatura digital",
+  );
+  const selectedBatchNumber = requiredText(
+    payload.selectedBatchNumber,
+    "Lote",
+  );
+
+  const targetItem = selectSngpcOrderItem(order, payload.productId);
+  const productId = objectIdString(targetItem.id_produto);
+  const quantity = normalizeOrderQuantity(targetItem.quantidade || 1);
+
+  const product = await Product.findOne({
+    _id: productId,
+    id_farmacia: pharmacyId,
+  }).select("nome estoque batches controlado receita_obrigatoria classificacao_receita");
+
+  if (!product || !isSngpcProduct(product)) {
+    throw createError("Medicamento sujeito ao SNGPC não encontrado", 404);
+  }
+
+  const selectedBatch = (product.batches || []).find(
+    (batch) => String(batch.batchNumber).trim() === selectedBatchNumber,
+  );
+
+  if (!selectedBatch || selectedBatch.active === false) {
+    throw createError("Lote indisponível para este medicamento", 400);
+  }
+
+  const now = new Date();
+  if (selectedBatch.expirationDate && new Date(selectedBatch.expirationDate) < now) {
+    throw createError("Lote vencido para este medicamento", 400);
+  }
+
+  if (Number(selectedBatch.quantity || 0) < quantity) {
+    throw createError("Quantidade insuficiente no lote selecionado", 400);
+  }
+
+  const incPayload = {
+    "batches.$.quantity": -quantity,
+  };
+  if (order.estoque_baixado === false) {
+    incPayload.estoque = -quantity;
+  }
+
+  const updatedProduct = await Product.findOneAndUpdate(
+    {
+      _id: productId,
+      id_farmacia: pharmacyId,
+      batches: {
+        $elemMatch: {
+          batchNumber: selectedBatchNumber,
+          active: true,
+          expirationDate: { $gte: now },
+          quantity: { $gte: quantity },
+        },
+      },
+    },
+    { $inc: incPayload },
+    { new: true },
+  ).select("nome estoque batches");
+
+  if (!updatedProduct) {
+    throw createError("Lote indisponível para baixa de estoque", 409);
+  }
+
+  if (order.estoque_baixado === false) {
+    for (const item of order.itens) {
+      const itemProductId = objectIdString(item.id_produto);
+      if (!itemProductId || itemProductId === productId) continue;
+      await Product.findByIdAndUpdate(itemProductId, {
+        $inc: { estoque: -normalizeOrderQuantity(item.quantidade || 1) },
+      });
+    }
+    order.estoque_baixado = true;
+  }
+
+  targetItem.lote_consumido = {
+    batchNumber: selectedBatchNumber,
+    expirationDate: selectedBatch.expirationDate,
+    quantity,
+    debitedAt: new Date(),
+  };
+  order.markModified("itens");
+
+  const buyer = order.id_usuario;
+  order.sngpcData = {
+    buyerName: buyer?.nome || "",
+    buyerCpf: buyer?.cpf || "",
+    buyerRg: buyer?.rg || payload.buyerRg || "",
+    buyerPhone: buyer?.telefone || payload.buyerPhone || "",
+    lgpdConsentAccepted: Boolean(buyer?.lgpd_consentimento?.aceito),
+    doctorName,
+    doctorCrm,
+    doctorUf,
+    digitalSignatureCode,
+    selectedBatchNumber,
+    batchExpirationDate: selectedBatch.expirationDate,
+    productId,
+    productName: product.nome,
+    quantity,
+    pharmacistId: context.user?.id || context.user?._id || null,
+    validatedAt: new Date(),
+    traceabilityCode: `SNGPC-${String(order._id).slice(-8).toUpperCase()}-${selectedBatchNumber}`,
+  };
+
+  order.aprovado_farmaceutico = true;
+  order.farmaceutico_dispensador = context.user?.id || context.user?._id || null;
+
+  order.historico_status.push({
+    status: order.status,
+    observacao: `Dispensação ANVISA registrada para o lote ${selectedBatchNumber}`,
+  });
+
+  if (order.status_pagamento === "aprovado" && order.status === "aguardando_pagamento") {
+    order.adicionarHistoricoStatus(
+      "em_processamento",
+      "Pagamento ok, dispensação registrada e pedido separado para despacho",
+    );
+  }
+
+  assignPickupCodeIfNeeded(order);
+  await order.save();
+
+  await auditSngpcDispensation({
+    order,
+    batchNumber: selectedBatchNumber,
+    user: context.user,
+    ip: context.ip,
+    userAgent: context.userAgent,
+  });
+  emitPharmacyOrderUpdated(order, "sngpc_dispensation_validated");
+
+  if (order.status === "em_processamento") {
+    await emitOrderStatus(order._id, "em_processamento", "Dispensação registrada");
+    await notifyOrderStatus(order, "em_processamento");
+    await notifyAvailableDriversIfEligible(order, "sngpc_dispensation_validated");
+    const deliveryService = require("./deliveryService");
+    await deliveryService.ensureDispatchDeliveryForOrder(order._id);
+  }
+
   return order;
 }
 
@@ -1008,6 +1352,8 @@ async function rejectOrder(orderId, pharmacyId, motivo) {
     order.status_pagamento === "aprovado";
   const aguardandoReceitaNaFarmacia =
     order.status === "aguardando_confirmacao_receita_farmacia";
+
+  assertControlledOrderSngpcRegistered(order);
 
   if (
     order.status !== "em_processamento" &&
@@ -1252,7 +1598,7 @@ async function generateDeliveryQRCode(orderId, userId) {
 }
 
 /**
- * Farmacêutico confirma devolução da receita física com o mesmo código que o cliente deu ao entregador.
+ * Farmacêutico confirma a finalização SNGPC com o mesmo código que o cliente deu ao entregador.
  */
 async function confirmReceiptReturnAtPharmacy(orderId, pharmacyId, codigo) {
   const order = await findOrderOrThrow({
@@ -1300,7 +1646,7 @@ async function confirmReceiptReturnAtPharmacy(orderId, pharmacyId, codigo) {
 
   order.adicionarHistoricoStatus(
     "entregue",
-    "Receita física conferida na farmácia — pedido encerrado.",
+    "Baixa digital do lote conferida na farmácia - pedido encerrado.",
   );
   order.entregue_em = new Date();
   order.avaliacao_entrega = null;
@@ -1370,6 +1716,7 @@ module.exports = {
   getPharmacyOrders,
   updateOrderStatus,
   approveOrderByPharmacist,
+  validateSngpcDispensation,
   assignPickupCodeIfNeeded,
   completePharmacyPickup,
   cancelOrder,

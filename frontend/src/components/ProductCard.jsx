@@ -6,7 +6,9 @@ import ProdutoDetalheModal from './ProdutoDetalheModal'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
+  getAvailableStock,
   isRemoteCheckoutBlocked,
+  isProductUnavailable,
   requiresPrescription,
   shouldHideProductImage,
 } from '../utils/compliance'
@@ -28,16 +30,24 @@ export default function ProductCard({ product }) {
   const requiresRx = requiresPrescription(product)
   const remoteBlocked = isRemoteCheckoutBlocked(product)
   const hideImage = shouldHideProductImage(product)
+  const availableStock = getAvailableStock(product)
+  const isOutOfStock = isProductUnavailable(product)
 
   const productData = {
     ...product,
     preco: displayPrice,
+    estoque: availableStock,
     classificacao_receita: product.classificacao_receita || 'sem_receita',
     receita_obrigatoria: requiresRx,
     quantity,
   }
 
   const handleAddToCart = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -47,6 +57,10 @@ export default function ProductCard({ product }) {
     }
 
     const result = addItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -78,6 +92,11 @@ export default function ProductCard({ product }) {
   }
 
   const handleReplaceCart = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -87,6 +106,10 @@ export default function ProductCard({ product }) {
     }
 
     const result = replaceCartWithItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -98,7 +121,6 @@ export default function ProductCard({ product }) {
     setTimeout(() => setAdded(false), 2000)
   }
 
-  const isOutOfStock = product.estoque === 0
   const imageSrc = resolveMediaUrl(
     product.imagem || product.imagem_url || product.imagens?.[0],
   ) || 'https://via.placeholder.com/200'
@@ -169,7 +191,7 @@ export default function ProductCard({ product }) {
           <div className={`text-2xl font-bold ${isOutOfStock ? 'text-gray-400 line-through' : 'text-primary'}`}>
             R$ {displayPrice.toFixed(2)}
           </div>
-          {product.estoque > 0 ? (
+          {!isOutOfStock ? (
             <p className="text-xs text-green-600 font-semibold">Disponível</p>
           ) : (
             <p className="text-xs text-red-600 font-semibold">Fora de estoque</p>
@@ -177,7 +199,7 @@ export default function ProductCard({ product }) {
         </div>
 
         <div className="space-y-2 mt-auto">
-          {product.estoque > 0 && (
+          {!isOutOfStock && (
             <div className="flex items-center gap-2 mb-3">
               <button
                 onClick={() => setQuantity(Math.max(1, quantity - 1))}
@@ -187,7 +209,7 @@ export default function ProductCard({ product }) {
               </button>
               <span className="flex-1 text-center">{quantity}</span>
               <button
-                onClick={() => setQuantity(Math.min(product.estoque, quantity + 1))}
+                onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                 className="px-2 py-1 border rounded hover:bg-gray-100"
               >
                 +
@@ -197,17 +219,17 @@ export default function ProductCard({ product }) {
 
           <button
             onClick={handleAddToCart}
-            disabled={product.estoque === 0 || remoteBlocked}
+            disabled={isOutOfStock || remoteBlocked}
             className={`w-full py-2 rounded font-semibold flex items-center justify-center gap-2 transition ${
               added
                 ? 'bg-green-500 text-white'
-                : product.estoque === 0 || remoteBlocked
+                : isOutOfStock || remoteBlocked
                 ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
                 : 'bg-primary text-white hover:bg-secondary'
             }`}
           >
             <ShoppingCart className="w-4 h-4" />
-            {remoteBlocked ? 'Atendimento da farmácia' : added ? 'Adicionado!' : 'Adicionar ao Carrinho'}
+            {remoteBlocked ? 'Atendimento da farmácia' : isOutOfStock ? 'Indisponível' : added ? 'Adicionado!' : 'Adicionar ao Carrinho'}
           </button>
 
           <button

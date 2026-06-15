@@ -9,7 +9,9 @@ import api from '../services/api'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
+  getAvailableStock,
   isRemoteCheckoutBlocked,
+  isProductUnavailable,
   requiresPrescription,
   shouldHideProductImage,
   showPromo,
@@ -245,6 +247,8 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
   const temPromocao = showPromo(product)
   const precisaReceita = requiresPrescription(product)
   const remoteBlocked = isRemoteCheckoutBlocked(product)
+  const availableStock = getAvailableStock(product)
+  const isOutOfStock = isProductUnavailable(product)
   const tarja = TARJA_CONFIG[product.classificacao_receita] || null
 
   const productImage = resolveMediaUrl(
@@ -256,6 +260,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
     id: product._id,
     nome: product.nome,
     preco: preco,
+    estoque: availableStock,
     imagem: productImage,
     controlado: product.controlado,
     receita_obrigatoria: precisaReceita,
@@ -266,6 +271,11 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
   }
 
   const handleAdd = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -275,6 +285,10 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
     }
 
     const result = addItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -292,6 +306,11 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
   }
 
   const handleReplaceCart = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -301,6 +320,10 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
     }
 
     const result = replaceCartWithItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -314,7 +337,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
+    <div className={`${isOutOfStock ? 'bg-gray-100 opacity-70' : 'bg-white'} rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
       {tarja && (
         <div className={`px-4 py-1.5 ${tarja.bg} ${tarja.text} text-[10px] font-bold flex items-center gap-1`}>
           <AlertTriangle className="w-3 h-3" />
@@ -379,14 +402,14 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
             <div className="text-xl font-bold text-primary">
               R$ {preco?.toFixed(2)}
             </div>
-            {product.estoque > 0 ? (
+            {!isOutOfStock ? (
               <p className="text-[10px] text-emerald-600">Em estoque</p>
             ) : (
               <p className="text-[10px] text-red-500">Indisponível</p>
             )}
           </div>
 
-          {product.estoque > 0 && (
+          {!isOutOfStock && (
             <div className="flex items-center gap-2">
               <div className="flex items-center border rounded-lg overflow-hidden">
                 <button
@@ -395,7 +418,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
                 >-</button>
                 <span className="w-6 text-center text-xs font-medium">{quantity}</span>
                 <button
-                  onClick={() => setQuantity(Math.min(product.estoque, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                   className="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm"
                 >+</button>
               </div>
@@ -429,6 +452,7 @@ function PharmacyProductCard({ product, pharmacyId, pharmacyName }) {
       <ProdutoDetalheModal
         produto={{
           ...product,
+          estoque: availableStock,
           id: product._id || product.id,
           imagem: productImage,
           id_farmacia: pharmacyId,

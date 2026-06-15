@@ -2,6 +2,7 @@ import { create } from "zustand";
 import { devtools, persist, createJSONStorage } from "zustand/middleware";
 import Logger from "../utils/logger";
 import { STORAGE_KEYS } from "../constants";
+import { isProductUnavailable } from "../utils/compliance";
 
 const logger = new Logger("Store");
 
@@ -162,6 +163,13 @@ export const useCartStore = create(
         items: [],
 
         addItem: (product) => {
+          if (isProductUnavailable(product)) {
+            logger.warn("Tentativa de adicionar produto indisponível", {
+              productId: product?.id || product?._id,
+            });
+            return { unavailable: true };
+          }
+
           if (!useAuthStore.getState().isAuthenticated()) {
             logger.warn("Tentativa de adicionar item sem autenticação", {
               productId: product?.id,
@@ -216,6 +224,13 @@ export const useCartStore = create(
         },
 
         replaceCartWithItem: (product) => {
+          if (isProductUnavailable(product)) {
+            logger.warn("Tentativa de substituir carrinho por produto indisponível", {
+              productId: product?.id || product?._id,
+            });
+            return { unavailable: true };
+          }
+
           if (!useAuthStore.getState().isAuthenticated()) {
             logger.warn("Tentativa de substituir carrinho sem autenticação", {
               productId: product?.id,

@@ -1,4 +1,5 @@
-import { BrowserRouter as Router, Routes, Route, useLocation } from 'react-router-dom'
+import { useEffect, useState } from 'react'
+import { BrowserRouter as Router, Navigate, Routes, Route, useLocation, useSearchParams } from 'react-router-dom'
 import { ErrorBoundary } from './components/ErrorBoundary'
 import PrivateRoute from './components/PrivateRoute'
 import Logger from './utils/logger'
@@ -35,17 +36,40 @@ import PharmacyDashboard from './pages/PharmacyDashboard'
 import EntregadorDashboard from './pages/EntregadorDashboard'
 import Comprovante from './pages/Comprovante'
 import Legal from './pages/Legal'
+import MobileApp from './pages/MobileApp'
 import './App.css'
 
 const logger = new Logger('App')
 
+function isPhoneClient() {
+  if (typeof window === 'undefined') return false
+  const ua = window.navigator?.userAgent || ''
+  const mobileUA = /Android|iPhone|iPad|iPod|IEMobile|Opera Mini/i.test(ua)
+  const coarsePointer = window.matchMedia?.('(pointer: coarse)')?.matches
+  return mobileUA || (window.innerWidth <= 900 && coarsePointer)
+}
+
 function AppContent() {
   const location = useLocation()
-  const isAuthScreen = ['/login', '/registro'].includes(location.pathname)
+  const [searchParams] = useSearchParams()
+  const [phoneClient, setPhoneClient] = useState(isPhoneClient)
+  const isMobileAppRoute = location.pathname === '/app' || searchParams.get('app') === '1'
+  const isMobileAppLocked =
+    typeof window !== 'undefined' && window.sessionStorage?.getItem('ssm_mobile_app_lock') === '1'
+
+  useEffect(() => {
+    const refreshPhoneClient = () => setPhoneClient(isPhoneClient())
+    window.addEventListener('resize', refreshPhoneClient)
+    return () => window.removeEventListener('resize', refreshPhoneClient)
+  }, [])
+
+  if ((phoneClient || isMobileAppLocked) && location.pathname !== '/app') {
+    return <Navigate to="/app" replace />
+  }
 
   return (
     <div className="flex flex-col min-h-screen">
-      <Navbar />
+      {!isMobileAppRoute && <Navbar />}
       <NotificationToast />
       <main id="main-content" className="flex-1 min-w-0">
         <Routes>
@@ -162,6 +186,7 @@ function AppContent() {
           />
           <Route path="/suporte" element={<Suporte />} />
           <Route path="/legal" element={<Legal />} />
+          <Route path="/app" element={<MobileApp />} />
           <Route
             path="/admin"
             element={
@@ -228,8 +253,8 @@ function AppContent() {
           />
         </Routes>
       </main>
-      {!isAuthScreen && <Footer />}
-      {!isAuthScreen && <ChatSupport />}
+      {!isMobileAppRoute && <Footer />}
+      {!isMobileAppRoute && <ChatSupport />}
     </div>
   )
 }

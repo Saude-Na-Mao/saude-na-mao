@@ -3,8 +3,8 @@ const fs = require("fs");
 const path = require("path");
 
 const RECEITAS_DIR = path.join("uploads", "receitas");
-const ALLOWED_TYPES = ["image/jpeg", "image/png", "application/pdf"];
-const INVALID_FORMAT_MESSAGE = "Formato não permitido. Use JPG, PNG ou PDF";
+const ALLOWED_TYPES = ["application/pdf", "application/xml", "text/xml"];
+const INVALID_FORMAT_MESSAGE = "Formato não permitido. Use PDF ou XML assinado";
 
 const storage = multer.diskStorage({
   destination: (req, file, cb) => {

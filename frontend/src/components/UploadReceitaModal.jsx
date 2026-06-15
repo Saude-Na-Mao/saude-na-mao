@@ -19,9 +19,9 @@ export function UploadReceitaModal({ isOpen, onClose, onReceitaUpload, medicamen
   const handleFileChange = (e) => {
     const selectedFile = e.target.files?.[0];
     if (selectedFile) {
-      const validTypes = ['image/jpeg', 'image/png', 'application/pdf'];
+      const validTypes = ['application/pdf', 'application/xml', 'text/xml'];
       if (!validTypes.includes(selectedFile.type)) {
-        setError('Apenas arquivos JPG, PNG ou PDF são permitidos');
+        setError('Apenas arquivos PDF ou XML assinados são permitidos');
         return;
       }
       if (selectedFile.size > 5 * 1024 * 1024) {
@@ -94,9 +94,9 @@ export function UploadReceitaModal({ isOpen, onClose, onReceitaUpload, medicamen
       <div className="bg-white rounded-lg max-w-2xl w-full max-h-96 overflow-y-auto">
         <div className="p-6 border-b border-gray-200 flex justify-between items-center">
           <div>
-            <h2 className="text-xl font-semibold text-gray-900">Upload de Receita</h2>
+            <h2 className="text-xl font-semibold text-gray-900">Receita Digital</h2>
             <p className="text-sm text-gray-600 mt-1">
-              A receita será validada por um farmacêutico antes da entrega
+              Envie o PDF ou XML assinado eletronicamente para validação
             </p>
           </div>
           <button
@@ -161,7 +161,7 @@ export function UploadReceitaModal({ isOpen, onClose, onReceitaUpload, medicamen
                   onChange={handleFileChange}
                   className="hidden"
                   id="receita-input"
-                  accept=".jpg,.jpeg,.png,.pdf"
+                  accept=".pdf,.xml,application/pdf,application/xml,text/xml"
                 />
                 <label htmlFor="receita-input" className="cursor-pointer flex flex-col items-center">
                   <Upload className="w-8 h-8 text-gray-400 mb-2" />
@@ -169,7 +169,7 @@ export function UploadReceitaModal({ isOpen, onClose, onReceitaUpload, medicamen
                     {file ? file.name : 'Clique ou arraste para selecionar'}
                   </p>
                   <p className="text-xs text-gray-500 mt-1">
-                    JPG, PNG ou PDF até 5MB
+                    PDF ou XML assinado até 5MB
                   </p>
                 </label>
               </div>

@@ -5,7 +5,6 @@ import { prescriptionService } from '../services/api'
 import PrescriptionChat from '../components/PrescriptionChat'
 import { itemExigeReceita } from '../utils/receitaCart'
 import {
-  Camera,
   Upload,
   FileText,
   CheckCircle,
@@ -16,20 +15,39 @@ import {
   Shield,
   Clock,
   Truck,
-  Eye,
   ShoppingCart,
   MessageCircle,
 } from 'lucide-react'
 
-/** Receitas com vínculo explícito a algum produto do carrinho (mesmo id). */
-function filtrarReceitasDoCarrinho(candidatas, itensReceita) {
-  if (!itensReceita.length) return []
-  const productIds = new Set(itensReceita.map((i) => String(i.id)))
-  return candidatas.filter((r) => {
+const ACTIVE_STATUSES = ['Pendente', 'Em Análise', 'Rejeitada']
+
+function prioridade(r) {
+  const st = r.status
+  if (st === 'Pendente') return 0
+  if (st === 'Em Análise') return 1
+  if (st === 'Aprovada' && r.disponivel_para_novo_pedido !== false) return 2
+  if (st === 'Aprovada') return 4
+  if (st === 'Rejeitada') return 4
+  if (st === 'Expirada') return 5
+  return 9
+}
+
+/** Receita ativa vinculada a um produto específico do carrinho. */
+function prescricaoDoItem(candidatas, itemId, sessaoPresc) {
+  const matches = candidatas.filter((r) => {
     const pr = r.id_produto?._id || r.id_produto
-    if (!pr) return false
-    return productIds.has(String(pr))
+    return pr && String(pr) === String(itemId)
   })
+  const ativas = matches
+    .filter((r) => {
+      if (ACTIVE_STATUSES.includes(r.status)) return true
+      if (r.status !== 'Aprovada') return false
+      // Aprovada só conta se foi a receita enviada nesta sessão para o produto
+      if (!sessaoPresc?._id) return r.disponivel_para_novo_pedido !== false
+      return String(r._id) === String(sessaoPresc._id)
+    })
+    .sort((a, b) => prioridade(a) - prioridade(b))
+  return ativas[0] || null
 }
 
 export default function Receita() {
@@ -38,92 +56,51 @@ export default function Receita() {
   const forcarNovoUpload = location.state?.forcarNovoUpload === true
   const { token } = useAuthStore()
   const { items } = useCartStore()
-  const setPrescricaoFarmacia = usePrescriptionStore(
-    (s) => s.setPrescricaoFarmacia,
-  )
-  const clearPrescricoes = usePrescriptionStore((s) => s.clearPrescricoes)
-  const prescricoesPorFarmacia = usePrescriptionStore(
-    (s) => s.prescricoesPorFarmacia,
-  )
-  const fileInputRef = useRef(null)
+  const setPrescricao = usePrescriptionStore((s) => s.setPrescricao)
+  const prescricoesPendentes = usePrescriptionStore((s) => s.prescricoesPendentes)
 
-  const [file, setFile] = useState(null)
-  const [preview, setPreview] = useState(null)
-  const [uploading, setUploading] = useState(false)
-  const [uploaded, setUploaded] = useState(false)
+  const [mode, setMode] = useState('assincrono')
+  const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
-  const [rxStatus, setRxStatus] = useState(null) // null | 'Pendente' | 'Em Análise' | 'Aprovada' | 'Rejeitada'
-  const [rxData, setRxData] = useState(null) // dados completos da receita ativa
-  const [carregandoStatus, setCarregandoStatus] = useState(false)
-  const [modo, setModo] = useState('assincrono') // 'assincrono' | 'chat_ao_vivo'
-
-  const formatarErroReceita = (msg) => {
-    const texto = String(msg || '')
-    if (texto.includes('já foi utilizada em um pedido anterior')) {
-      return 'Este arquivo de receita já foi usado em um pedido ativo. Envie uma nova foto/arquivo da receita (não reutilize o mesmo arquivo).'
-    }
-    return texto || 'Erro ao enviar receita. Tente novamente.'
-  }
+  // itemId -> { status, data }
+  const [prescByItem, setPrescByItem] = useState({})
+  // itemId -> File
+  const [fileByItem, setFileByItem] = useState({})
+  const [uploadingItem, setUploadingItem] = useState(null)
+  const fileInputs = useRef({})
 
   const itensReceitaPedido = items.filter((i) => itemExigeReceita(i))
   const pharmacyId = items[0]?.id_farmacia || null
-  const contextoCarrinhoOk =
-    Boolean(pharmacyId) && itensReceitaPedido.length > 0
+  const contextoCarrinhoOk = Boolean(pharmacyId) && itensReceitaPedido.length > 0
   const receitaSig = itensReceitaPedido
     .map((i) => String(i.id))
     .sort()
     .join(',')
 
+  const formatarErroReceita = (msg) => {
+    const texto = String(msg || '')
+    if (texto.includes('já foi utilizada em um pedido anterior')) {
+      return 'Este arquivo de receita já foi usado em um pedido ativo. Envie uma nova receita digital assinada (não reutilize o mesmo arquivo).'
+    }
+    return texto || 'Erro ao enviar receita. Tente novamente.'
+  }
+
   useEffect(() => {
     if (!token) {
       navigate('/login', { state: { from: '/receita' } })
-      return
     }
   }, [token, navigate])
 
-  // Inicialização: busca receita existente para a farmácia atual
+  // Carrega o status de cada receita vinculada aos itens do carrinho
   useEffect(() => {
-    if (!token) return
+    if (!token || !contextoCarrinhoOk) {
+      setPrescByItem({})
+      return
+    }
     let cancelado = false
 
-    if (forcarNovoUpload) {
-      setRxStatus(null)
-      setRxData(null)
-      setUploaded(false)
-      setCarregandoStatus(false)
-      setFile(null)
-      setPreview(null)
-      setError('')
-      return () => {
-        cancelado = true
-      }
-    }
-
-    // Sem farmácia / itens que exigem receita: não buscar receitas soltas da conta
-    if (!contextoCarrinhoOk) {
-      setRxStatus(null)
-      setRxData(null)
-      setUploaded(false)
-      setCarregandoStatus(false)
-      setError('')
-      return () => {
-        cancelado = true
-      }
-    }
-
-    // Cache imediato: não usar "Aprovada" sem checar disponibilidade na API
-    const cache = pharmacyId ? prescricoesPorFarmacia[pharmacyId] : null
-    if (
-      cache &&
-      ['Pendente', 'Em Análise', 'Rejeitada'].includes(cache.status)
-    ) {
-      setRxStatus(cache.status)
-      setRxData(cache)
-      setUploaded(true)
-    }
-
-    const carregar = async () => {
-      setCarregandoStatus(true)
+    const carregar = async (silencioso = false) => {
+      if (!silencioso) setLoading(true)
       try {
         const res = await prescriptionService.getAll()
         const receitas = res.data?.data?.receitas || res.data?.data?.docs || []
@@ -132,260 +109,134 @@ export default function Receita() {
           return !fid || String(fid) === String(pharmacyId)
         })
 
-        const doCarrinho = filtrarReceitasDoCarrinho(
-          candidatas,
-          itensReceitaPedido,
-        )
+        const next = {}
+        for (const item of itensReceitaPedido) {
+          if (forcarNovoUpload && !prescByItem[item.id]) {
+            // Em modo "reenviar", começa vazio até o usuário enviar de novo
+            continue
+          }
+          const sessao = prescricoesPendentes?.[item.id]
+          const ativa = prescricaoDoItem(candidatas, item.id, sessao)
+          if (!ativa) continue
 
-        const prioridade = (r) => {
-          const st = r.status
-          if (st === 'Pendente') return 0
-          if (st === 'Em Análise') return 1
-          if (st === 'Aprovada' && r.disponivel_para_novo_pedido !== false) return 2
-          if (st === 'Aprovada') return 4
-          if (st === 'Rejeitada') return 4
-          if (st === 'Expirada') return 5
-          return 9
-        }
-        const receitaSessaoAtual = pharmacyId ? prescricoesPorFarmacia[pharmacyId] : null
-        const ativa = doCarrinho
-          .filter((r) => {
-            if (['Pendente', 'Em Análise', 'Rejeitada'].includes(r.status)) return true
-            if (r.status !== 'Aprovada') return false
-            if (!receitaSessaoAtual?._id) return false
-            return String(r._id) === String(receitaSessaoAtual._id)
-          })
-          .sort((a, b) => prioridade(a) - prioridade(b))[0]
-
-        if (cancelado) return
-
-        if (ativa) {
           if (ativa.status === 'Aprovada') {
             try {
               const chk = await prescriptionService.checkAvailability(ativa._id)
-              const { disponivel, motivo } = chk.data?.data || {}
-              if (cancelado) return
-              if (!disponivel) {
-                setRxStatus(null)
-                setRxData(null)
-                setUploaded(false)
-                clearPrescricoes()
-                setError(
-                  motivo ||
-                    'Esta receita não está disponível para uma nova compra. Envie uma nova receita.',
-                )
-                return
-              }
+              const { disponivel } = chk.data?.data || {}
+              if (!disponivel) continue
             } catch {
-              if (cancelado) return
-              setRxStatus(null)
-              setRxData(null)
-              setUploaded(false)
-              return
+              continue
             }
           }
+          next[item.id] = { status: ativa.status, data: ativa }
+          setPrescricao?.(item.id, {
+            _id: ativa._id,
+            status: ativa.status,
+            id_produto: item.id,
+            id_farmacia: pharmacyId,
+            disponivel_para_novo_pedido: ativa.disponivel_para_novo_pedido,
+          })
+        }
 
-          setRxStatus(ativa.status)
-          setRxData(ativa)
-          setUploaded(true)
-          if (pharmacyId) {
-            setPrescricaoFarmacia(pharmacyId, {
-              _id: ativa._id,
-              status: ativa.status,
-              createdAt: ativa.createdAt,
-              validade: ativa.validade,
-              observacoes: ativa.observacoes,
-              id_farmacia: pharmacyId,
-              disponivel_para_novo_pedido: ativa.disponivel_para_novo_pedido,
-              id_produto: ativa.id_produto,
-            })
-          }
+        if (!cancelado) {
+          setPrescByItem((prev) => ({ ...prev, ...next }))
         }
       } catch {
         // silencioso
       } finally {
-        if (!cancelado) setCarregandoStatus(false)
+        if (!cancelado && !silencioso) setLoading(false)
       }
     }
 
     carregar()
+    const interval = setInterval(() => carregar(true), 5000)
     return () => {
       cancelado = true
+      clearInterval(interval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [token, pharmacyId, forcarNovoUpload, contextoCarrinhoOk, receitaSig])
 
-  // Polling enquanto a receita está pendente
-  useEffect(() => {
-    if (!contextoCarrinhoOk) return
-    if (!uploaded) return
-    if (rxStatus === 'Aprovada' || rxStatus === 'Rejeitada') return
-
-    const poll = async () => {
-      try {
-        const res = await prescriptionService.getAll()
-        const receitas = res.data?.data?.receitas || []
-        const candidatas = receitas.filter((r) => {
-          const fid = r.id_farmacia?._id || r.id_farmacia
-          return !fid || String(fid) === String(pharmacyId)
-        })
-        const doCarrinho = filtrarReceitasDoCarrinho(
-          candidatas,
-          itensReceitaPedido,
-        )
-        const prioridadePoll = (r) => {
-          const st = r.status
-          if (st === 'Pendente') return 0
-          if (st === 'Em Análise') return 1
-          if (st === 'Aprovada' && r.disponivel_para_novo_pedido !== false) return 2
-          if (st === 'Aprovada') return 4
-          if (st === 'Rejeitada') return 4
-          return 9
-        }
-        const receitaSessaoAtual = pharmacyId ? prescricoesPorFarmacia[pharmacyId] : null
-        const ordenadas = [...doCarrinho]
-          .filter((r) => {
-            if (['Pendente', 'Em Análise', 'Rejeitada'].includes(r.status)) return true
-            if (r.status !== 'Aprovada') return false
-            if (!receitaSessaoAtual?._id) return false
-            return String(r._id) === String(receitaSessaoAtual._id)
-          })
-          .sort((a, b) => prioridadePoll(a) - prioridadePoll(b))
-        if (ordenadas.length > 0) {
-          const r = ordenadas[0]
-          if (r.status === 'Aprovada') {
-            try {
-              const chk = await prescriptionService.checkAvailability(r._id)
-              const { disponivel, motivo } = chk.data?.data || {}
-              if (!disponivel) {
-                setRxStatus(null)
-                setRxData(null)
-                setUploaded(false)
-                clearPrescricoes()
-                setError(
-                  motivo ||
-                    'Esta receita não está disponível para uma nova compra. Envie uma nova receita.',
-                )
-                return
-              }
-            } catch {
-              setRxStatus(null)
-              setRxData(null)
-              setUploaded(false)
-              return
-            }
-          }
-          setRxStatus(r.status)
-          setRxData(r)
-          if (pharmacyId) {
-            setPrescricaoFarmacia(pharmacyId, {
-              _id: r._id,
-              status: r.status,
-              createdAt: r.createdAt,
-              validade: r.validade,
-              observacoes: r.observacoes,
-              id_farmacia: pharmacyId,
-              disponivel_para_novo_pedido: r.disponivel_para_novo_pedido,
-              id_produto: r.id_produto,
-            })
-          }
-        }
-      } catch {
-        // silently retry
-      }
-    }
-
-    const interval = setInterval(poll, 5000)
-    return () => clearInterval(interval)
-  }, [
-    contextoCarrinhoOk,
-    uploaded,
-    rxStatus,
-    pharmacyId,
-    receitaSig,
-    prescricoesPorFarmacia,
-    setPrescricaoFarmacia,
-    clearPrescricoes,
-  ])
-
-  const handleFileChange = (e) => {
+  const handleFileChange = (itemId, e) => {
     const selected = e.target.files?.[0]
     if (!selected) return
-
-    const allowed = ['image/jpeg', 'image/png', 'application/pdf']
+    const allowed = ['application/pdf', 'application/xml', 'text/xml']
     if (!allowed.includes(selected.type)) {
-      setError('Formato não permitido. Use JPG, PNG ou PDF.')
+      setError('Formato não permitido. Use PDF ou XML assinado.')
       return
     }
     if (selected.size > 15 * 1024 * 1024) {
       setError('Arquivo muito grande. Máximo 15MB.')
       return
     }
-
-    setFile(selected)
     setError('')
-
-    if (selected.type.startsWith('image/')) {
-      const reader = new FileReader()
-      reader.onload = (ev) => setPreview(ev.target.result)
-      reader.readAsDataURL(selected)
-    } else {
-      setPreview(null)
-    }
+    setFileByItem((prev) => ({ ...prev, [itemId]: selected }))
   }
 
-  const handleUpload = async () => {
+  const removeFile = (itemId) => {
+    setFileByItem((prev) => {
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+    if (fileInputs.current[itemId]) fileInputs.current[itemId].value = ''
+  }
+
+  const handleUpload = async (itemId) => {
+    const file = fileByItem[itemId]
     if (!file) return
     try {
-      setUploading(true)
+      setUploadingItem(itemId)
       setError('')
-      const res = await prescriptionService.upload(
-        file,
-        pharmacyId,
-        modo,
-        itensReceitaPedido[0]?.id || null,
-      )
+      const res = await prescriptionService.upload(file, pharmacyId, mode, itemId)
       const dados = res?.data?.data?.receita || res?.data?.data || {}
-      setUploaded(true)
-      setRxStatus(dados.status || 'Em Análise')
-      setRxData({
+      setPrescByItem((prev) => ({
+        ...prev,
+        [itemId]: {
+          status: dados.status || 'Em Análise',
+          data: {
+            _id: dados._id || dados.id,
+            status: dados.status || 'Em Análise',
+            createdAt: dados.createdAt || new Date().toISOString(),
+            validade: dados.validade || null,
+            observacoes: dados.observacoes || '',
+            id_farmacia: pharmacyId,
+            id_produto: itemId,
+            modo_validacao: dados.modo_validacao || mode,
+            chat_sessao_id: dados.chat_sessao_id || null,
+            url_imagem_publica: dados.url_imagem_publica || null,
+          },
+        },
+      }))
+      setPrescricaoProduto?.(itemId, {
         _id: dados._id || dados.id,
         status: dados.status || 'Em Análise',
-        createdAt: dados.createdAt || new Date().toISOString(),
-        validade: dados.validade || null,
-        observacoes: dados.observacoes || '',
+        id_produto: itemId,
         id_farmacia: pharmacyId,
-        modo_validacao: dados.modo_validacao || modo,
-        chat_sessao_id: dados.chat_sessao_id || null,
-        url_imagem_publica: dados.url_imagem_publica || null,
       })
-      // Persiste no store global para o Carrinho.jsx refletir o estado imediatamente
-      if (pharmacyId) {
-        setPrescricaoFarmacia(pharmacyId, {
-          _id: dados._id || dados.id,
-          status: dados.status || 'Em Análise',
-          createdAt: dados.createdAt || new Date().toISOString(),
-          validade: dados.validade || null,
-          observacoes: dados.observacoes || '',
-          id_farmacia: pharmacyId,
-          modo_validacao: dados.modo_validacao || modo,
-          chat_sessao_id: dados.chat_sessao_id || null,
-        })
-      }
+      removeFile(itemId)
     } catch (err) {
       const apiMsg = err.response?.data?.message
       setError(formatarErroReceita(apiMsg || err.message))
     } finally {
-      setUploading(false)
+      setUploadingItem(null)
     }
   }
 
-  const removeFile = () => {
-    setFile(null)
-    setPreview(null)
-    setError('')
-    if (fileInputRef.current) fileInputRef.current.value = ''
+  const resetItem = (itemId) => {
+    setPrescByItem((prev) => {
+      const next = { ...prev }
+      delete next[itemId]
+      return next
+    })
+    removeFile(itemId)
   }
+
+  const itensAprovados = itensReceitaPedido.filter(
+    (i) => prescByItem[i.id]?.status === 'Aprovada',
+  ).length
+  const todasAprovadas =
+    itensReceitaPedido.length > 0 && itensAprovados === itensReceitaPedido.length
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -400,36 +251,234 @@ export default function Receita() {
         <div className="w-16 h-16 bg-amber-100 rounded-full flex items-center justify-center mx-auto mb-4">
           <FileText className="w-8 h-8 text-amber-600" />
         </div>
-        <h1 className="text-3xl font-bold mb-2">Receita Médica</h1>
+        <h1 className="text-3xl font-bold mb-2">Receita Digital</h1>
         <p className="text-gray-500">
-          Medicamentos com receita obrigatória precisam de validação farmacêutica.
-          Medicamentos controlados exigem atendimento direto da farmácia.
+          Envie <strong>uma receita por medicamento</strong> (PDF ou XML assinado eletronicamente).
+          A farmácia confere a autenticidade antes de liberar o pedido.
         </p>
       </div>
 
-      {!contextoCarrinhoOk && !forcarNovoUpload && (
+      {!contextoCarrinhoOk && (
         <div className="mb-6 p-4 bg-amber-50 border border-amber-200 rounded-xl text-sm text-amber-900 text-left">
           Para enviar e acompanhar a receita, adicione ao carrinho ao menos um medicamento que{' '}
           <strong>exija receita</strong> em uma farmácia. Assim a receita fica vinculada ao produto
-          do pedido e não reaproveitamos aprovações de outros medicamentos.
+          do pedido.
         </div>
       )}
 
-      {/* Controlled Items */}
-      <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
-        <h3 className="font-bold text-amber-800 text-sm mb-3 flex items-center gap-2">
-          <AlertTriangle className="w-4 h-4" />
-          Medicamentos com receita obrigatória no seu pedido
-        </h3>
-        <div className="space-y-2">
-          {itensReceitaPedido.map((item) => (
-            <div key={item.id} className="flex items-center gap-3 text-sm">
-              <span className="text-lg">💊</span>
-              <span className="font-medium text-amber-900">{item.nome}</span>
-              <span className="text-amber-600">x{item.quantity}</span>
-            </div>
-          ))}
+      {/* Progresso */}
+      {contextoCarrinhoOk && (
+        <div className="bg-white border border-gray-200 rounded-xl p-4 mb-6 flex items-center justify-between">
+          <span className="text-sm font-semibold text-gray-700">
+            Receitas aprovadas
+          </span>
+          <span
+            className={`text-sm font-bold px-3 py-1 rounded-full ${
+              todasAprovadas
+                ? 'bg-emerald-100 text-emerald-700'
+                : 'bg-amber-100 text-amber-700'
+            }`}
+          >
+            {itensAprovados} / {itensReceitaPedido.length}
+          </span>
         </div>
+      )}
+
+      {/* Modo de validação (global) */}
+      {contextoCarrinhoOk && !todasAprovadas && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-6">
+          <button
+            type="button"
+            onClick={() => setMode('assincrono')}
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
+              mode === 'assincrono'
+                ? 'border-blue-500 bg-blue-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="w-4 h-4 text-blue-600" />
+              <span className="font-medium text-sm">Aguardar aprovação</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Envie a receita e aguarde. O farmacêutico analisa e você recebe o resultado.
+            </p>
+          </button>
+          <button
+            type="button"
+            onClick={() => setMode('chat_ao_vivo')}
+            className={`p-4 rounded-xl border-2 text-left transition-all ${
+              mode === 'chat_ao_vivo'
+                ? 'border-green-500 bg-green-50'
+                : 'border-gray-200 hover:border-gray-300'
+            }`}
+          >
+            <div className="flex items-center gap-2 mb-1">
+              <MessageCircle className="w-4 h-4 text-green-600" />
+              <span className="font-medium text-sm">Chat ao vivo</span>
+            </div>
+            <p className="text-xs text-gray-500">
+              Converse diretamente com o farmacêutico e reenvie se necessário.
+            </p>
+          </button>
+        </div>
+      )}
+
+      {error && (
+        <div className="mb-4 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
+          {error}
+        </div>
+      )}
+
+      {loading && Object.keys(prescByItem).length === 0 && (
+        <div className="border border-gray-200 bg-white rounded-xl p-6 text-center mb-6">
+          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
+          <p className="text-sm text-gray-500">Verificando status das receitas...</p>
+        </div>
+      )}
+
+      {/* Um bloco de upload/status por medicamento controlado */}
+      <div className="space-y-4 mb-6">
+        {itensReceitaPedido.map((item) => {
+          const presc = prescByItem[item.id]
+          const status = presc?.status
+          const data = presc?.data
+          const file = fileByItem[item.id]
+          const isUploading = uploadingItem === item.id
+
+          return (
+            <div
+              key={item.id}
+              className="bg-white rounded-xl shadow-sm border border-gray-100 p-5"
+            >
+              <div className="flex items-center gap-3 mb-4">
+                <span className="text-2xl">💊</span>
+                <div className="flex-1 min-w-0">
+                  <p className="font-semibold text-gray-900 truncate">{item.nome}</p>
+                  <p className="text-xs text-gray-400">Quantidade: {item.quantity}</p>
+                </div>
+                {status === 'Aprovada' && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-emerald-100 text-emerald-700">
+                    Aprovada
+                  </span>
+                )}
+                {status === 'Rejeitada' && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-red-100 text-red-700">
+                    Rejeitada
+                  </span>
+                )}
+                {(status === 'Pendente' || status === 'Em Análise') && (
+                  <span className="text-xs font-semibold px-2.5 py-1 rounded-full bg-amber-100 text-amber-700">
+                    {status}
+                  </span>
+                )}
+              </div>
+
+              {status === 'Aprovada' ? (
+                <div className="flex items-center gap-2 text-sm text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg p-3">
+                  <CheckCircle className="w-5 h-5" />
+                  Receita aprovada pelo farmacêutico.
+                </div>
+              ) : status === 'Rejeitada' ? (
+                <div className="space-y-3">
+                  <div className="flex items-start gap-2 text-sm text-red-700 bg-red-50 border border-red-200 rounded-lg p-3">
+                    <AlertTriangle className="w-5 h-5 shrink-0" />
+                    <span>
+                      {data?.observacoes
+                        ? `Motivo: ${data.observacoes}.`
+                        : 'Receita não aprovada.'}{' '}
+                      Envie uma nova receita válida para este medicamento.
+                    </span>
+                  </div>
+                  <button
+                    onClick={() => resetItem(item.id)}
+                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition"
+                  >
+                    Enviar nova receita
+                  </button>
+                </div>
+              ) : status === 'Pendente' || status === 'Em Análise' ? (
+                <div className="space-y-3">
+                  <div className="flex items-center gap-2 text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg p-3">
+                    <Clock className="w-5 h-5 animate-pulse" />
+                    {data?.modo_validacao === 'chat_ao_vivo'
+                      ? 'Aguardando o farmacêutico iniciar o chat.'
+                      : 'Receita em análise pelo farmacêutico. Esta página atualiza sozinha.'}
+                  </div>
+                  {data?.modo_validacao === 'chat_ao_vivo' && data?.chat_sessao_id && (
+                    <div className="bg-white rounded-xl border border-gray-200 p-4 text-left">
+                      <div className="flex items-center gap-2 text-sm font-bold text-green-700 mb-2">
+                        <MessageCircle className="w-4 h-4" />
+                        Chat ao vivo com o farmacêutico
+                      </div>
+                      <PrescriptionChat
+                        prescriptionId={data._id}
+                        chatSessaoId={data.chat_sessao_id}
+                        urlImagemReceita={data.url_imagem_publica}
+                        outroUsuario={null}
+                        onEncerrar={() => {}}
+                      />
+                    </div>
+                  )}
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {!file ? (
+                    <div
+                      onClick={() => fileInputs.current[item.id]?.click()}
+                      className="border-2 border-dashed border-gray-300 rounded-xl p-6 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition"
+                    >
+                      <FileText className="w-8 h-8 text-gray-400 mx-auto mb-2" />
+                      <p className="font-semibold text-gray-700 text-sm mb-0.5">
+                        Selecionar receita deste medicamento
+                      </p>
+                      <p className="text-xs text-gray-400">PDF ou XML assinado · Máx. 15MB</p>
+                    </div>
+                  ) : (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-xl">
+                      <FileText className="w-7 h-7 text-blue-500" />
+                      <div className="flex-1 min-w-0">
+                        <p className="font-medium text-sm truncate">{file.name}</p>
+                        <p className="text-xs text-gray-400">
+                          {(file.size / 1024 / 1024).toFixed(2)} MB
+                        </p>
+                      </div>
+                      <button
+                        onClick={() => removeFile(item.id)}
+                        className="text-gray-400 hover:text-red-500"
+                      >
+                        <X className="w-4 h-4" />
+                      </button>
+                    </div>
+                  )}
+
+                  <button
+                    onClick={() => handleUpload(item.id)}
+                    disabled={!file || isUploading}
+                    className="w-full bg-primary text-white py-2.5 rounded-xl font-semibold hover:bg-secondary transition disabled:opacity-50 flex items-center justify-center gap-2 text-sm"
+                  >
+                    {isUploading ? (
+                      <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                    ) : (
+                      <>
+                        <Upload className="w-4 h-4" />
+                        Enviar receita deste medicamento
+                      </>
+                    )}
+                  </button>
+
+                  <input
+                    ref={(el) => (fileInputs.current[item.id] = el)}
+                    type="file"
+                    accept=".pdf,.xml,application/pdf,application/xml,text/xml"
+                    onChange={(e) => handleFileChange(item.id, e)}
+                    className="hidden"
+                  />
+                </div>
+              )}
+            </div>
+          )
+        })}
       </div>
 
       {/* How it works */}
@@ -438,309 +487,50 @@ export default function Receita() {
         <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           <div className="flex flex-col items-center text-center p-4">
             <div className="w-12 h-12 bg-primary/10 rounded-full flex items-center justify-center mb-3">
-              <Camera className="w-6 h-6 text-primary" />
+              <FileText className="w-6 h-6 text-primary" />
             </div>
-            <h4 className="font-semibold text-sm mb-1">1. Envie a foto</h4>
-            <p className="text-xs text-gray-500">Tire uma foto da receita com boa iluminação</p>
+            <h4 className="font-semibold text-sm mb-1">1. Envie um arquivo por medicamento</h4>
+            <p className="text-xs text-gray-500">PDF ou XML assinado pelo médico</p>
           </div>
           <div className="flex flex-col items-center text-center p-4">
             <div className="w-12 h-12 bg-blue-50 rounded-full flex items-center justify-center mb-3">
               <Shield className="w-6 h-6 text-blue-500" />
             </div>
             <h4 className="font-semibold text-sm mb-1">2. Farmácia valida</h4>
-            <p className="text-xs text-gray-500">O farmacêutico verifica a receita e aprova</p>
+            <p className="text-xs text-gray-500">Cada receita é conferida individualmente</p>
           </div>
           <div className="flex flex-col items-center text-center p-4">
             <div className="w-12 h-12 bg-emerald-50 rounded-full flex items-center justify-center mb-3">
               <Truck className="w-6 h-6 text-emerald-500" />
             </div>
             <h4 className="font-semibold text-sm mb-1">3. Pedido segue</h4>
-            <p className="text-xs text-gray-500">A farmácia libera apenas itens permitidos no fluxo online</p>
+            <p className="text-xs text-gray-500">Liberação após todas as receitas aprovadas</p>
           </div>
         </div>
-      </div>
-
-      {/* Upload area */}
-      {carregandoStatus && !forcarNovoUpload && !uploaded ? (
-        <div className="border border-gray-200 bg-white rounded-xl p-8 text-center mb-6">
-          <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto mb-3" />
-          <p className="text-sm text-gray-500">Verificando status da receita...</p>
-        </div>
-      ) : uploaded ? (
-        <div className={`border rounded-xl p-8 text-center mb-6 ${
-          rxStatus === 'Aprovada'
-            ? 'bg-emerald-50 border-emerald-200'
-            : rxStatus === 'Rejeitada'
-            ? 'bg-red-50 border-red-200'
-            : 'bg-amber-50 border-amber-200'
-        }`}>
-          {rxStatus === 'Aprovada' ? (
-            <>
-              <CheckCircle className="w-12 h-12 text-emerald-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-emerald-800 mb-2">Receita Aprovada!</h3>
-              <p className="text-sm text-emerald-600 mb-4">
-                Sua receita foi aprovada pelo farmacêutico. Você já pode prosseguir para o pagamento.
-              </p>
-              <button
-                onClick={() => navigate('/checkout')}
-                className="px-6 py-2.5 bg-emerald-600 text-white rounded-xl font-semibold hover:bg-emerald-700 transition inline-flex items-center gap-2"
-              >
-                <ShoppingCart className="w-4 h-4" />
-                Ir para o Checkout
-              </button>
-            </>
-          ) : rxStatus === 'Rejeitada' ? (
-            <>
-              <AlertTriangle className="w-12 h-12 text-red-500 mx-auto mb-4" />
-              <h3 className="text-xl font-bold text-red-800 mb-2">Receita Rejeitada</h3>
-              <p className="text-sm text-red-600 mb-4">
-                {rxData?.observacoes
-                  ? `Motivo: ${rxData.observacoes}.`
-                  : 'Sua receita não foi aprovada.'}{' '}
-                Por favor, envie uma nova receita válida.
-              </p>
-              <button
-                onClick={() => {
-                  setUploaded(false)
-                  setRxStatus(null)
-                  setRxData(null)
-                  removeFile()
-                }}
-                className="px-6 py-2 bg-red-100 text-red-700 rounded-lg font-medium hover:bg-red-200 transition"
-              >
-                Enviar Nova Receita
-              </button>
-            </>
-          ) : (
-            <>
-              <Clock className="w-12 h-12 text-amber-500 mx-auto mb-4 animate-pulse" />
-              <h3 className="text-xl font-bold text-amber-800 mb-2">
-                {rxData?.modo_validacao === 'chat_ao_vivo'
-                  ? 'Aguardando o farmacêutico iniciar o chat'
-                  : rxStatus === 'Em Análise'
-                    ? 'Receita em Análise'
-                    : 'Aguardando Avaliação'}
-              </h3>
-              <p className="text-sm text-amber-600 mb-2">
-                {rxData?.modo_validacao === 'chat_ao_vivo'
-                  ? 'O farmacêutico foi notificado e atenderá em instantes.'
-                  : 'Sua receita foi enviada e está sendo avaliada pelo farmacêutico.'}
-              </p>
-              {rxData?.createdAt && (
-                <p className="text-xs text-amber-700/80 mb-2">
-                  Enviada em{' '}
-                  {new Date(rxData.createdAt).toLocaleString('pt-BR')}
-                </p>
-              )}
-              <p className="text-xs text-amber-500">
-                Aguarde a aprovação para continuar com o pagamento. Esta página atualiza automaticamente.
-              </p>
-            </>
-          )}
-
-          {/* Chat ao vivo (quando o paciente escolheu esse modo) */}
-          {rxData?.modo_validacao === 'chat_ao_vivo' &&
-            rxData?.chat_sessao_id &&
-            !['Aprovada', 'Rejeitada', 'Cancelada', 'Expirada'].includes(
-              rxStatus,
-            ) && (
-              <div className="mt-6 bg-white rounded-xl border border-gray-200 p-4 text-left">
-                <div className="flex items-center gap-2 text-sm font-bold text-green-700 mb-2">
-                  <MessageCircle className="w-4 h-4" />
-                  Chat ao vivo com o farmacêutico
-                </div>
-                <PrescriptionChat
-                  prescriptionId={rxData._id}
-                  chatSessaoId={rxData.chat_sessao_id}
-                  urlImagemReceita={rxData.url_imagem_publica}
-                  outroUsuario={null}
-                  onEncerrar={() => {
-                    /* status atualizado via socket */
-                  }}
-                />
-              </div>
-            )}
-        </div>
-      ) : (
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6 mb-6">
-          <h3 className="font-bold text-gray-900 mb-4 flex items-center gap-2">
-            <Upload className="w-5 h-5 text-primary" /> Enviar Receita
-          </h3>
-
-          {/* Modo de validação */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mb-4">
-            <button
-              type="button"
-              onClick={() => setModo('assincrono')}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${
-                modo === 'assincrono'
-                  ? 'border-blue-500 bg-blue-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <Clock className="w-4 h-4 text-blue-600" />
-                <span className="font-medium text-sm">Aguardar aprovação</span>
-              </div>
-              <p className="text-xs text-gray-500">
-                Envie a receita e aguarde. O farmacêutico analisa e você
-                recebe uma notificação com o resultado.
-              </p>
-              <p className="text-xs text-blue-500 mt-1">Prazo: até 2 horas úteis</p>
-            </button>
-
-            <button
-              type="button"
-              onClick={() => setModo('chat_ao_vivo')}
-              className={`p-4 rounded-xl border-2 text-left transition-all ${
-                modo === 'chat_ao_vivo'
-                  ? 'border-green-500 bg-green-50'
-                  : 'border-gray-200 hover:border-gray-300'
-              }`}
-            >
-              <div className="flex items-center gap-2 mb-1">
-                <MessageCircle className="w-4 h-4 text-green-600" />
-                <span className="font-medium text-sm">Chat ao vivo</span>
-              </div>
-              <p className="text-xs text-gray-500">
-                Converse diretamente com o farmacêutico. Esclareça dúvidas,
-                corrija problemas e reenvie se necessário.
-              </p>
-              <p className="text-xs text-green-500 mt-1">
-                Resposta imediata quando disponível
-              </p>
-            </button>
-          </div>
-
-          {!file ? (
-            <div
-              onClick={() => fileInputRef.current?.click()}
-              className="border-2 border-dashed border-gray-300 rounded-xl p-10 text-center cursor-pointer hover:border-primary hover:bg-primary/5 transition"
-            >
-              <Camera className="w-10 h-10 text-gray-400 mx-auto mb-3" />
-              <p className="font-semibold text-gray-700 mb-1">
-                Clique para selecionar ou tirar foto
-              </p>
-              <p className="text-xs text-gray-400">
-                JPG, PNG ou PDF · Máximo 15MB
-              </p>
-            </div>
-          ) : (
-            <div className="space-y-4">
-              {preview ? (
-                <div className="relative">
-                  <img
-                    src={preview}
-                    alt="Preview da receita"
-                    className="w-full max-h-80 object-contain rounded-xl border border-gray-200"
-                  />
-                  <button
-                    onClick={removeFile}
-                    className="absolute top-2 right-2 bg-white shadow-md rounded-full p-1.5 hover:bg-red-50 transition"
-                  >
-                    <X className="w-4 h-4 text-red-500" />
-                  </button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3 p-4 bg-gray-50 rounded-xl">
-                  <FileText className="w-8 h-8 text-blue-500" />
-                  <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm truncate">{file.name}</p>
-                    <p className="text-xs text-gray-400">
-                      {(file.size / 1024 / 1024).toFixed(2)} MB
-                    </p>
-                  </div>
-                  <button onClick={removeFile} className="text-gray-400 hover:text-red-500">
-                    <X className="w-4 h-4" />
-                  </button>
-                </div>
-              )}
-
-              <button
-                onClick={handleUpload}
-                disabled={uploading}
-                className="w-full bg-primary text-white py-3 rounded-xl font-semibold hover:bg-secondary transition disabled:opacity-50 flex items-center justify-center gap-2"
-              >
-                {uploading ? (
-                  <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    <Upload className="w-4 h-4" />
-                    Enviar Receita
-                  </>
-                )}
-              </button>
-            </div>
-          )}
-
-          <input
-            ref={fileInputRef}
-            type="file"
-            accept="image/jpeg,image/png,application/pdf"
-            capture="environment"
-            onChange={handleFileChange}
-            className="hidden"
-          />
-
-          {error && (
-            <div className="mt-3 p-3 bg-red-50 border border-red-200 rounded-xl text-xs text-red-600">
-              {error}
-            </div>
-          )}
-        </div>
-      )}
-
-      {/* Important notes */}
-      <div className="bg-gray-50 rounded-xl p-5 mb-6">
-        <h3 className="font-bold text-sm text-gray-800 mb-3">⚠️ Informações Importantes</h3>
-        <ul className="space-y-2 text-xs text-gray-600">
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>A receita será validada pelo farmacêutico responsável da farmácia.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>O entregador irá até seu endereço <strong>buscar a receita física</strong> no ato da entrega.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Após aprovação, o farmacêutico orienta o entregador sobre os documentos que precisará trazer de volta à farmácia.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Receitas controladas têm validade máxima de 6 meses.</span>
-          </li>
-          <li className="flex items-start gap-2">
-            <span className="text-primary mt-0.5">•</span>
-            <span>Tenha um documento com foto em mãos para o entregador verificar.</span>
-          </li>
-        </ul>
       </div>
 
       {/* Continue button */}
       <button
         onClick={() => navigate('/checkout')}
-        disabled={rxStatus !== 'Aprovada'}
+        disabled={!todasAprovadas}
         className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
-          rxStatus === 'Aprovada'
+          todasAprovadas
             ? 'bg-primary text-white hover:bg-secondary'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
       >
-        Continuar para Pagamento
-        <ArrowRight className="w-4 h-4" />
+        {todasAprovadas ? (
+          <>
+            <ShoppingCart className="w-4 h-4" />
+            Continuar para Pagamento
+          </>
+        ) : (
+          <>
+            Aguardando aprovação das receitas
+            <ArrowRight className="w-4 h-4" />
+          </>
+        )}
       </button>
-
-      {rxStatus !== 'Aprovada' && (
-        <p className="text-xs text-gray-400 text-center mt-3">
-          {uploaded
-            ? rxStatus === 'Rejeitada'
-              ? 'Envie uma nova receita para prosseguir'
-              : 'Aguarde a aprovação da receita pelo farmacêutico'
-            : 'Envie a receita para prosseguir com o pedido'
-          }
-        </p>
-      )}
     </div>
   )
 }

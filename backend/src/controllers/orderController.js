@@ -76,7 +76,8 @@ async function getPharmacyOrders(req, res, next) {
 async function updateOrderStatus(req, res, next) {
   try {
     const { id } = req.params;
-    const { novoStatus, observacao, entregador, pharmacyId } = req.body;
+    const { observacao, entregador, pharmacyId } = req.body;
+    const novoStatus = req.body.novoStatus || req.body.status;
 
     if (
       (req.user.tipo_usuario === "dono_farmacia" ||
@@ -173,6 +174,41 @@ async function approveOrderByPharmacist(req, res, next) {
 
     return sendSuccess(res, {
       message: "Pedido aprovado pelo farmacêutico",
+      data: { pedido },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function validateSngpcDispensation(req, res, next) {
+  try {
+    const { id } = req.params;
+    const { pharmacyId } = req.body;
+
+    if (
+      (req.user.tipo_usuario === "dono_farmacia" ||
+        req.user.tipo_usuario === "farmaceutico") &&
+      !pharmacyId
+    ) {
+      throw createError("pharmacyId é obrigatório para validar dispensação", 400);
+    }
+
+    const pedido = await orderService.validateSngpcDispensation(
+      id,
+      ["dono_farmacia", "farmaceutico"].includes(req.user.tipo_usuario)
+        ? pharmacyId
+        : undefined,
+      req.body,
+      {
+        user: req.user,
+        ip: req.ip || req.socket?.remoteAddress,
+        userAgent: req.headers["user-agent"],
+      },
+    );
+
+    return sendSuccess(res, {
+      message: "Dispensação registrada",
       data: { pedido },
     });
   } catch (error) {
@@ -375,6 +411,56 @@ async function confirmDeliveryByQR(req, res, next) {
   }
 }
 
+function resolvePharmacyId(req) {
+  const { pharmacyId } = req.body;
+  if (
+    (req.user.tipo_usuario === "dono_farmacia" ||
+      req.user.tipo_usuario === "farmaceutico") &&
+    !pharmacyId
+  ) {
+    throw createError("pharmacyId é obrigatório", 400);
+  }
+  return ["dono_farmacia", "farmaceutico"].includes(req.user.tipo_usuario)
+    ? pharmacyId
+    : undefined;
+}
+
+async function markOrderReadyForPickup(req, res, next) {
+  try {
+    const deliveryService = require("../services/deliveryService");
+    const pharmacyId = resolvePharmacyId(req);
+    const entrega = await deliveryService.markReadyForPickup(
+      req.params.id,
+      pharmacyId,
+    );
+    return sendSuccess(res, {
+      message: "Pedido marcado como separado / pronto para retirada",
+      data: { entrega },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
+async function confirmDeliveryPickupCode(req, res, next) {
+  try {
+    const deliveryService = require("../services/deliveryService");
+    const pharmacyId = resolvePharmacyId(req);
+    const { codigo, codigo_coleta } = req.body;
+    const entrega = await deliveryService.confirmPickupWithCode(
+      req.params.id,
+      pharmacyId,
+      codigo ?? codigo_coleta,
+    );
+    return sendSuccess(res, {
+      message: "Coleta liberada — pedido a caminho do cliente",
+      data: { entrega },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createOrder,
   getOrderById,
@@ -384,8 +470,11 @@ module.exports = {
   cancelOrder,
   rejectOrder,
   approveOrderByPharmacist,
+  validateSngpcDispensation,
   completePharmacyPickup,
   confirmReceiptReturnAtPharmacy,
+  markOrderReadyForPickup,
+  confirmDeliveryPickupCode,
   updateDeliveryLocation,
   rateDelivery,
   generatePickupCode,

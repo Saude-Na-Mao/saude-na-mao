@@ -159,6 +159,7 @@ html.dark .hover\:bg-red-50:hover   { background-color: #450a0a !important; }
 
 /* ── Textos principais ── */
 html.dark .text-gray-900 { color: #f8fafc !important; }
+html.dark .text-gray-950 { color: #f8fafc !important; }
 html.dark .text-gray-800 { color: #f1f5f9 !important; }
 html.dark .text-gray-700 { color: #e2e8f0 !important; }
 html.dark .text-gray-600 { color: #cbd5e1 !important; }
@@ -276,7 +277,8 @@ html.high-contrast .text-gray-500,
 html.high-contrast .text-gray-600,
 html.high-contrast .text-gray-700,
 html.high-contrast .text-gray-800,
-html.high-contrast .text-gray-900 {
+html.high-contrast .text-gray-900,
+html.high-contrast .text-gray-950 {
   color: #e0e0e0 !important;
 }
 

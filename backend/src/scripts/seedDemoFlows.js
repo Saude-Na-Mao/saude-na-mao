@@ -15,6 +15,11 @@ const Prescription = require("../models/Prescription");
 const SupportMessage = require("../models/SupportMessage");
 const MedicineCatalog = require("../models/MedicineCatalog");
 const { produtosBase } = require("./seed");
+const {
+  buildControlledBatches,
+  hasAvailableBatchForQuantity,
+  isControlledProduct,
+} = require("../utils/batchAvailability");
 
 const MONGO_URI =
   process.env.MONGO_URI ||
@@ -150,7 +155,7 @@ function orderHistory(statuses, start) {
       confirmado: "Pedido conferido e liberado para entrega.",
       a_caminho: "Entregador saiu para entrega.",
       aguardando_confirmacao_receita_farmacia:
-        "Receita fisica aguardando conferencia na farmacia.",
+        "Baixa digital do lote aguardando finalizacao na farmacia.",
       entregue: "Pedido entregue ao cliente.",
       cancelado: "Pedido cancelado.",
       rejeitado: "Receita recusada; reembolso do produto iniciado.",
@@ -266,6 +271,11 @@ async function ensureCatalogProductsForPharmacies(pharmacies) {
       const estoqueMinimo = 18 + ((index + String(pharmacy._id).length) % 6) * 9;
       const preco = existing?.preco || item.preco_sugerido || 24.9;
       const estoque = Math.max(Number(existing?.estoque || 0), estoqueMinimo);
+      const batches =
+        isControlledProduct(item) &&
+        (!existing || !hasAvailableBatchForQuantity(existing, 1))
+          ? buildControlledBatches(item, estoque, index, String(pharmacy._id).length)
+          : existing?.batches || [];
 
       await Product.updateOne(
         {
@@ -291,6 +301,7 @@ async function ensureCatalogProductsForPharmacies(pharmacies) {
             imagens: item.imagem_url ? [item.imagem_url] : existing?.imagens || [],
             preco,
             estoque,
+            batches,
             id_farmacia: pharmacy._id,
             tipo_produto: "medicamento_catalogo",
             id_catalogo: item._id,

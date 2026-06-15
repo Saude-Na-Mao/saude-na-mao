@@ -370,7 +370,7 @@ export function ManageReceitasTab({ id_farmacia }) {
                       rel="noopener noreferrer"
                       className="text-primary hover:underline text-sm block mt-1"
                     >
-                      Ver imagem da receita
+                      Abrir receita digital
                     </a>
                   )}
                 </div>

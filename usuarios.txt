@@ -1,0 +1,40 @@
+USUARIOS CRIADOS - DONO E FARMACEUTICO POR FARMACIA
+(cada um responde apenas pela sua propria farmacia)
+
+Senha dono: Dono@123
+Senha farmaceutico: Farm@123
+
+------------------------------------------------------------
+Farmácia Saúde+ Bueno
+  Dono:         dono.farmaciasaudebue@saudenamao.com
+  Farmaceutico: farmaceutico.farmaciasaudebue@saudenamao.com
+
+Droga Raia - Marista
+  Dono:         dono.drogaraiamarista@saudenamao.com
+  Farmaceutico: farmaceutico.drogaraiamarista@saudenamao.com
+
+Farmácia Popular - Oeste
+  Dono:         dono.farmaciapopularo@saudenamao.com
+  Farmaceutico: farmaceutico.farmaciapopularo@saudenamao.com
+
+Drogasil - Park Lozandes
+  Dono:         dono.drogasilparkloza@saudenamao.com
+  Farmaceutico: farmaceutico.drogasilparkloza@saudenamao.com
+
+Farmácia Pague Menos - Central
+  Dono:         dono.farmaciapaguemen@saudenamao.com
+  Farmaceutico: farmaceutico.farmaciapaguemen@saudenamao.com
+
+============================================================
+CLIENTES (senha: Cliente@123)
+============================================================
+  cliente.ana@saudenamao.com
+  cliente.bruno@saudenamao.com
+  cliente.carla@saudenamao.com
+
+============================================================
+ENTREGADORES (senha: Entrega@123)
+============================================================
+  entregador.diego@saudenamao.com
+  entregador.eduardo@saudenamao.com
+  entregador.felipe@saudenamao.com

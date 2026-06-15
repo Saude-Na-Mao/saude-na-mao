@@ -4,6 +4,7 @@ import {
   MessageCircle,
   Send,
   Image as ImageIcon,
+  FileText,
   Paperclip,
   X,
   CheckCircle,
@@ -53,7 +54,7 @@ export default function PrescriptionChat({
   const formatarErroReceita = (msg) => {
     const texto = String(msg || '')
     if (texto.includes('já foi utilizada em um pedido anterior')) {
-      return 'Este arquivo de receita já foi usado em um pedido ativo. Envie uma nova foto/arquivo da receita.'
+      return 'Este arquivo de receita já foi usado em um pedido ativo. Envie uma nova receita digital assinada.'
     }
     return texto || 'tente novamente.'
   }
@@ -78,7 +79,9 @@ export default function PrescriptionChat({
         const receita = res?.data?.data?.receita
         if (!receita) return
         setMensagens(Array.isArray(receita.chat_mensagens) ? receita.chat_mensagens : [])
-        if (receita.url_imagem_publica) setImagemAtual(receita.url_imagem_publica)
+        if (receita.url_imagem_publica || receita.url_arquivo) {
+          setImagemAtual(receita.url_imagem_publica || receita.url_arquivo)
+        }
         setEncerrado(!!receita.chat_encerrado)
         if (receita.status) setStatusFinal(receita.status)
       } catch {
@@ -209,7 +212,8 @@ export default function PrescriptionChat({
     try {
       setReuploading(true)
       const res = await prescriptionService.reuploadChatImage(prescriptionId, file)
-      const novaUrl = res?.data?.data?.receita?.url_imagem_publica
+      const receita = res?.data?.data?.receita
+      const novaUrl = receita?.url_imagem_publica || receita?.url_arquivo
       if (novaUrl) setImagemAtual(novaUrl)
     } catch (err) {
       setMensagens((prev) => [
@@ -284,18 +288,36 @@ export default function PrescriptionChat({
   }
 
   const meuId = String(user?.id || user?._id || '')
+  const arquivoReceita = String(imagemAtual || '')
+  const arquivoReceitaLower = arquivoReceita.toLowerCase()
+  const receitaIsPdf =
+    arquivoReceitaLower.endsWith('.pdf') || arquivoReceitaLower.includes('application/pdf')
+  const receitaIsXml =
+    arquivoReceitaLower.endsWith('.xml') ||
+    arquivoReceitaLower.includes('application/xml') ||
+    arquivoReceitaLower.includes('text/xml')
+  const receitaIsDocumento = receitaIsPdf || receitaIsXml
 
   return (
     <div className="flex flex-col h-[70vh] max-h-[70vh] gap-3">
-      {/* Topo: imagem da receita */}
+      {/* Topo: documento da receita */}
       <div className="flex items-center gap-3 bg-gray-50 border border-gray-200 rounded-lg p-2">
-        {imagemAtual ? (
+        {imagemAtual && !receitaIsDocumento ? (
           <img
             src={imagemAtual}
             alt="Receita"
             className="w-16 h-16 object-cover rounded cursor-pointer"
             onClick={() => setPreviewImagemAberto(true)}
           />
+        ) : imagemAtual ? (
+          <button
+            type="button"
+            onClick={() => setPreviewImagemAberto(true)}
+            className="w-16 h-16 bg-white border border-gray-200 rounded flex items-center justify-center hover:bg-gray-50"
+            title="Abrir receita digital"
+          >
+            <FileText className="w-7 h-7 text-blue-500" />
+          </button>
         ) : (
           <div className="w-16 h-16 bg-gray-200 rounded flex items-center justify-center">
             <ImageIcon className="w-6 h-6 text-gray-400" />
@@ -312,7 +334,7 @@ export default function PrescriptionChat({
               onClick={() => setPreviewImagemAberto(true)}
               className="text-xs text-blue-600 hover:underline"
             >
-              Ver receita em tamanho real
+              Abrir receita digital
             </button>
           )}
         </div>
@@ -480,7 +502,7 @@ export default function PrescriptionChat({
               <input
                 ref={fileInputRef}
                 type="file"
-                accept="image/jpeg,image/png,application/pdf"
+                accept=".pdf,.xml,application/pdf,application/xml,text/xml"
                 onChange={handleReupload}
                 className="hidden"
               />
@@ -557,15 +579,26 @@ export default function PrescriptionChat({
         size="xl"
       >
         <div className="flex flex-col items-center gap-3">
-          {imagemAtual &&
-          (imagemAtual.toLowerCase().endsWith('.pdf') ||
-            imagemAtual.includes('application/pdf')) ? (
+          {receitaIsPdf ? (
             <iframe
               src={imagemAtual}
               className="w-full rounded border"
               style={{ height: '75vh' }}
               title="Receita em PDF"
             />
+          ) : receitaIsXml ? (
+            <div className="text-center p-8">
+              <FileText className="w-12 h-12 text-blue-500 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-gray-800">Receita digital em XML</p>
+              <a
+                href={imagemAtual}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="mt-3 inline-flex px-3 py-2 rounded-lg bg-blue-600 text-white text-xs font-semibold"
+              >
+                Abrir XML
+              </a>
+            </div>
           ) : (
             <div
               className="overflow-auto w-full flex justify-center"

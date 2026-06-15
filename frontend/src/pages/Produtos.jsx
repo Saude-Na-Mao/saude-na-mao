@@ -8,7 +8,9 @@ import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileTe
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
+  getAvailableStock,
   isRemoteCheckoutBlocked,
+  isProductUnavailable,
   requiresPrescription,
   shouldHideProductImage,
   showPromo,
@@ -371,6 +373,8 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
   const temPromocao = showPromo(product)
   const precisaReceita = requiresPrescription(product)
   const remoteBlocked = isRemoteCheckoutBlocked(product)
+  const availableStock = getAvailableStock(product)
+  const isOutOfStock = isProductUnavailable(product)
   const tarja = TARJA_CONFIG[product.classificacao_receita] || null
 
   const pharmacyName = pharmacy?.nome || 'Farmácia'
@@ -382,6 +386,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
     id: product._id || product.id,
     nome: product.nome,
     preco,
+    estoque: availableStock,
     controlado: product.controlado,
     receita_obrigatoria: precisaReceita,
     classificacao_receita: product.classificacao_receita || 'sem_receita',
@@ -392,6 +397,11 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
   }
 
   const handleAdd = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -401,6 +411,10 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
     }
 
     const result = addItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -418,6 +432,11 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
   }
 
   const handleReplaceCart = () => {
+    if (isOutOfStock) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+
     if (remoteBlocked) {
       addNotification?.({
         type: 'warning',
@@ -427,6 +446,10 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
     }
 
     const result = replaceCartWithItem(productData)
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
     if (result?.authRequired) {
       addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
       navigate('/login')
@@ -440,7 +463,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
   }
 
   return (
-    <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
+    <div className={`${isOutOfStock ? 'bg-gray-100 opacity-70' : 'bg-white'} rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
       {/* Tarja classification bar */}
       {tarja && (
         <div className={`px-4 py-1.5 ${tarja.bg} ${tarja.text} text-[10px] font-bold flex items-center gap-1`}>
@@ -543,14 +566,14 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
             <div className="text-xl font-bold text-primary">
               R$ {preco?.toFixed(2)}
             </div>
-            {product.estoque > 0 ? (
+            {!isOutOfStock ? (
               <p className="text-[10px] text-emerald-600">Em estoque</p>
             ) : (
               <p className="text-[10px] text-red-500">Indisponível</p>
             )}
           </div>
 
-          {product.estoque > 0 && (
+          {!isOutOfStock && (
             <div className="flex items-center gap-2">
               <div className="flex items-center border rounded-lg overflow-hidden">
                 <button
@@ -559,7 +582,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
                 >-</button>
                 <span className="w-6 text-center text-xs font-medium">{quantity}</span>
                 <button
-                  onClick={() => setQuantity(Math.min(product.estoque, quantity + 1))}
+                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
                   className="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm"
                 >+</button>
               </div>
@@ -593,6 +616,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
       <ProdutoDetalheModal
         produto={{
           ...product,
+          estoque: availableStock,
           id: product._id || product.id,
           imagem: product.imagem || product.imagem_url || product.imagens?.[0],
           id_farmacia: pharmacy?._id

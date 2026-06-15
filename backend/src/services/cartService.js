@@ -11,12 +11,13 @@ const {
   getDeliveryOptions: getFreightOptions,
 } = require("./freightService");
 const { verificarInteracoes } = require("../utils/drugInteractions");
+const { hasAvailableBatchForQuantity, isControlledProduct } = require("../utils/batchAvailability");
 const crypto = require("crypto");
 
 const CART_POPULATE = [
   {
     path: "itens.id_produto",
-    select: "nome preco estoque controlado receita_obrigatoria classificacao_receita principio_ativo",
+    select: "nome preco estoque controlado receita_obrigatoria classificacao_receita principio_ativo batches",
   },
   {
     path: "itens.id_farmacia",
@@ -278,6 +279,18 @@ async function saveAndPopulateCart(cart) {
   return populateCart(cart);
 }
 
+function ensureControlledBatchAvailable(product, quantity) {
+  if (
+    isControlledProduct(product) &&
+    !hasAvailableBatchForQuantity(product, quantity)
+  ) {
+    throw createError(
+      `Medicamento ${product.nome} indisponível: sem lote disponível para rastreabilidade.`,
+      400,
+    );
+  }
+}
+
 async function getOrCreateCart(userId) {
   if (!isValidObjectId(userId)) {
     throw createError("Usuário não encontrado", 404);
@@ -311,6 +324,7 @@ async function addItem(userId, { productId, quantidade = 1, receitaId }) {
   if (product.estoque < quantityToAdd) {
     throw createError("Estoque insuficiente", 400);
   }
+  ensureControlledBatchAvailable(product, quantityToAdd);
 
   const cart = await getCartForUser(userId);
 
@@ -350,6 +364,7 @@ async function addItem(userId, { productId, quantidade = 1, receitaId }) {
   if (product.estoque < nextQuantity) {
     throw createError("Estoque insuficiente", 400);
   }
+  ensureControlledBatchAvailable(product, nextQuantity);
 
   warnControlledQuantity(product, nextQuantity, prescription);
   await validateControlledMonthlyLimit(userId, product, nextQuantity);
@@ -445,6 +460,7 @@ async function updateItemQuantity(userId, productId, novaQuantidade) {
   if (product.estoque < quantity) {
     throw createError("Estoque insuficiente", 400);
   }
+  ensureControlledBatchAvailable(product, quantity);
 
   let prescription = null;
   if (item.id_receita) {
@@ -577,6 +593,7 @@ async function checkout(userId) {
     if (product.estoque < item.quantidade) {
       throw createError(`Produto ${product.nome} sem estoque suficiente`, 400);
     }
+    ensureControlledBatchAvailable(product, item.quantidade);
 
     if (item.receita_obrigatoria && !item.id_receita) {
       throw createError(`Receita obrigatória para ${product.nome}`, 400);

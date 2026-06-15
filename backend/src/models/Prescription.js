@@ -170,7 +170,13 @@ const prescriptionSchema = new mongoose.Schema(
     },
     tipo_arquivo: {
       type: String,
-      enum: ["image/jpeg", "image/png", "application/pdf"],
+      enum: [
+        "image/jpeg",
+        "image/png",
+        "application/pdf",
+        "application/xml",
+        "text/xml",
+      ],
       required: true,
     },
     tamanho_arquivo: {

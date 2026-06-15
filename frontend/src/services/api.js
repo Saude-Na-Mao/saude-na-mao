@@ -238,12 +238,14 @@ export const orderService = {
   },
   getById: (id) => api.get(`/pedidos/${id}`),
   create: (data) => api.post('/pedidos', data),
-  updateStatus: (id, status) => api.put(`/pedidos/${id}/status`, { status }),
+  updateStatus: (id, status, extra = {}) => api.patch(`/pedidos/${id}/status`, { ...extra, novoStatus: status, status }),
   track: (id) => api.get(`/pedidos/${id}/rastreamento`),
   getPharmacyOrders: (pharmacyId, params = {}) =>
     api.get(`/pedidos/pharmacy/${pharmacyId}`, { params }),
   approveByPharmacist: (orderId, pharmacyId) =>
     api.post(`/pedidos/${orderId}/pharmacist-approve`, { pharmacyId }),
+  validateSngpc: (orderId, data) =>
+    api.put(`/pedidos/${orderId}/validar-sngpc`, data),
   rejectByPharmacist: (orderId, pharmacyId, motivo) =>
     api.post(`/pedidos/${orderId}/reject`, { pharmacyId, motivo }),
   completePharmacyPickup: (orderId, { pharmacyId, observacao, codigo } = {}) =>
@@ -254,6 +256,11 @@ export const orderService = {
     }),
   confirmReceiptReturnAtPharmacy: (orderId, { pharmacyId, codigo } = {}) =>
     api.post(`/pedidos/${orderId}/receipt-return-confirm`, { pharmacyId, codigo }),
+  markReady: (orderId, pharmacyId) =>
+    api.post(`/pedidos/${orderId}/mark-ready`, { pharmacyId }),
+  confirmPickupCode: (orderId, pharmacyId, codigo) =>
+    api.post(`/pedidos/${orderId}/confirm-pickup-code`, { pharmacyId, codigo }),
+  rate: (orderId, data) => api.post(`/pedidos/${orderId}/rate`, data),
   generateQR: (orderId) => api.post(`/pedidos/${orderId}/qr-code`),
   confirmQR: (orderId, token) =>
     api.post(`/pedidos/${orderId}/confirm-qr`, { token }),
@@ -379,7 +386,8 @@ export const medicineCatalogService = {
 export const pharmacyOwnerService = {
   getPharmacy: (id) => api.get(`/farmacias/${id}`),
   getOrders: (id, params) => api.get(`/pedidos/pharmacy/${id}`, { params }),
-  updateOrderStatus: (orderId, status) => api.patch(`/pedidos/${orderId}/status`, { status }),
+  updateOrderStatus: (orderId, status, extra = {}) =>
+    api.patch(`/pedidos/${orderId}/status`, { ...extra, novoStatus: status, status }),
   getOrderStats: (id) => api.get(`/pedidos/pharmacy/${id}/stats`),
   getOwnerDashboard: (pharmacyId, params) =>
     api.get(`/farmacias/${pharmacyId}/owner-dashboard`, { params }),
@@ -413,6 +421,8 @@ export const deliveryService = {
   cancel: (id, data) => api.post(`/deliveries/${id}/cancel`, data),
   rateByClient: (id, data) => api.post(`/deliveries/${id}/rate/client`, data),
   rateByDriver: (id, data) => api.post(`/deliveries/${id}/rate/driver`, data),
+  arrived: (id) => api.post(`/deliveries/${id}/arrived`),
+  marcarCheguei: (id) => api.post(`/deliveries/${id}/arrived`),
 
   // Aliases para telas antigas em PT-BR.
   listarDisponiveisPedidos: (params = {}) => api.get('/deliveries/available', { params }),

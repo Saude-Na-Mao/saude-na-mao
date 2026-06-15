@@ -54,6 +54,14 @@ router.post(
   audit("ORDER_APPROVED_BY_PHARMACIST", "Order"),
 );
 
+router.put(
+  "/:id/validar-sngpc",
+  protect,
+  authorize("dono_farmacia", "farmaceutico", "administrador"),
+  orderController.validateSngpcDispensation,
+  audit("SNGPC_DISPENSATION_VALIDATED", "Order"),
+);
+
 router.post(
   "/:id/pickup-complete",
   protect,
@@ -68,6 +76,22 @@ router.post(
   authorize("dono_farmacia", "farmaceutico", "administrador"),
   orderController.confirmReceiptReturnAtPharmacy,
   audit("ORDER_RECEIPT_RETURN_CONFIRMED", "Order"),
+);
+
+router.post(
+  "/:id/mark-ready",
+  protect,
+  authorize("dono_farmacia", "farmaceutico", "administrador"),
+  orderController.markOrderReadyForPickup,
+  audit("ORDER_MARKED_READY", "Order"),
+);
+
+router.post(
+  "/:id/confirm-pickup-code",
+  protect,
+  authorize("dono_farmacia", "farmaceutico", "administrador"),
+  orderController.confirmDeliveryPickupCode,
+  audit("ORDER_PICKUP_CODE_CONFIRMED", "Order"),
 );
 
 router.patch(

@@ -120,18 +120,20 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/paracetamol-750mg-teuto.jpg"],
     precos: [7.90, 8.50, 6.99, 7.20, 8.90, 5.99],
   },
   {
-    nome: "Ibuprofeno 600mg",
+    nome: "Ibuprofeno Cimed 400mg",
     principio_ativo: "Ibuprofeno",
     categoria: "Anti-inflamatório",
-    dosagem: "600mg",
-    fabricante: "Medley",
+    dosagem: "400mg",
+    fabricante: "Cimed",
     descricao: "Anti-inflamatório, analgésico e antitérmico.",
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/ibuprofeno-cimed-400mg.webp"],
     precos: [14.50, 12.90, 15.80, 11.90, 13.50, 10.90],
   },
   {
@@ -144,18 +146,20 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/dipirona-500mg-prati.jpg"],
     precos: [9.90, 8.50, 10.50, 7.90, 9.20, 6.90],
   },
   {
-    nome: "Amoxicilina 500mg",
+    nome: "Amoxicilina 500mg Genérico",
     principio_ativo: "Amoxicilina",
     categoria: "Antibiótico",
     dosagem: "500mg",
-    fabricante: "Teuto",
+    fabricante: "Genérico",
     descricao: "Antibiótico de amplo espectro para infecções bacterianas.",
     receita_obrigatoria: true,
     controlado: false,
     classificacao_receita: "antimicrobiano",
+    imagens: ["/imagens/amoxicilina-generico.jpg"],
     precos: [22.80, 24.90, 19.90, 21.50, 23.40, 18.90],
   },
   {
@@ -168,6 +172,7 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/loratadina-cimed-1mg-ml.jpg"],
     precos: [12.40, 14.90, 11.50, 13.20, 10.90, 9.90],
   },
   {
@@ -180,6 +185,7 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/vitamina-c-1g.jpg"],
     precos: [18.90, 21.50, 16.90, 19.90, 17.50, 15.90],
   },
   {
@@ -192,18 +198,20 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/vitamina-d-2000ui.jpg"],
     precos: [34.90, 32.50, 36.90, 29.90, 33.80, 28.90],
   },
   {
-    nome: "Complexo B",
+    nome: "Complexo B Concentrado 60 Comprimidos",
     principio_ativo: "Vitaminas do complexo B",
     categoria: "Vitamina",
-    dosagem: "1 comprimido",
-    fabricante: "Cimed",
+    dosagem: "60 comprimidos",
+    fabricante: "Maxinutri",
     descricao: "Suplemento com vitaminas B1, B2, B3, B5, B6, B7, B9 e B12.",
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/complexo-b-maxinutri.jpg"],
     precos: [21.50, 19.90, 23.80, 18.50, 22.40, 17.90],
   },
   {
@@ -216,6 +224,7 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/omeprazol-20mg-ems.jpg"],
     precos: [16.80, 18.90, 14.50, 17.20, 15.90, 13.50],
   },
   {
@@ -223,35 +232,38 @@ const produtosBase = [
     principio_ativo: "Cloridrato de metformina",
     categoria: "Antidiabético",
     dosagem: "850mg",
-    fabricante: "Merck",
+    fabricante: "Laproff",
     descricao: "Hipoglicemiante oral para diabetes tipo 2.",
     receita_obrigatoria: true,
     controlado: false,
     classificacao_receita: "tarja_vermelha",
+    imagens: ["/imagens/metformina-850mg-laproff.jpg"],
     precos: [11.20, 13.50, 10.80, 12.90, 11.90, 9.90],
   },
   {
-    nome: "Atenolol 50mg",
+    nome: "Atenolol 25mg Genérico",
     principio_ativo: "Atenolol",
     categoria: "Anti-hipertensivo",
-    dosagem: "50mg",
-    fabricante: "Astrazeneca",
+    dosagem: "25mg",
+    fabricante: "Medley",
     descricao: "Betabloqueador para hipertensão e angina.",
     receita_obrigatoria: true,
     controlado: false,
     classificacao_receita: "tarja_vermelha",
+    imagens: ["/imagens/atenolol-25mg-generico-medley.jpg"],
     precos: [8.50, 9.90, 7.80, 10.50, 8.20, 7.50],
   },
   {
-    nome: "Rivotril 2mg",
+    nome: "Rivotril Roche 20ml",
     principio_ativo: "Clonazepam",
     categoria: "Ansiolítico",
-    dosagem: "2mg",
+    dosagem: "20ml",
     fabricante: "Roche",
     descricao: "Benzodiazepínico indicado para ansiedade e epilepsia.",
     receita_obrigatoria: true,
     controlado: true,
     classificacao_receita: "tarja_preta",
+    imagens: ["/imagens/rivotril-roche-20ml.png"],
     precos: [28.60, 31.90, 26.50, null, 29.90, 25.80],
   },
   {
@@ -264,18 +276,20 @@ const produtosBase = [
     receita_obrigatoria: true,
     controlado: true,
     classificacao_receita: "controlado_a",
+    imagens: ["/imagens/ritalina-10mg-novartis.jpg"],
     precos: [89.90, null, 84.50, null, 92.30, 79.90],
   },
   {
-    nome: "Alprazolam 0.5mg",
+    nome: "Alprazolam 1mg",
     principio_ativo: "Alprazolam",
     categoria: "Ansiolítico",
-    dosagem: "0.5mg",
-    fabricante: "Pfizer",
+    dosagem: "1mg",
+    fabricante: "Medley",
     descricao: "Benzodiazepínico de curta duração para ansiedade.",
     receita_obrigatoria: true,
     controlado: true,
     classificacao_receita: "tarja_preta",
+    imagens: ["/imagens/alprazolam-1mg-medley.jpg"],
     precos: [43.20, 45.90, null, 40.50, 44.80, 38.90],
   },
   {
@@ -288,19 +302,8 @@ const produtosBase = [
     receita_obrigatoria: true,
     controlado: false,
     classificacao_receita: "tarja_vermelha",
+    imagens: ["/imagens/sinvastatina-20mg-cimed.jpg"],
     precos: [13.90, 15.50, 12.80, 14.20, 13.50, 11.90],
-  },
-  {
-    nome: "Losartana 50mg",
-    principio_ativo: "Losartana potássica",
-    categoria: "Anti-hipertensivo",
-    dosagem: "50mg",
-    fabricante: "EMS",
-    descricao: "Antagonista dos receptores de angiotensina II.",
-    receita_obrigatoria: true,
-    controlado: false,
-    classificacao_receita: "tarja_vermelha",
-    precos: [15.80, 17.90, 14.50, 16.20, 15.20, 13.50],
   },
   {
     nome: "Dorflex",
@@ -312,10 +315,11 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/dorflex-24-comprimidos.webp"],
     precos: [11.90, 13.50, 10.50, 12.80, 11.20, 9.90],
   },
   {
-    nome: "Buscopan Composto",
+    nome: "Buscopan",
     principio_ativo: "Escopolamina + Dipirona",
     categoria: "Antiespasmódico",
     dosagem: "1 comprimido",
@@ -324,6 +328,7 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/buscopan.jpg"],
     precos: [19.90, 22.50, 17.80, 20.90, 18.50, 16.90],
   },
   {
@@ -336,6 +341,7 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/allegra-120mg.jpg"],
     precos: [32.90, 35.50, 29.90, 34.80, 31.50, 28.90],
   },
   {
@@ -348,9 +354,62 @@ const produtosBase = [
     receita_obrigatoria: false,
     controlado: false,
     classificacao_receita: "sem_receita",
+    imagens: ["/imagens/neosaldina.jpg"],
     precos: [14.90, 16.50, 13.20, 15.80, 14.20, 12.50],
   },
 ];
+
+function addMonths(base, months) {
+  const date = new Date(base);
+  date.setMonth(date.getMonth() + months);
+  return date;
+}
+
+function controlledBatchPrefix(product, productIndex, pharmacyIndex) {
+  const base = String(product.principio_ativo || product.nome || "LOTE")
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .replace(/[^A-Z0-9]/gi, "")
+    .toUpperCase()
+    .slice(0, 4)
+    .padEnd(4, "X");
+  return `${base}${String(productIndex + 1).padStart(2, "0")}${String(pharmacyIndex + 1).padStart(2, "0")}`;
+}
+
+function buildControlledBatches(product, stock, productIndex, pharmacyIndex) {
+  const isControlled =
+    product.controlado ||
+    product.classificacao_receita === "tarja_preta" ||
+    product.classificacao_receita === "controlado_a";
+  if (!isControlled) return [];
+  const total = Math.max(3, Number(stock) || 3);
+  const firstQty = Math.max(1, Math.floor(total * 0.35));
+  const secondQty = Math.max(1, Math.floor(total * 0.4));
+  const thirdQty = Math.max(1, total - firstQty - secondQty);
+  const prefix = controlledBatchPrefix(product, productIndex, pharmacyIndex);
+  const baseDate = new Date();
+
+  return [
+    {
+      batchNumber: `${prefix}-${String(101 + productIndex).padStart(3, "0")}`,
+      expirationDate: addMonths(baseDate, 8 + productIndex),
+      quantity: firstQty,
+      active: true,
+    },
+    {
+      batchNumber: `${prefix}-${String(200 + pharmacyIndex).padStart(3, "0")}`,
+      expirationDate: addMonths(baseDate, 18 + productIndex),
+      quantity: secondQty,
+      active: true,
+    },
+    {
+      batchNumber: `${prefix}-${String(310 + productIndex + pharmacyIndex).padStart(3, "0")}`,
+      expirationDate: addMonths(baseDate, 28 + productIndex),
+      quantity: thirdQty,
+      active: true,
+    },
+  ];
+}
 
 /** priceColumnPerPharmacy[j] seleciona qual coluna de precos usar para farmaciaIds[j] (omitir = mesmo índice j). */
 function buildProdutos(farmaciaIds, priceColumnPerPharmacy = null) {
@@ -366,11 +425,13 @@ function buildProdutos(farmaciaIds, priceColumnPerPharmacy = null) {
           ? priceColumnPerPharmacy[j]
           : j;
       if (precos[pIdx] === null || precos[pIdx] === undefined) continue;
+      const estoque = estoqueBase[i] + Math.floor(Math.random() * 30);
 
       produtos.push({
         ...dadosProduto,
         preco: precos[pIdx],
-        estoque: estoqueBase[i] + Math.floor(Math.random() * 30),
+        estoque,
+        batches: buildControlledBatches(dadosProduto, estoque, i, pIdx),
         id_farmacia: farmaciaIds[j],
         ativo: true,
       });
@@ -492,10 +553,53 @@ async function ensureCuponsDemo() {
   console.log(`  ✅ ${cupons.length} cupons demo criados`);
 }
 
+async function ensureControlledProductBatchesForPharmacy(pharmacyId) {
+  const products = await Product.find({
+    id_farmacia: pharmacyId,
+    $or: [
+      { controlado: true },
+      { classificacao_receita: { $in: ["tarja_preta", "controlado_a"] } },
+    ],
+    ativo: true,
+  });
+
+  let updated = 0;
+  for (let index = 0; index < products.length; index += 1) {
+    const product = products[index];
+    const activeBatchQuantity = (Array.isArray(product.batches) ? product.batches : [])
+      .filter((batch) => batch?.active !== false)
+      .reduce((total, batch) => total + Math.max(0, Number(batch?.quantity || 0)), 0);
+    if (Array.isArray(product.batches) && product.batches.length >= 3 && activeBatchQuantity > 0) continue;
+    const productIndex = produtosBase.findIndex((item) => item.nome === product.nome);
+    product.batches = buildControlledBatches(
+      {
+        nome: product.nome,
+        principio_ativo: product.principio_ativo,
+        controlado: true,
+        classificacao_receita: product.classificacao_receita,
+      },
+      Math.max(Number(product.estoque || 0), 3),
+      productIndex >= 0 ? productIndex : index,
+      index,
+    );
+    product.estoque = Math.max(
+      Number(product.estoque || 0),
+      product.batches.reduce((total, batch) => total + Number(batch.quantity || 0), 0),
+    );
+    await product.save();
+    updated += 1;
+  }
+
+  if (updated > 0) {
+    console.log(`  ${updated} medicamento(s) controlado(s) com lotes atualizados`);
+  }
+}
+
 module.exports = {
   main,
   farmacias,
   produtosBase,
   buildProdutos,
   ensureCuponsDemo,
+  ensureControlledProductBatchesForPharmacy,
 };

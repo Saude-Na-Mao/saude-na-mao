@@ -18,7 +18,11 @@ const User = require("../models/User");
 const Pharmacy = require("../models/Pharmacy");
 const Product = require("../models/Product");
 const authService = require("../services/authService");
-const { farmacias, buildProdutos } = require("./seed");
+const {
+  farmacias,
+  buildProdutos,
+  ensureControlledProductBatchesForPharmacy,
+} = require("./seed");
 const { insertReviewsForSinglePharmacyIfEmpty } = require("./seedReviews");
 
 const MONGO_URI =
@@ -151,6 +155,8 @@ async function ensureOwnerAndStock(ownerRow) {
   } else {
     console.log(`  ${nProd} produtos já cadastrados — mantendo`);
   }
+
+  await ensureControlledProductBatchesForPharmacy(pharmacyId);
 
   const phFresh = await Pharmacy.findById(pharmacyId);
   if (phFresh) {

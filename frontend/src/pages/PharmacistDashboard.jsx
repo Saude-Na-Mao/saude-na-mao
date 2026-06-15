@@ -7,7 +7,7 @@ import api from '../services/api';
 import Modal from '../components/Modal';
 import PrescriptionChat from '../components/PrescriptionChat';
 import { io } from 'socket.io-client';
-import { MessageCircle, Image as ImageIcon, CheckCircle, XCircle, Eye, Send } from 'lucide-react';
+import { MessageCircle, Image as ImageIcon, CheckCircle, XCircle, Eye, Send, ClipboardList, FileText } from 'lucide-react';
 import { supportService } from '../services/api';
 import { getSocketUrl, SOCKET_TRANSPORTS } from '../config/env';
 import {
@@ -25,6 +25,7 @@ import {
   orderHasPrescriptionItem,
   getOrderCancellationReason,
 } from '../utils/orderStatusDisplay';
+import { isSngpcProduct } from '../utils/compliance';
 
 const REFRESH_INTERVAL = 30000; // 30 segundos
 
@@ -35,6 +36,119 @@ const STATUS_OPCOES = [
   { valor: 'Aprovada', label: 'Aprovadas', cor: 'bg-green-100 text-green-700' },
   { valor: 'Rejeitada', label: 'Rejeitadas', cor: 'bg-red-100 text-red-700' },
 ];
+
+const UF_OPTIONS = [
+  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
+  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
+  'SP', 'SE', 'TO',
+];
+
+const NO_CONTROLLED_BATCH_CLIENT_REASON =
+  'Não foi possível aprovar sua receita porque o medicamento sujeito ao SNGPC não possui lote disponível nesta farmácia. Escolha outra farmácia ou aguarde reposição.';
+
+const NO_CONTROLLED_BATCH_PHARMACY_REASON =
+  'Esta receita não possui pedido sujeito ao SNGPC vinculado com lotes disponíveis. Sem lote disponível, a rastreabilidade ANVISA/SNGPC não pode ser registrada.';
+
+function objectIdValue(value) {
+  const raw = value?._id || value?.id || value;
+  return raw ? String(raw) : '';
+}
+
+function normalizeFileUrl(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return '';
+  if (/^https?:\/\//i.test(raw)) {
+    try {
+      const url = new URL(raw);
+      if (url.pathname.startsWith('/uploads/')) {
+        return `${url.pathname}${url.search}${url.hash}`;
+      }
+    } catch {
+      return raw;
+    }
+    return raw;
+  }
+  return `/${raw.replace(/^\/+/, '').replace(/\\/g, '/')}`;
+}
+
+function productFromOrderItem(item) {
+  return item?.id_produto || item?.produto || {};
+}
+
+function isControlledOrderItem(item) {
+  const product = productFromOrderItem(item);
+  return Boolean(isSngpcProduct(item) || isSngpcProduct(product));
+}
+
+function linkedOrderFromPrescription(receita, orders = []) {
+  const direct = receita?.id_pedido_utilizado || receita?.id_pedido_vinculado;
+  if (direct && typeof direct === 'object') return direct;
+  const directId = objectIdValue(direct);
+  if (directId) {
+    const match = orders.find((order) => objectIdValue(order) === directId);
+    if (match) return match;
+  }
+  const linkedIds = Array.isArray(receita?.pedidos_vinculados)
+    ? receita.pedidos_vinculados.map((item) => objectIdValue(item?.id_pedido)).filter(Boolean)
+    : [];
+  return orders.find((order) => linkedIds.includes(objectIdValue(order))) || null;
+}
+
+function controlledItemForPrescription(receita, order) {
+  if (!order) return null;
+  const prescriptionId = objectIdValue(receita);
+  const items = order?.itens || [];
+  return (
+    items.find((item) => objectIdValue(item?.id_receita) === prescriptionId && isControlledOrderItem(item)) ||
+    items.find(isControlledOrderItem) ||
+    null
+  );
+}
+
+function productFromPrescription(receita) {
+  return receita?.id_produto && typeof receita.id_produto === 'object'
+    ? receita.id_produto
+    : receita?.produto || null;
+}
+
+function prescriptionRequiresControlledFlow(receita, order, controlledItem) {
+  if (controlledItem) return true;
+  if ((order?.itens || []).some(isControlledOrderItem)) return true;
+  if (isSngpcProduct(productFromPrescription(receita))) return true;
+  return ['especial_c1', 'especial_b', 'antimicrobiano'].includes(String(receita?.tipo_receita || '').trim());
+}
+
+function digitalSignatureCodeFromPrescription(receita) {
+  const ocr = receita?.dados_ocr || {};
+  return (
+    receita?.digitalSignatureCode ||
+    receita?.codigo_validacao_assinatura ||
+    receita?.hash_assinatura ||
+    ocr?.codigo_validacao_assinatura ||
+    ocr?.hash_assinatura ||
+    receita?.hash_arquivo ||
+    ''
+  );
+}
+
+function availableBatchesForItem(item) {
+  const product = productFromOrderItem(item);
+  const now = new Date();
+  return [...(product?.batches || [])]
+    .filter((batch) => {
+      if (batch?.active === false || Number(batch?.quantity || 0) <= 0) return false;
+      if (batch?.expirationDate && new Date(batch.expirationDate) < now) return false;
+      return true;
+    })
+    .sort((a, b) => new Date(a.expirationDate || 0) - new Date(b.expirationDate || 0));
+}
+
+function formatBatchDate(value) {
+  if (!value) return '-';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '-';
+  return date.toLocaleDateString('pt-BR');
+}
 
 function OrderProgressMini({ order }) {
   if (['cancelado', 'rejeitado'].includes(String(order?.status || '').trim())) return null
@@ -277,6 +391,19 @@ export function PharmacistDashboard() {
   const [observacoes, setObservacoes] = useState('');
   // 'aprovar' | 'rejeitar' (decisão pretendida no modal)
   const [intencao, setIntencao] = useState(null);
+  const [sngpcForm, setSngpcForm] = useState({
+    productId: '',
+    doctorName: '',
+    doctorCrm: '',
+    doctorUf: '',
+    digitalSignatureCode: '',
+    selectedBatchNumber: '',
+  });
+  const [sngpcSaving, setSngpcSaving] = useState(false);
+  const [sngpcReadyByPrescription, setSngpcReadyByPrescription] = useState({});
+  const [rejectingPrescription, setRejectingPrescription] = useState(false);
+  const [prescriptionRejectReason, setPrescriptionRejectReason] = useState('');
+  const [autoRejectingPrescriptionId, setAutoRejectingPrescriptionId] = useState(null);
   // Lightbox para visualização da imagem/PDF da receita
   const [imagemAberta, setImagemAberta] = useState(null);
 
@@ -298,6 +425,7 @@ export function PharmacistDashboard() {
   const [submittingOrderAction, setSubmittingOrderAction] = useState(false);
   const [codigoRetiradaPorPedido, setCodigoRetiradaPorPedido] = useState({});
   const [codigoReceitaRetornoPorPedido, setCodigoReceitaRetornoPorPedido] = useState({});
+  const [codigoColetaPorPedido, setCodigoColetaPorPedido] = useState({});
   const socketRef = useRef(null);
   const receitasStatsRef = useRef([]);
   const supportTicketsRef = useRef([]);
@@ -761,6 +889,62 @@ export function PharmacistDashboard() {
   const isRetiradaOuDriveThru = (order) =>
     ['retirada', 'drive-thru'].includes(String(order?.tipo_entrega || '').trim());
 
+  const marcarSeparado = async (orderId) => {
+    if (!farmaciaIdEfetiva || submittingOrderAction) return;
+    const oid = orderId != null ? String(orderId) : '';
+    if (!oid) return;
+    try {
+      setSubmittingOrderAction(true);
+      await orderService.markReady(oid, String(farmaciaIdEfetiva));
+      await fetchOrders({ silent: true });
+      setError(null);
+      useUiStore.getState().addNotification({
+        type: 'success',
+        title: 'Pedido separado',
+        message: 'Pedido pronto para retirada — liberado para os entregadores.',
+        duration: 5000,
+      });
+    } catch (err) {
+      const apiMsg = err.response?.data?.message || err.message;
+      setError(apiMsg || 'Erro ao marcar pedido como separado');
+    } finally {
+      setSubmittingOrderAction(false);
+    }
+  };
+
+  const confirmarColeta = async (orderId) => {
+    if (!farmaciaIdEfetiva || submittingOrderAction) return;
+    const oid = orderId != null ? String(orderId) : '';
+    if (!oid) return;
+    const codigo = String(codigoColetaPorPedido[oid] ?? '').trim();
+    if (codigo.length !== 8) {
+      setError('Informe o código de 8 dígitos que o entregador apresentou.');
+      return;
+    }
+    try {
+      setSubmittingOrderAction(true);
+      await orderService.confirmPickupCode(oid, String(farmaciaIdEfetiva), codigo);
+      setCodigoColetaPorPedido((prev) => {
+        const next = { ...prev };
+        delete next[oid];
+        return next;
+      });
+      await fetchOrders({ silent: true });
+      setError(null);
+      useUiStore.getState().addNotification({
+        type: 'success',
+        title: 'Coleta liberada',
+        message: 'Pedido a caminho do cliente.',
+        duration: 5000,
+      });
+    } catch (err) {
+      const apiMsg = err.response?.data?.message || err.message;
+      setError(apiMsg || 'Erro ao confirmar a coleta');
+    } finally {
+      setSubmittingOrderAction(false);
+    }
+  };
+
   const marcarRetiradaEntregue = async (orderId) => {
     if (!farmaciaIdEfetiva || submittingOrderAction) return;
     const oid = orderId != null ? String(orderId) : '';
@@ -826,11 +1010,17 @@ export function PharmacistDashboard() {
     if (['cancelado', 'entregue', 'rejeitado'].includes(st)) return false;
     if (st === 'aguardando_confirmacao_receita_farmacia') return true;
     if (st === 'em_processamento') return true;
+    if (st === 'confirmado') return true;
     return (
       st === 'aguardando_pagamento' &&
       String(o?.status_pagamento || '').trim() === 'aprovado'
     );
   };
+
+  const pedidoAguardandoValidacaoDigital = (order) =>
+    String(order?.status || '').trim() === 'aguardando_confirmacao_receita_farmacia' &&
+    String(order?.status_pagamento || '').trim() !== 'aprovado' &&
+    orderHasPrescriptionItem(order);
 
   const pedidosPendentesAprovacao = orders.filter(pedidoNaFilaDaFarmacia);
   const historicoPedidos = orders.filter((o) => !pedidoNaFilaDaFarmacia(o));
@@ -962,21 +1152,118 @@ export function PharmacistDashboard() {
     }
   };
 
+  const buildSngpcForm = (receita) => {
+    const order = linkedOrderFromPrescription(receita, orders);
+    const item = controlledItemForPrescription(receita, order);
+    const batches = availableBatchesForItem(item);
+    const ocr = receita?.dados_ocr || {};
+    return {
+      productId: objectIdValue(item?.id_produto),
+      doctorName: ocr?.nome_medico || '',
+      doctorCrm: ocr?.crm || '',
+      doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
+      digitalSignatureCode: digitalSignatureCodeFromPrescription(receita),
+      selectedBatchNumber: batches[0]?.batchNumber || '',
+    };
+  };
+
   const openValidationModal = (receita, intencaoInicial = null) => {
+    const linkedOrder = linkedOrderFromPrescription(receita, orders);
+    const controlledItem = controlledItemForPrescription(receita, linkedOrder);
+    const batches = availableBatchesForItem(controlledItem);
+    const requiresControlledFlow = prescriptionRequiresControlledFlow(
+      receita,
+      linkedOrder,
+      controlledItem,
+    );
+    const hasRegisteredSngpc =
+      Boolean(linkedOrder?.sngpcData?.validatedAt) ||
+      Boolean(receita?._id && sngpcReadyByPrescription[receita._id]);
+    const shouldAutoReject =
+      ['Pendente', 'Em Análise'].includes(receita?.status) &&
+      requiresControlledFlow &&
+      !hasRegisteredSngpc &&
+      (!linkedOrder || !controlledItem || batches.length === 0);
+
     setSelectedReceita(receita);
-    setObservacoes(receita?.observacoes || '');
-    setIntencao(intencaoInicial);
+    setObservacoes(shouldAutoReject ? NO_CONTROLLED_BATCH_CLIENT_REASON : receita?.observacoes || '');
+    setIntencao(null);
+    setSngpcForm(buildSngpcForm(receita));
+    setRejectingPrescription(false);
+    setPrescriptionRejectReason('');
+
+    if (shouldAutoReject) {
+      setError(NO_CONTROLLED_BATCH_PHARMACY_REASON);
+      setAutoRejectingPrescriptionId(receita?._id || null);
+      setTimeout(() => {
+        handleValidation(receita._id, false, NO_CONTROLLED_BATCH_CLIENT_REASON)
+          .finally(() => setAutoRejectingPrescriptionId(null));
+      }, 0);
+    }
   };
 
   const closeValidationModal = () => {
     setSelectedReceita(null);
     setObservacoes('');
     setIntencao(null);
+    setRejectingPrescription(false);
+    setPrescriptionRejectReason('');
   };
 
-  const handleValidation = async (validationId, approved) => {
+  const confirmSngpcForSelectedPrescription = async () => {
+    if (!selectedReceita || sngpcSaving) return;
+    const order = linkedOrderFromPrescription(selectedReceita, orders);
+    if (!order?._id) {
+      setError('Pedido vinculado à receita não encontrado.');
+      return;
+    }
+    if (!farmaciaIdEfetiva) {
+      setError('Farmácia vinculada não encontrada.');
+      return;
+    }
+
     try {
-      const obs = observacoes.trim();
+      setSngpcSaving(true);
+      setError(null);
+      const res = await orderService.validateSngpc(order._id, {
+        pharmacyId: String(farmaciaIdEfetiva),
+        ...sngpcForm,
+        doctorUf: String(sngpcForm.doctorUf || '').toUpperCase(),
+        buyerRg: selectedReceita?.id_usuario?.rg || '',
+      });
+      const pedido = res.data?.data?.pedido;
+      setSngpcReadyByPrescription((prev) => ({
+        ...prev,
+        [selectedReceita._id]: true,
+      }));
+      setSelectedReceita((prev) => {
+        if (!prev) return prev;
+        const key = prev.id_pedido_utilizado ? 'id_pedido_utilizado' : 'id_pedido_vinculado';
+        return pedido ? { ...prev, [key]: pedido } : prev;
+      });
+      await fetchOrders({ silent: true });
+    } catch (err) {
+      const apiMsg = err.response?.data?.message || err.message;
+      setError(apiMsg || 'Erro ao registrar dispensação');
+    } finally {
+      setSngpcSaving(false);
+    }
+  };
+
+  const rejectSelectedPrescription = async () => {
+    const motivo = prescriptionRejectReason.trim();
+    if (!motivo) {
+      setError('Informe o motivo da rejeição.');
+      return;
+    }
+    setObservacoes(motivo);
+    setRejectingPrescription(false);
+    await handleValidation(selectedReceita._id, false, motivo);
+  };
+
+  const handleValidation = async (validationId, approved, forcedObservacoes = null) => {
+    try {
+      const obs = forcedObservacoes != null ? forcedObservacoes.trim() : observacoes.trim();
       if (!approved && !obs) {
         setError('Informe o motivo da rejeição.');
         return;
@@ -1047,6 +1334,64 @@ export function PharmacistDashboard() {
       prev.filter((r) => r.prescriptionId !== request.prescriptionId),
     );
   };
+
+  const selectedLinkedOrder = selectedReceita
+    ? linkedOrderFromPrescription(selectedReceita, orders)
+    : null;
+  const selectedControlledItem = selectedReceita
+    ? controlledItemForPrescription(selectedReceita, selectedLinkedOrder)
+    : null;
+  const selectedProductFromPrescription = selectedReceita
+    ? productFromPrescription(selectedReceita)
+    : null;
+  const selectedBatches = selectedControlledItem
+    ? availableBatchesForItem(selectedControlledItem)
+    : availableBatchesForItem({ id_produto: selectedProductFromPrescription });
+  const selectedRequiresControlledFlow = selectedReceita
+    ? prescriptionRequiresControlledFlow(
+        selectedReceita,
+        selectedLinkedOrder,
+        selectedControlledItem,
+      )
+    : false;
+  const selectedHasSngpcRegistered = Boolean(
+    selectedLinkedOrder?.sngpcData?.validatedAt ||
+      (selectedReceita?._id && sngpcReadyByPrescription[selectedReceita._id]),
+  );
+  const selectedNeedsSngpc = Boolean(
+    selectedRequiresControlledFlow &&
+      selectedLinkedOrder &&
+      selectedControlledItem &&
+      (selectedBatches.length > 0 || selectedHasSngpcRegistered),
+  );
+  const selectedMissingControlledBatch = Boolean(
+    selectedReceita &&
+      selectedRequiresControlledFlow &&
+      !selectedHasSngpcRegistered &&
+      !selectedNeedsSngpc,
+  );
+  const selectedSngpcReady =
+    !selectedRequiresControlledFlow ||
+    (selectedNeedsSngpc && selectedHasSngpcRegistered);
+  const selectedPrescriptionFileUrl = normalizeFileUrl(
+    selectedReceita?.url_imagem_publica || selectedReceita?.url_arquivo,
+  );
+  const selectedPrescriptionIsPdf =
+    String(selectedReceita?.tipo_arquivo || selectedPrescriptionFileUrl)
+      .toLowerCase()
+      .includes('pdf');
+  const selectedPrescriptionIsXml =
+    String(selectedReceita?.tipo_arquivo || selectedPrescriptionFileUrl)
+      .toLowerCase()
+      .includes('xml');
+  const openedPrescriptionKind = String(imagemAberta || '').toLowerCase();
+  const openedPrescriptionIsPdf =
+    openedPrescriptionKind.endsWith('.pdf') ||
+    openedPrescriptionKind.includes('application/pdf');
+  const openedPrescriptionIsXml =
+    openedPrescriptionKind.endsWith('.xml') ||
+    openedPrescriptionKind.includes('application/xml') ||
+    openedPrescriptionKind.includes('text/xml');
 
   if (loading) {
     return (
@@ -1429,7 +1774,7 @@ export function PharmacistDashboard() {
           </div>
           <p className="text-xs text-gray-600 mb-3">
             Após pagamento concluído, confirme que o pedido está separado para liberar a entrega.
-            Se houver receita física, encerre com o código quando o entregador retornar à farmácia.
+            Se houver SNGPC, encerre com o código após registrar a baixa digital do lote.
           </p>
 
           {ordersLoading ? (
@@ -1491,19 +1836,36 @@ export function PharmacistDashboard() {
                           </p>
                         )}
 
-                        {String(order?.status || '').trim() ===
-                          'aguardando_confirmacao_receita_farmacia' && (
+                        {pedidoAguardandoValidacaoDigital(order) ? (
                           <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                            O entregador confirmou o código com o cliente. Conferiu a receita física? Digite o
+                            Valide a receita em Gerenciar Receitas antes de confirmar ou cancelar o pedido.
+                          </p>
+                        ) : String(order?.status || '').trim() ===
+                          'aguardando_confirmacao_receita_farmacia' ? (
+                          <p className="text-xs text-amber-900 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                            O entregador confirmou o código com o cliente. Registre a baixa digital do lote e digite o
                             mesmo código de 6 dígitos para encerrar o pedido.
                           </p>
-                        )}
+                        ) : null}
 
-                        {String(order?.status || '').trim() === 'em_processamento' &&
+                        {['em_processamento', 'confirmado'].includes(String(order?.status || '').trim()) &&
                           !isRetiradaOuDriveThru(order) && (
-                          <p className="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
-                            Pedido liberado: aguardando entregador aceitar. Quando ele coletar e sair, o cliente verá “A caminho”.
-                          </p>
+                          <>
+                            {!order.separado_em ? (
+                              <p className="text-xs text-blue-900 bg-blue-50 border border-blue-100 rounded-lg px-3 py-2">
+                                Pagamento concluído. Marque o pedido como <strong>separado / pronto para retirada</strong> para liberar a entrega.
+                              </p>
+                            ) : !order.entregador?.nome ? (
+                              <p className="text-xs text-indigo-900 bg-indigo-50 border border-indigo-100 rounded-lg px-3 py-2">
+                                Pedido separado. Aguardando um entregador aceitar a corrida.
+                              </p>
+                            ) : (
+                              <p className="text-xs text-amber-900 bg-amber-50 border border-amber-100 rounded-lg px-3 py-2">
+                                Entregador <strong>{order.entregador.nome}</strong> a caminho da farmácia. Confira o
+                                <strong> código de 8 dígitos</strong> que ele apresentar para liberar a coleta.
+                              </p>
+                            )}
+                          </>
                         )}
 
                         <div className="flex flex-wrap gap-2">
@@ -1520,7 +1882,52 @@ export function PharmacistDashboard() {
                         <OrderProgressMini order={order} />
 
                         <div className="flex flex-col gap-3">
-                          {String(order?.status || '').trim() ===
+                          {['em_processamento', 'confirmado'].includes(String(order?.status || '').trim()) &&
+                            !isRetiradaOuDriveThru(order) &&
+                            !order.separado_em && (
+                            <div className="flex justify-end">
+                              <button
+                                type="button"
+                                onClick={() => marcarSeparado(order._id)}
+                                className="px-3 py-2 bg-indigo-600 text-white rounded-lg text-sm font-medium hover:bg-indigo-700 disabled:opacity-60"
+                                disabled={submittingOrderAction}
+                              >
+                                Marcar separado / pronto para retirada
+                              </button>
+                            </div>
+                          )}
+                          {['em_processamento', 'confirmado'].includes(String(order?.status || '').trim()) &&
+                            !isRetiradaOuDriveThru(order) &&
+                            order.separado_em &&
+                            order.entregador?.nome && (
+                            <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center sm:justify-end">
+                              <input
+                                type="text"
+                                inputMode="numeric"
+                                autoComplete="one-time-code"
+                                maxLength={8}
+                                placeholder="Código de 8 dígitos do entregador"
+                                value={codigoColetaPorPedido[order._id] ?? ''}
+                                onChange={(e) =>
+                                  setCodigoColetaPorPedido((prev) => ({
+                                    ...prev,
+                                    [order._id]: e.target.value.replace(/\D/g, '').slice(0, 8),
+                                  }))
+                                }
+                                className="px-3 py-2 border border-amber-300 rounded-lg text-sm font-mono tracking-widest min-w-[12rem] max-w-[14rem]"
+                              />
+                              <button
+                                type="button"
+                                onClick={() => confirmarColeta(order._id)}
+                                className="px-3 py-2 bg-amber-600 text-white rounded-lg text-sm font-medium hover:bg-amber-700 disabled:opacity-60"
+                                disabled={submittingOrderAction}
+                              >
+                                Liberar coleta (pedido a caminho)
+                              </button>
+                            </div>
+                          )}
+                          {!pedidoAguardandoValidacaoDigital(order) &&
+                            String(order?.status || '').trim() ===
                             'aguardando_confirmacao_receita_farmacia' && (
                             <div className="flex flex-col sm:flex-row flex-wrap gap-2 items-stretch sm:items-center sm:justify-end">
                               <input
@@ -1577,16 +1984,18 @@ export function PharmacistDashboard() {
                             </div>
                           )}
                           <div className="flex flex-wrap gap-2 justify-end">
-                            <button
-                              onClick={() => {
-                                setRejectingOrder(order);
-                                setRejectReason('');
-                              }}
-                              className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100"
-                              disabled={submittingOrderAction}
-                            >
-                              Cancelar pedido
-                            </button>
+                            {!pedidoAguardandoValidacaoDigital(order) && (
+                              <button
+                                onClick={() => {
+                                  setRejectingOrder(order);
+                                  setRejectReason('');
+                                }}
+                                className="px-3 py-2 bg-red-50 border border-red-200 text-red-700 rounded-lg text-sm font-medium hover:bg-red-100"
+                                disabled={submittingOrderAction}
+                              >
+                                Cancelar pedido
+                              </button>
+                            )}
                             {String(order?.status || '').trim() !==
                                 'aguardando_confirmacao_receita_farmacia' &&
                               String(order?.status || '').trim() === 'aguardando_pagamento' &&
@@ -1708,10 +2117,10 @@ export function PharmacistDashboard() {
               ? 'Receita rejeitada — alterar status'
               : 'Validar Receita'
         }
-        size="xl"
+        size="full"
       >
         {selectedReceita && (
-          <div className="flex flex-col gap-4">
+          <div className="flex h-full min-h-0 flex-col gap-4">
             <div className="bg-gray-50 rounded-lg p-3 text-sm space-y-1">
               <p>
                 <strong>Cliente:</strong>{' '}
@@ -1742,69 +2151,210 @@ export function PharmacistDashboard() {
               )}
             </div>
 
-            {/* Visualização da receita */}
-            {selectedReceita.url_imagem_publica ? (
-              <div className="border rounded-lg p-4 bg-gray-50 flex items-center gap-3">
-                <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center flex-shrink-0">
-                  <ImageIcon className="w-6 h-6 text-blue-600" />
+            <div className="grid min-h-[620px] flex-1 grid-cols-1 gap-4 xl:grid-cols-[minmax(0,1fr)_minmax(460px,540px)]">
+              <div className="flex min-h-0 flex-col rounded-xl border border-gray-200 bg-gray-50 p-4">
+                <div className="flex items-center justify-between gap-3 mb-3">
+                  <div className="min-w-0">
+                    <p className="text-sm font-semibold text-gray-900">Documento da prescrição</p>
+                    <p className="text-xs text-gray-500 truncate">
+                      {selectedReceita.nome_arquivo || 'Arquivo da receita'}
+                    </p>
+                  </div>
+                  {selectedPrescriptionFileUrl && (
+                    <button
+                      type="button"
+                      onClick={() => setImagemAberta(selectedPrescriptionFileUrl)}
+                      className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 text-gray-700 rounded-lg text-xs font-semibold hover:bg-gray-50"
+                    >
+                      <Eye className="w-4 h-4" />
+                      Abrir
+                    </button>
+                  )}
                 </div>
-                <div className="flex-1 min-w-0">
-                  <p className="text-sm font-semibold text-gray-800 truncate">
-                    {selectedReceita.nome_arquivo || 'Arquivo da receita'}
-                  </p>
-                  <p className="text-xs text-gray-500">
-                    {selectedReceita.tipo_arquivo === 'application/pdf'
-                      ? 'PDF'
-                      : 'Imagem'}
-                    {selectedReceita.tamanho_arquivo
-                      ? ` · ${(selectedReceita.tamanho_arquivo / 1024).toFixed(0)} KB`
-                      : ''}
-                  </p>
+                <div className="min-h-[460px] flex-1 rounded-lg border border-gray-200 bg-white overflow-hidden flex items-center justify-center">
+                  {selectedPrescriptionFileUrl ? (
+                    selectedPrescriptionIsPdf ? (
+                      <iframe
+                        src={selectedPrescriptionFileUrl}
+                        className="w-full h-full"
+                        title="Prescrição em PDF"
+                      />
+                    ) : selectedPrescriptionIsXml ? (
+                      <div className="text-center px-6">
+                        <FileText className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+                        <p className="text-sm font-semibold text-gray-800">Receita digital em XML</p>
+                        <button
+                          type="button"
+                          onClick={() => setImagemAberta(selectedPrescriptionFileUrl)}
+                          className="mt-3 px-3 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold"
+                        >
+                          Abrir XML
+                        </button>
+                      </div>
+                    ) : (
+                      <img
+                        src={selectedPrescriptionFileUrl}
+                        alt="Prescrição"
+                        className="w-full h-full object-contain"
+                      />
+                    )
+                  ) : (
+                    <div className="text-center text-sm text-gray-500 px-6">
+                      <ImageIcon className="w-10 h-10 text-gray-300 mx-auto mb-2" />
+                      Documento não disponível
+                    </div>
+                  )}
                 </div>
-                <button
-                  type="button"
-                  onClick={() =>
-                    setImagemAberta(selectedReceita.url_imagem_publica)
-                  }
-                  className="flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg text-sm hover:bg-blue-700 active:bg-blue-800 transition-colors flex-shrink-0"
-                >
-                  <Eye className="w-4 h-4" />
-                  Ver imagem da receita
-                </button>
               </div>
-            ) : (
-              <div className="border border-dashed border-gray-300 rounded-lg p-6 text-center text-sm text-gray-500">
-                Imagem da receita não disponível
-              </div>
-            )}
 
-            {/* Dados extraídos pelo OCR */}
-            {selectedReceita.dados_ocr && (
-              <div className="bg-blue-50 rounded p-3 text-sm">
-                <p className="font-medium text-blue-700 mb-1">
-                  Dados extraídos automaticamente:
-                </p>
-                <p>
-                  Médico:{' '}
-                  {selectedReceita.dados_ocr.nome_medico || 'Não identificado'}
-                </p>
-                <p>
-                  CRM: {selectedReceita.dados_ocr.crm || 'Não identificado'} /
-                  {selectedReceita.dados_ocr.uf_crm || '??'}
-                </p>
-                <p>
-                  Princípio ativo:{' '}
-                  {selectedReceita.dados_ocr.principio_ativo ||
-                    'Não identificado'}
-                </p>
-                <p className="text-xs text-blue-500 mt-1">
-                  CRM verificado:{' '}
-                  {selectedReceita.validacao_crm?.crm_valido
-                    ? '✅ Sim'
-                    : '⚠️ Não confirmado'}
-                </p>
+              <div className="rounded-xl border border-emerald-100 bg-white p-4 space-y-4 overflow-y-auto">
+                <div>
+                  <h3 className="font-bold text-gray-900">Registro de Dispensação ANVISA / SNGPC</h3>
+                  <p className="text-xs text-gray-500 mt-1">
+                    Receita digital ICP-Brasil validada antes da decisão farmacêutica.
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px]">
+                  <div className="rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-emerald-800">
+                    Entra: tarja preta, controle especial e antimicrobianos.
+                  </div>
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-gray-600">
+                    Não entra: tarja vermelha comum, MIPs e genérico sem ativo controlado.
+                  </div>
+                </div>
+
+                {selectedNeedsSngpc ? (
+                  <>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Comprador</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField label="Nome completo" value={selectedReceita.id_usuario?.nome || selectedLinkedOrder?.id_usuario?.nome || '—'} />
+                        <ReadonlySngpcField label="CPF" value={selectedReceita.id_usuario?.cpf || '—'} />
+                        <ReadonlySngpcField
+                          label="RG + órgão emissor"
+                          value={selectedReceita.id_usuario?.rg || selectedLinkedOrder?.id_usuario?.rg || '—'}
+                        />
+                        <ReadonlySngpcField
+                          label="Telefone"
+                          value={selectedReceita.id_usuario?.telefone || selectedLinkedOrder?.id_usuario?.telefone || '—'}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor</p>
+                      <div className="space-y-2">
+                        <SngpcInput
+                          label="Nome do médico"
+                          value={sngpcForm.doctorName}
+                          placeholder={selectedReceita.dados_ocr?.nome_medico || 'Dr. Marcelo Andrade'}
+                          onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorName: value }))}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <SngpcInput
+                            label="CRM"
+                            value={sngpcForm.doctorCrm}
+                            placeholder={selectedReceita.dados_ocr?.crm || '18452'}
+                            onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorCrm: value }))}
+                          />
+                          <div>
+                            <label className="text-xs text-gray-500">UF do conselho</label>
+                            <select
+                              value={sngpcForm.doctorUf}
+                              onChange={(e) => setSngpcForm((prev) => ({ ...prev, doctorUf: e.target.value }))}
+                              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                            >
+                              <option value="">{selectedReceita.dados_ocr?.uf_crm || 'UF'}</option>
+                              {UF_OPTIONS.map((uf) => (
+                                <option key={uf} value={uf}>{uf}</option>
+                              ))}
+                            </select>
+                          </div>
+                        </div>
+                        <SngpcInput
+                          label="Código da assinatura digital ICP-Brasil"
+                          value={sngpcForm.digitalSignatureCode}
+                          placeholder={(selectedReceita.hash_arquivo || '').slice(0, 32) || 'Hash ICP-Brasil'}
+                          onChange={(value) => setSngpcForm((prev) => ({ ...prev, digitalSignatureCode: value }))}
+                        />
+                      </div>
+                    </div>
+
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Medicamento e lote</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField
+                          label="Medicamento"
+                          value={
+                            productFromOrderItem(selectedControlledItem)?.nome ||
+                            selectedControlledItem?.nome_produto ||
+                            selectedReceita.dados_ocr?.principio_ativo ||
+                            '—'
+                          }
+                        />
+                        <ReadonlySngpcField
+                          label="Quantidade de caixas"
+                          value={String(selectedControlledItem?.quantidade || 1)}
+                        />
+                      </div>
+                      <label className="block text-xs text-gray-500 mt-2">Número do lote selecionado</label>
+                      <select
+                        value={sngpcForm.selectedBatchNumber}
+                        onChange={(e) => setSngpcForm((prev) => ({ ...prev, selectedBatchNumber: e.target.value }))}
+                        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                      >
+                        <option value="">Selecione um lote</option>
+                        {selectedBatches.map((batch) => (
+                          <option key={batch.batchNumber} value={batch.batchNumber}>
+                            {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
+                          </option>
+                        ))}
+                      </select>
+                      <p className="text-[11px] text-gray-500 mt-2">
+                        Regra FEFO: vencimento mais próximo primeiro.
+                      </p>
+                    </div>
+
+                    <button
+                      type="button"
+                      onClick={confirmSngpcForSelectedPrescription}
+                      disabled={
+                        sngpcSaving ||
+                        selectedSngpcReady ||
+                        !sngpcForm.doctorName ||
+                        !sngpcForm.doctorCrm ||
+                        !sngpcForm.doctorUf ||
+                        !sngpcForm.digitalSignatureCode ||
+                        !sngpcForm.selectedBatchNumber
+                      }
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      {selectedSngpcReady
+                        ? 'Rastreabilidade registrada'
+                        : sngpcSaving
+                          ? 'Registrando...'
+                          : 'Confirmar Dispensação e Rastreabilidade'}
+                    </button>
+                  </>
+                ) : selectedRequiresControlledFlow ? (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 space-y-2">
+                    <p>{NO_CONTROLLED_BATCH_PHARMACY_REASON}</p>
+                    {['Pendente', 'Em Análise'].includes(selectedReceita.status) && (
+                      <p className="font-semibold text-gray-800">
+                        {autoRejectingPrescriptionId === selectedReceita._id
+                          ? 'Rejeição automática em andamento.'
+                          : 'A receita será rejeitada automaticamente.'}
+                      </p>
+                    )}
+                  </div>
+                ) : (
+                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
+                    Esta receita não exige registro ANVISA/SNGPC.
+                  </div>
+                )}
               </div>
-            )}
+            </div>
 
             {/* Aviso de re-validação */}
             {(selectedReceita.status === 'Aprovada' ||
@@ -1824,34 +2374,48 @@ export function PharmacistDashboard() {
               <textarea
                 value={observacoes}
                 onChange={(e) => setObservacoes(e.target.value)}
-                placeholder="Ex: CRM ilegível na foto. Por favor, envie uma foto mais nítida."
-                className="w-full border rounded-lg p-2 text-sm resize-none h-24 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
+                placeholder="Ex: assinatura digital inválida ou CRM divergente no arquivo."
+                className="w-full border rounded-lg p-2 text-sm resize-none h-32 focus:ring-2 focus:ring-blue-500 focus:border-transparent"
               />
             </div>
 
             {/* Botões de ação — variam conforme status atual e intenção */}
             {['Pendente', 'Em Análise'].includes(selectedReceita.status) ? (
-              <div className="flex gap-3 justify-end flex-wrap">
+              <div className="space-y-3">
+                {selectedNeedsSngpc && !selectedSngpcReady && (
+                  <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                    Registre a dispensação e o lote antes de aprovar ou rejeitar a receita.
+                  </p>
+                )}
+                {selectedMissingControlledBatch && (
+                  <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                    {NO_CONTROLLED_BATCH_PHARMACY_REASON}
+                  </p>
+                )}
+                <div className="flex gap-3 justify-end flex-wrap">
                   <button
                     onClick={() => handleValidation(selectedReceita._id, true)}
                     className="px-4 py-2 bg-green-600 text-white rounded-lg text-sm hover:bg-green-700 disabled:opacity-50 inline-flex items-center gap-2"
-                    disabled={validatingId === selectedReceita._id}
+                    disabled={validatingId === selectedReceita._id || !selectedSngpcReady || selectedMissingControlledBatch}
                   >
                     <CheckCircle className="w-4 h-4" />
                     Aprovar receita
                   </button>
 
                   <button
-                    onClick={() => handleValidation(selectedReceita._id, false)}
+                    onClick={() => {
+                      setPrescriptionRejectReason(observacoes || '');
+                      setRejectingPrescription(true);
+                    }}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
                     disabled={
-                      !observacoes.trim() ||
-                      validatingId === selectedReceita._id
+                      validatingId === selectedReceita._id || !selectedSngpcReady || selectedMissingControlledBatch
                     }
                   >
                     <XCircle className="w-4 h-4" />
-                    Rejeitar receita
+                    Rejeitar Notificação
                   </button>
+                </div>
               </div>
             ) : (
               <p className="text-xs text-gray-500 text-right">
@@ -1868,7 +2432,45 @@ export function PharmacistDashboard() {
         )}
       </Modal>
 
-      {/* Lightbox: visualização da imagem/PDF da receita em tela cheia */}
+      <Modal
+        isOpen={rejectingPrescription}
+        onClose={() => setRejectingPrescription(false)}
+        title="Rejeitar Notificação"
+        size="md"
+      >
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-gray-700 mb-1">
+              Motivo
+            </label>
+            <textarea
+              value={prescriptionRejectReason}
+              onChange={(e) => setPrescriptionRejectReason(e.target.value)}
+              placeholder="Informe o motivo regulatório ou operacional"
+              className="w-full border rounded-lg p-2 text-sm resize-none h-28 focus:ring-2 focus:ring-red-500 focus:border-transparent"
+            />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button
+              type="button"
+              onClick={() => setRejectingPrescription(false)}
+              className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
+            >
+              Cancelar
+            </button>
+            <button
+              type="button"
+              onClick={rejectSelectedPrescription}
+              disabled={validatingId === selectedReceita?._id}
+              className="px-4 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
+            >
+              Confirmar rejeição
+            </button>
+          </div>
+        </div>
+      </Modal>
+
+      {/* Lightbox: visualização do documento da receita em tela cheia */}
       <Modal
         isOpen={!!imagemAberta}
         onClose={() => setImagemAberta(null)}
@@ -1876,15 +2478,27 @@ export function PharmacistDashboard() {
         size="xl"
       >
         <div className="flex flex-col items-center gap-3">
-          {imagemAberta &&
-          (imagemAberta.toLowerCase().endsWith('.pdf') ||
-            imagemAberta.includes('application/pdf')) ? (
+          {openedPrescriptionIsPdf ? (
             <iframe
               src={imagemAberta}
               className="w-full rounded border"
               style={{ height: '75vh' }}
               title="Receita em PDF"
             />
+          ) : openedPrescriptionIsXml ? (
+            <div className="w-full rounded border bg-white p-8 text-center">
+              <FileText className="w-12 h-12 text-emerald-500 mx-auto mb-3" />
+              <p className="text-sm font-semibold text-gray-800">Receita digital em XML</p>
+              <p className="mt-1 text-xs text-gray-500 break-all">{imagemAberta}</p>
+              <a
+                href={imagemAberta}
+                target="_blank"
+                rel="noreferrer"
+                className="mt-4 inline-flex px-4 py-2 rounded-lg bg-emerald-600 text-white text-xs font-semibold"
+              >
+                Abrir XML
+              </a>
+            </div>
           ) : (
             <>
               <div
@@ -2118,6 +2732,32 @@ const STATUS_BADGE_STYLES = {
   Cancelada: { bg: 'bg-gray-100', text: 'text-gray-500', icon: '🚫' },
 };
 
+function ReadonlySngpcField({ label, value }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <div className="mt-1 px-3 py-2 rounded-lg border border-gray-200 bg-gray-50 text-sm text-gray-800 min-h-[38px]">
+        {value || '—'}
+      </div>
+    </div>
+  );
+}
+
+function SngpcInput({ label, value, placeholder, onChange }) {
+  return (
+    <div>
+      <label className="text-xs text-gray-500">{label}</label>
+      <input
+        type="text"
+        value={value}
+        placeholder={placeholder}
+        onChange={(e) => onChange(e.target.value)}
+        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+      />
+    </div>
+  );
+}
+
 function SupportTicketCard({ ticket, onOpen }) {
   const ultimaMensagem =
     Array.isArray(ticket.mensagens) && ticket.mensagens.length > 0
@@ -2218,24 +2858,6 @@ function ValidationCard({ validation, onOpen }) {
       )}
 
       <div className="actions flex flex-wrap gap-2">
-        {isPendente && (
-          <>
-            <button
-              className="btn-approve"
-              onClick={() => onOpen(validation, 'aprovar')}
-              title="Aprovar receita"
-            >
-              ✅ Aprovar
-            </button>
-            <button
-              className="btn-reject"
-              onClick={() => onOpen(validation, 'rejeitar')}
-              title="Rejeitar receita"
-            >
-              ❌ Rejeitar
-            </button>
-          </>
-        )}
         <button
           className="bg-blue-50 border border-blue-200 text-blue-700 px-3 py-1.5 rounded-lg text-sm font-medium hover:bg-blue-100"
           onClick={() => onOpen(validation, null)}

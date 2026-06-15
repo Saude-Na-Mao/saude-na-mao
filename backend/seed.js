@@ -9,7 +9,7 @@ const DEFAULT_MONGO_URI = "mongodb://localhost:27017/saude-na-mao";
 
 const USERS = [
   // CLIENTES
-  { nome: "Cliente Teste", email: "teste@teste.com", senha: "Teste@123", tipo_usuario: "cliente" },
+  { nome: "Cliente Teste", email: "teste@teste.com", senha: "Teste@123", tipo_usuario: "cliente", cpf: "12345678909", rg: "7654321" },
 
   // FARMACÊUTICO GENÉRICO
   { nome: "Farmacêutico Genérico", email: "farmaceutico@saudenamao.com", senha: "Farm@123", tipo_usuario: "farmaceutico", farmacia: "Drogaria Rosário - Jardim Goiás", crf: "GO-00001" },
@@ -208,6 +208,12 @@ async function seedUsers(opts = {}) {
   for (const userData of USERS) {
     const existing = await User.findOne({ email: userData.email });
     if (existing) {
+      const identityUpdate = {};
+      if (userData.cpf && !existing.cpf) identityUpdate.cpf = userData.cpf;
+      if (userData.rg && !existing.rg) identityUpdate.rg = userData.rg;
+      if (Object.keys(identityUpdate).length > 0) {
+        await User.updateOne({ _id: existing._id }, { $set: identityUpdate });
+      }
       console.log(`  → ${userData.email} já existe (${existing.tipo_usuario})`);
       existentes++;
       continue;
@@ -220,6 +226,8 @@ async function seedUsers(opts = {}) {
       email: userData.email,
       senha: userData.senha,
       tipo_usuario: userData.tipo_usuario,
+      cpf: userData.cpf,
+      rg: userData.rg,
     };
 
     if (userData.tipo_usuario === "farmaceutico") {

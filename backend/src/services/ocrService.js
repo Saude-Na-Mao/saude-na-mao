@@ -127,6 +127,10 @@ async function extractText(filePath, mimeType) {
     return extractTextFromPDF(filePath);
   }
 
+  if (mimeType === "application/xml" || mimeType === "text/xml") {
+    return fs.readFileSync(filePath, "utf8");
+  }
+
   return extractTextFromImage(filePath);
 }
 

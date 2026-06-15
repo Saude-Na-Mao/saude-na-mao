@@ -26,6 +26,7 @@ const PAYMENT_LABELS = {
 
 const STATUS_MAP = {
   aguardando_pagamento: { label: 'Aguardando Pagamento', color: 'bg-yellow-100 text-yellow-800' },
+  pago: { label: 'Pagamento Confirmado', color: 'bg-emerald-100 text-emerald-800' },
   em_processamento: { label: 'Em Processamento', color: 'bg-blue-100 text-blue-800' },
   confirmado: { label: 'Confirmado', color: 'bg-blue-100 text-blue-800' },
   a_caminho: { label: 'A Caminho', color: 'bg-purple-100 text-purple-800' },
@@ -79,7 +80,11 @@ export default function Comprovante() {
 
   const payment = PAYMENT_LABELS[order.metodo_pagamento] || PAYMENT_LABELS.pix
   const PayIcon = payment.icon
-  const status = STATUS_MAP[order.status] || STATUS_MAP.em_processamento
+  const statusKey =
+    order.status === 'aguardando_pagamento' && order.status_pagamento === 'aprovado'
+      ? 'pago'
+      : order.status
+  const status = STATUS_MAP[statusKey] || STATUS_MAP.em_processamento
   const endereco = order.endereco_entrega || {}
   const farmacia = order.id_farmacia
   const farmaciaName = typeof farmacia === 'object' ? farmacia.nome : 'Farmácia'

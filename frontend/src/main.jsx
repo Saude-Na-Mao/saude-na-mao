@@ -17,11 +17,21 @@ try {
   process.exit(1);
 }
 
+function isLocalDevHost(hostname) {
+  return (
+    hostname === "localhost" ||
+    hostname === "127.0.0.1" ||
+    hostname.startsWith("192.168.") ||
+    hostname.startsWith("10.") ||
+    /^172\.(1[6-9]|2\d|3[0-1])\./.test(hostname)
+  );
+}
+
 // Evita bundle antigo do PWA atrapalhar testes locais de login/rotas.
 if (
   typeof window !== "undefined" &&
   "serviceWorker" in navigator &&
-  window.location.hostname === "localhost"
+  isLocalDevHost(window.location.hostname)
 ) {
   navigator.serviceWorker
     .getRegistrations()

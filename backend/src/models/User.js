@@ -31,6 +31,10 @@ const UserSchema = new mongoose.Schema({
     unique: true,
     sparse: true,
   },
+  rg: {
+    type: String,
+    trim: true,
+  },
   tipo_usuario: {
     type: String,
     enum: ["cliente", "entregador", "dono_farmacia", "farmaceutico", "administrador"],

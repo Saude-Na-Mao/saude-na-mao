@@ -36,7 +36,9 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
     md: 'max-w-lg',
     lg: 'max-w-2xl',
     xl: 'max-w-4xl',
+    full: 'max-w-[calc(100vw-1rem)] sm:max-w-[calc(100vw-2rem)] h-[calc(100vh-1rem)] sm:h-[calc(100vh-2rem)]',
   }
+  const isFull = size === 'full'
 
   return createPortal(
     <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
@@ -44,7 +46,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
         className="absolute inset-0 bg-black/50 backdrop-blur-sm animate-fade-in"
         onClick={onClose}
       />
-      <div role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size] || sizeClasses.md} max-h-[90vh] flex flex-col animate-slide-up`}>
+      <div role="dialog" aria-modal="true" aria-labelledby={title ? 'modal-title' : undefined} className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizeClasses[size] || sizeClasses.md} ${isFull ? 'max-h-[calc(100vh-1rem)] sm:max-h-[calc(100vh-2rem)]' : 'max-h-[90vh]'} flex flex-col animate-slide-up`}>
         {title && (
           <div className="flex items-center justify-between px-6 py-4 border-b border-gray-100">
             <h2 id="modal-title" className="text-lg font-bold text-gray-900">{title}</h2>
@@ -58,7 +60,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
             </button>
           </div>
         )}
-        <div className="flex-1 overflow-y-auto px-6 py-4">
+        <div className="flex-1 overflow-y-auto px-6 py-4 min-h-0">
           {children}
         </div>
       </div>

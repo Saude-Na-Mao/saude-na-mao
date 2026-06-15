@@ -58,6 +58,18 @@ exports.register = async (req, res, next) => {
       lgpd_consentimento,
     });
     setRefreshTokenCookie(res, refreshToken);
+    sendEmail({
+      to: email,
+      subject: "Bem-vindo ao Saúde na Mão",
+      text: `Olá, ${nome}. Sua conta no Saúde na Mão foi criada com sucesso.`,
+      html: `
+        <div style="font-family: Arial, sans-serif; color: #111827; line-height: 1.5;">
+          <h2 style="margin: 0 0 12px; color: #059669;">Saúde na Mão</h2>
+          <p>Olá, ${nome}.</p>
+          <p>Sua conta foi criada com sucesso. Agora você pode comprar medicamentos, acompanhar pedidos e receber atualizações pelo app.</p>
+        </div>
+      `,
+    }).catch(() => {});
     return res.status(201).json({
       success: true,
       message: "Cadastro realizado com sucesso",

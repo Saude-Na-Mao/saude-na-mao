@@ -63,6 +63,12 @@ const orderItemSchema = new mongoose.Schema(
       ref: "Prescription",
       default: null,
     },
+    lote_consumido: {
+      batchNumber: { type: String, trim: true },
+      expirationDate: { type: Date },
+      quantity: { type: Number, min: 0 },
+      debitedAt: { type: Date },
+    },
   },
   {
     _id: false,
@@ -168,6 +174,34 @@ const entregadorSchema = new mongoose.Schema(
   },
 );
 
+const sngpcDataSchema = new mongoose.Schema(
+  {
+    buyerName: { type: String, trim: true },
+    buyerCpf: { type: String, trim: true },
+    buyerRg: { type: String, trim: true },
+    buyerPhone: { type: String, trim: true },
+    lgpdConsentAccepted: { type: Boolean, default: false },
+    doctorName: { type: String, trim: true },
+    doctorCrm: { type: String, trim: true },
+    doctorUf: {
+      type: String,
+      trim: true,
+      uppercase: true,
+      maxlength: 2,
+    },
+    digitalSignatureCode: { type: String, trim: true },
+    selectedBatchNumber: { type: String, trim: true },
+    batchExpirationDate: { type: Date },
+    productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
+    productName: { type: String, trim: true },
+    quantity: { type: Number, min: 0 },
+    pharmacistId: { type: mongoose.Schema.Types.ObjectId, ref: "User" },
+    validatedAt: { type: Date },
+    traceabilityCode: { type: String, trim: true },
+  },
+  { _id: false },
+);
+
 const orderSchema = new mongoose.Schema(
   {
     id_usuario: {
@@ -249,6 +283,10 @@ const orderSchema = new mongoose.Schema(
       enum: ["demo_academico", "pendente_validacao", "validado"],
       default: "demo_academico",
     },
+    estoque_baixado: {
+      type: Boolean,
+      default: false,
+    },
     observacoes_conformidade: {
       type: String,
       trim: true,
@@ -271,6 +309,11 @@ const orderSchema = new mongoose.Schema(
     },
     entregue_em: {
       type: Date,
+    },
+    /** Farmacêutico marcou o pedido como separado / pronto para retirada. */
+    separado_em: {
+      type: Date,
+      default: null,
     },
     /** Cliente concluiu avaliação da farmácia neste pedido (Meus pedidos). */
     farmacia_avaliada_em: {
@@ -307,6 +350,10 @@ const orderSchema = new mongoose.Schema(
     farmaceutico_dispensador: {
       type: mongoose.Schema.Types.ObjectId,
       ref: "User",
+      default: null,
+    },
+    sngpcData: {
+      type: sngpcDataSchema,
       default: null,
     },
     numero_nf: {

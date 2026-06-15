@@ -58,6 +58,14 @@ router.post(
 );
 
 router.post(
+  "/:id/arrived",
+  protect,
+  authorize("entregador"),
+  deliveryController.markArrivedAtCustomer,
+  audit("DELIVERY_ARRIVED", "Delivery"),
+);
+
+router.post(
   "/:id/receipt-at-customer",
   protect,
   authorize("entregador"),

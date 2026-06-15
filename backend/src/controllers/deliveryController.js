@@ -223,6 +223,19 @@ async function confirmReceiptAtCustomer(req, res, next) {
   }
 }
 
+async function markArrivedAtCustomer(req, res, next) {
+  try {
+    const { id } = req.params;
+    const entrega = await deliveryService.markArrivedAtCustomer(id, req.user.id);
+    return sendSuccess(res, {
+      message: "Chegada registrada",
+      data: { entrega },
+    });
+  } catch (error) {
+    return next(error);
+  }
+}
+
 module.exports = {
   createDelivery,
   getAvailableDeliveries,
@@ -240,4 +253,5 @@ module.exports = {
   getDriverHistory,
   collectAtPharmacy,
   confirmReceiptAtCustomer,
+  markArrivedAtCustomer,
 };

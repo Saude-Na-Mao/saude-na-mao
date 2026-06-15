@@ -100,12 +100,40 @@ const deliverySchema = new mongoose.Schema(
       type: String,
       trim: true,
     },
-    /** Receita física conferida com o cliente na porta (medicamentos controlados). */
+    /** Liberada pela farmácia (farmacêutico marcou "separado / pronto para retirada"). */
+    pronto_para_retirada: {
+      type: Boolean,
+      default: false,
+    },
+    separado_em: {
+      type: Date,
+      default: null,
+    },
+    /** Código de 8 dígitos que o entregador informa ao farmacêutico para liberar a coleta. */
+    codigo_coleta: {
+      type: String,
+      trim: true,
+    },
+    coleta_confirmada_em: {
+      type: Date,
+      default: null,
+    },
+    /** Entregador marcou que chegou no endereço do cliente (simulação, sem GPS). */
+    entregador_chegou_em: {
+      type: Date,
+      default: null,
+    },
+    /** Passos da rota simulada exibidos ao entregador após liberação da coleta. */
+    rota_simulada: {
+      type: [String],
+      default: [],
+    },
+    /** Código confirmado com o cliente para pedidos que exigem finalização SNGPC na farmácia. */
     receita_fisica_cliente_confirmada_em: {
       type: Date,
       default: null,
     },
-    /** Entregador confirmou código com cliente; aguarda farmacêutico na loja (devolução da receita). */
+    /** Entregador confirmou código com cliente; aguarda farmacêutico finalizar a baixa digital do lote. */
     receita_aguardando_confirmacao_farmacia_em: {
       type: Date,
       default: null,

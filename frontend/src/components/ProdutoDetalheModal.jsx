@@ -22,7 +22,9 @@ import { PharmacistStatus } from "./PharmacistStatus";
 import { resolveMediaUrl } from "../utils/mediaUrl";
 import {
   getDisplayPrice,
+  getAvailableStock,
   isRemoteCheckoutBlocked,
+  isProductUnavailable,
   requiresPrescription,
   shouldHideProductImage,
   showPromo,
@@ -134,13 +136,18 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
   const hideImage = shouldHideProductImage(detalhes);
   const displayPrice = getDisplayPrice(detalhes);
   const hasPromo = showPromo(detalhes);
-  const estoque = detalhes.estoque ?? 0;
-  const isOutOfStock = estoque <= 0;
+  const estoque = getAvailableStock(detalhes);
+  const isOutOfStock = isProductUnavailable(detalhes);
   const imageSrc = resolveMediaUrl(
     detalhes.imagem || detalhes.imagem_url || detalhes.imagens?.[0],
   );
 
   const handleAdicionarCarrinho = () => {
+    if (isOutOfStock) {
+      setErro("Medicamento indisponível nesta farmácia.");
+      return;
+    }
+
     if (remoteBlocked) {
       setErro("Por segurança regulatória, este medicamento exige atendimento da farmácia.");
       return;
@@ -149,6 +156,7 @@ export default function ProdutoDetalheModal({ produto, isOpen, onClose }) {
     addItem({
       ...detalhes,
       preco: displayPrice,
+      estoque,
       receita_obrigatoria: requiresRx,
       quantity: 1,
     });
