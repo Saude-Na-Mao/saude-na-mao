@@ -2520,19 +2520,318 @@ function DriverApp({ user, activeTab, setActiveTab }) {
   )
 }
 
+/* ───────────────────────── Demonstração do app (sem login) ───────────────────────── */
+
+const DEMO_CLIENT_USER = { nome: 'Visitante Demonstração', email: 'demo.cliente@saudenamao.com', telefone: '(62) 99999-0000' }
+const DEMO_DRIVER_USER = { nome: 'Entregador Demonstração', email: 'demo.entregador@saudenamao.com', telefone: '(62) 98888-0000' }
+
+const DEMO_PRODUCTS = [
+  { nome: 'Dipirona Sódica 1g (10 cp)', farmacia: 'Drogasil · Setor Bueno', preco: 12.9, tarja: 'sem_receita' },
+  { nome: 'Vitamina C 1g (10 cp efervescente)', farmacia: 'Pague Menos · Bueno', preco: 24.5, tarja: 'sem_receita' },
+  { nome: 'Amoxicilina 500mg (21 cp)', farmacia: 'Droga Raia · Oeste', preco: 38.7, tarja: 'antimicrobiano' },
+  { nome: 'Protetor Solar FPS 50', farmacia: 'Santa Marta · Jd. América', preco: 49.9, tarja: 'sem_receita' },
+]
+
+const DEMO_PHARMACIES = [
+  { nome: 'Drogasil · Setor Bueno', bairro: 'Setor Bueno', nota: 4.8 },
+  { nome: 'Pague Menos · Bueno', bairro: 'Setor Bueno', nota: 4.6 },
+  { nome: 'Droga Raia · Oeste', bairro: 'Setor Oeste', nota: 4.7 },
+]
+
+const DEMO_CLIENT_ORDERS = [
+  { id: 'A1B2C3D4', date: '12/06/2026', total: 78.4, pharmacy: 'Drogasil · Setor Bueno', items: ['Dipirona 1g · 2un', 'Vitamina C · 1un'], rating: 5 },
+  { id: 'E5F6G7H8', date: '03/06/2026', total: 42.9, pharmacy: 'Pague Menos · Bueno', items: ['Amoxicilina 500mg · 1un'], rating: 4 },
+  { id: 'I9J0K1L2', date: '28/05/2026', total: 120.0, pharmacy: 'Droga Raia · Oeste', items: ['Losartana 50mg · 2un', 'Protetor solar · 1un'], rating: 5 },
+]
+
+const DEMO_DRIVER_ACTIVE = {
+  _id: 'DLV-ATV-7781', id_pedido: 'A1B2C3D4', status: 'em_transito',
+  endereco_coleta: { nome: 'Drogasil · Setor Bueno' },
+  endereco_entrega: { bairro: 'Setor Oeste', cidade: 'Goiânia' },
+}
+const DEMO_DRIVER_AVAILABLE = [
+  { _id: 'DLV-AV-8801', id_pedido: 'M3N4O5P6', status: 'disponivel', endereco_coleta: { nome: 'Pague Menos · Bueno' }, endereco_entrega: { bairro: 'Jardim América', cidade: 'Goiânia' }, ganho: 8.5 },
+  { _id: 'DLV-AV-8802', id_pedido: 'Q7R8S9T0', status: 'disponivel', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Sul', cidade: 'Goiânia' }, ganho: 11.2 },
+]
+const DEMO_DRIVER_HISTORY = [
+  { _id: 'DLV-H-1201', id_pedido: 'Z9Y8X7W6', status: 'entregue', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Bueno', cidade: 'Goiânia' }, rating: 5, ganho: 9.4 },
+  { _id: 'DLV-H-1202', id_pedido: 'V5U4T3S2', status: 'entregue', endereco_coleta: { nome: 'Drogasil · Setor Bueno' }, endereco_entrega: { bairro: 'Setor Marista', cidade: 'Goiânia' }, rating: 4, ganho: 7.8 },
+]
+const DEMO_DRIVER_STATS = { ganhos: 64.8, entregas: 7, avaliacao: 4.9 }
+
+function StarRow({ value = 0 }) {
+  return (
+    <div className="flex items-center gap-0.5">
+      {[1, 2, 3, 4, 5].map((n) => (
+        <Star key={n} className={`h-4 w-4 ${n <= value ? 'fill-amber-400 text-amber-400' : 'text-gray-300'}`} />
+      ))}
+    </div>
+  )
+}
+
+function DemoBanner({ onExit }) {
+  return (
+    <div className="sticky top-0 z-40 flex items-center justify-between gap-2 bg-amber-500 px-4 py-2 text-xs font-bold text-white">
+      <span className="flex items-center gap-1.5">
+        <ShieldCheck className="h-4 w-4" /> Demonstração — dados de exemplo
+      </span>
+      <button type="button" onClick={onExit} className="rounded-full bg-white/20 px-3 py-1 font-bold">
+        Sair
+      </button>
+    </div>
+  )
+}
+
+function DemoClientApp({ activeTab, setActiveTab, onExit }) {
+  const [toast, setToast] = useState('')
+  const note = () => setToast('Crie sua conta para comprar de verdade. Aqui é só uma demonstração.')
+
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
+      <DemoBanner onExit={onExit} />
+      <MobileAppHeader user={DEMO_CLIENT_USER} role="cliente" cartCount={2} onCart={note} />
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 py-4" style={{ paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' }}>
+        {toast && (
+          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-3 text-left text-sm font-bold text-white">
+            {toast}
+          </button>
+        )}
+
+        {(activeTab === 'home' || activeTab === 'buscar') && (
+          <>
+            <SearchBox value="" onChange={() => {}} onSubmit={(e) => { e.preventDefault(); note() }} />
+            <p className="mt-1 text-sm font-extrabold text-gray-950">Mais comprados</p>
+            {DEMO_PRODUCTS.map((p) => (
+              <div key={p.nome} className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                <div className="flex gap-3">
+                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gray-100">
+                    <PackageSearch className="h-7 w-7 text-primary" />
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <h3 className="text-sm font-bold text-gray-950">{p.nome}</h3>
+                    <p className="text-xs text-gray-500">{p.farmacia}</p>
+                    <div className="mt-1 flex items-center justify-between">
+                      <span className="text-base font-extrabold text-gray-950">{money(p.preco)}</span>
+                      <button type="button" onClick={note} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white">
+                        <Plus className="h-5 w-5" />
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {activeTab === 'farmacias' && (
+          <>
+            <p className="text-sm font-extrabold text-gray-950">Farmácias perto de você</p>
+            {DEMO_PHARMACIES.map((f) => (
+              <div key={f.nome} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
+                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
+                  <Store className="h-5 w-5 text-primary" />
+                </div>
+                <div className="flex-1">
+                  <p className="text-sm font-bold text-gray-950">{f.nome}</p>
+                  <p className="text-xs text-gray-500">{f.bairro}</p>
+                </div>
+                <span className="flex items-center gap-1 text-sm font-bold text-amber-500">
+                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {f.nota}
+                </span>
+              </div>
+            ))}
+          </>
+        )}
+
+        {activeTab === 'pedidos' && (
+          <>
+            <p className="text-sm font-extrabold text-gray-950">Suas compras anteriores</p>
+            {DEMO_CLIENT_ORDERS.map((o) => (
+              <div key={o.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-extrabold text-gray-950">Pedido #{o.id}</p>
+                  <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
+                </div>
+                <p className="mt-1 text-xs text-gray-500">{o.date} · {o.pharmacy}</p>
+                <div className="mt-2 flex flex-wrap gap-1">
+                  {o.items.map((it) => (
+                    <span key={it} className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{it}</span>
+                  ))}
+                </div>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-sm font-extrabold text-primary">{money(o.total)}</span>
+                  <div className="flex items-center gap-2">
+                    <span className="text-[11px] font-bold text-gray-400">Sua avaliação</span>
+                    <StarRow value={o.rating} />
+                  </div>
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {activeTab === 'conta' && (
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-base font-extrabold text-gray-950">{DEMO_CLIENT_USER.nome}</p>
+              <p className="mt-1 text-sm text-gray-500">{DEMO_CLIENT_USER.email}</p>
+              <p className="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Conta demonstração</p>
+            </div>
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <p className="mb-2 text-sm font-extrabold text-gray-950">Avaliações que você deu</p>
+              {DEMO_CLIENT_ORDERS.map((o) => (
+                <div key={o.id} className="flex items-center justify-between border-b border-gray-50 py-2 last:border-0">
+                  <span className="text-xs text-gray-500">#{o.id}</span>
+                  <StarRow value={o.rating} />
+                </div>
+              ))}
+            </div>
+            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">
+              <LogOut className="h-4 w-4" /> Sair da demonstração
+            </button>
+          </div>
+        )}
+      </main>
+      <BottomNav tabs={CLIENT_TABS} activeTab={activeTab} onChange={setActiveTab} />
+    </div>
+  )
+}
+
+function DemoDriverApp({ activeTab, setActiveTab, onExit }) {
+  const [toast, setToast] = useState('')
+  const note = () => setToast('Crie sua conta de entregador para aceitar corridas reais. Aqui é só uma demonstração.')
+
+  return (
+    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
+      <DemoBanner onExit={onExit} />
+      <MobileAppHeader user={DEMO_DRIVER_USER} role="entregador" />
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 py-4" style={{ paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' }}>
+        {toast && (
+          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-3 text-left text-sm font-bold text-white">
+            {toast}
+          </button>
+        )}
+
+        {(activeTab === 'home' || activeTab === 'entregas') && (
+          <>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Hoje</p>
+                <p className="text-lg font-extrabold text-emerald-700">{money(DEMO_DRIVER_STATS.ganhos)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Entregas</p>
+                <p className="text-lg font-extrabold text-gray-950">{DEMO_DRIVER_STATS.entregas}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Nota</p>
+                <p className="text-lg font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
+              </div>
+            </div>
+
+            <p className="mt-1 text-sm font-extrabold text-gray-950">Entrega em andamento</p>
+            <DeliveryCard
+              delivery={DEMO_DRIVER_ACTIVE}
+              actionLabel="Cheguei / finalizar"
+              onAction={note}
+            />
+
+            <p className="mt-1 text-sm font-extrabold text-gray-950">Disponíveis perto de você</p>
+            {DEMO_DRIVER_AVAILABLE.map((d) => (
+              <DeliveryCard key={d._id} delivery={d} actionLabel={`Aceitar · ${money(d.ganho)}`} onAction={note} />
+            ))}
+          </>
+        )}
+
+        {activeTab === 'historico' && (
+          <>
+            <p className="text-sm font-extrabold text-gray-950">Entregas concluídas</p>
+            {DEMO_DRIVER_HISTORY.map((d) => (
+              <div key={d._id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-extrabold text-gray-950">Entrega #{String(d.id_pedido).slice(-6)}</p>
+                  <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
+                </div>
+                <p className="mt-1 flex items-center gap-1 text-xs text-gray-500"><Store className="h-3.5 w-3.5" />{d.endereco_coleta.nome}</p>
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500"><MapPin className="h-3.5 w-3.5" />{d.endereco_entrega.bairro}</p>
+                <div className="mt-3 flex items-center justify-between">
+                  <span className="text-sm font-extrabold text-emerald-700">{money(d.ganho)}</span>
+                  <StarRow value={d.rating} />
+                </div>
+              </div>
+            ))}
+          </>
+        )}
+
+        {activeTab === 'conta' && (
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-white p-5 shadow-sm">
+              <p className="text-base font-extrabold text-gray-950">{DEMO_DRIVER_USER.nome}</p>
+              <p className="mt-1 text-sm text-gray-500">{DEMO_DRIVER_USER.email}</p>
+              <p className="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Conta demonstração</p>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Ganhos no mês</p>
+                <p className="text-lg font-extrabold text-emerald-700">{money(984.5)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Avaliação média</p>
+                <p className="text-lg font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
+              </div>
+            </div>
+            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">
+              <LogOut className="h-4 w-4" /> Sair da demonstração
+            </button>
+          </div>
+        )}
+      </main>
+      <BottomNav tabs={DRIVER_TABS} activeTab={activeTab} onChange={setActiveTab} />
+    </div>
+  )
+}
+
 export default function MobileApp() {
   const [searchParams, setSearchParams] = useSearchParams()
   const { user, isAuthenticated } = useAuthStore()
   const authenticated = isAuthenticated()
   const role = user?.tipo_usuario || user?.role
   const tab = searchParams.get('tab') || 'home'
+  const demoRole = searchParams.get('demo')
 
   useEffect(() => {
+    // Trava o app (sem acesso ao site) apenas no uso real; na demonstração o
+    // visitante pode voltar ao site pelo botão "Sair".
+    if (demoRole) return
     window.sessionStorage?.setItem('ssm_mobile_app_lock', '1')
-  }, [])
+  }, [demoRole])
 
   function setActiveTab(nextTab) {
-    setSearchParams(nextTab === 'home' ? {} : { tab: nextTab })
+    setSearchParams((current) => {
+      const next = new URLSearchParams(current)
+      if (nextTab === 'home') next.delete('tab')
+      else next.set('tab', nextTab)
+      return next
+    })
+  }
+
+  function exitDemo() {
+    try {
+      window.sessionStorage?.removeItem('ssm_mobile_app_lock')
+    } catch {
+      /* ignore */
+    }
+    window.location.href = '/'
+  }
+
+  // Demonstração pública (sem login) acessível por /app?demo=cliente|entregador
+  if (demoRole === 'entregador') {
+    const validTab = DRIVER_TABS.some((item) => item.id === tab) ? tab : 'home'
+    return <DemoDriverApp activeTab={validTab} setActiveTab={setActiveTab} onExit={exitDemo} />
+  }
+  if (demoRole === 'cliente') {
+    const validTab = CLIENT_TABS.some((item) => item.id === tab) ? tab : 'home'
+    return <DemoClientApp activeTab={validTab} setActiveTab={setActiveTab} onExit={exitDemo} />
   }
 
   if (!authenticated) {
