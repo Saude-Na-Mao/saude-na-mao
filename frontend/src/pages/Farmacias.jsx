@@ -162,10 +162,29 @@ function PharmacyCard({ pharmacy }) {
       to={`/farmacia/${pharmacy._id}`}
       className="bg-white rounded-2xl shadow-sm border border-gray-100 overflow-hidden hover:shadow-lg hover:-translate-y-1 transition-all duration-300 group"
     >
-      <div className={`h-32 bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center relative`}>
-        <div className="w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
-          <span className="text-3xl font-bold text-white">{initial}</span>
-        </div>
+      <div className={`h-32 bg-gradient-to-br ${colors[colorIndex]} flex items-center justify-center relative overflow-hidden`}>
+        {pharmacy.foto && (
+          <img
+            src={pharmacy.foto}
+            alt={pharmacy.nome}
+            loading="lazy"
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+        )}
+        {pharmacy.logo ? (
+          <img
+            src={pharmacy.logo}
+            alt={pharmacy.nome}
+            loading="lazy"
+            className="relative w-16 h-16 rounded-2xl bg-white object-contain p-1.5 shadow-md"
+            onError={(e) => { e.currentTarget.style.display = 'none' }}
+          />
+        ) : (
+          <div className="relative w-16 h-16 bg-white/20 backdrop-blur-sm rounded-2xl flex items-center justify-center">
+            <span className="text-3xl font-bold text-white">{initial}</span>
+          </div>
+        )}
         {displayRating >= 4.5 && (
           <div className="absolute top-3 right-3 bg-yellow-400 text-yellow-900 text-xs font-bold px-2 py-1 rounded-lg flex items-center gap-1">
             <Star className="w-3 h-3 fill-current" /> Top
