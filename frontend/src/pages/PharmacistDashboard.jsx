@@ -2295,6 +2295,23 @@ export function PharmacistDashboard() {
                     </div>
 
                     <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">
+                        Paciente {selectedReceita.receita_de_terceiro ? '(receita de terceiro)' : '(mesmo do comprador)'}
+                      </p>
+                      {selectedReceita.receita_de_terceiro ? (
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                          <ReadonlySngpcField label="Nome completo" value={selectedReceita.paciente?.nome || '—'} />
+                          <ReadonlySngpcField label="CPF" value={selectedReceita.paciente?.cpf || '—'} />
+                          <ReadonlySngpcField label="RG" value={selectedReceita.paciente?.rg || '—'} />
+                        </div>
+                      ) : (
+                        <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                          O comprador é o próprio paciente.
+                        </p>
+                      )}
+                    </div>
+
+                    <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor</p>
                       <div className="space-y-2">
                         <SngpcInput

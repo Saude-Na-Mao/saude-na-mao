@@ -19,12 +19,27 @@ async function uploadPrescription(req, res, next) {
         ? "chat_ao_vivo"
         : "assincrono";
 
+    const paraTerceiro =
+      req.body?.para_terceiro === true ||
+      req.body?.para_terceiro === "true" ||
+      req.body?.para_terceiro === "1";
+
     const receita = await prescriptionService.uploadPrescription(
       req.user.id,
       req.file,
       pharmacyId,
       modoValidacao,
       productId,
+      {
+        paraTerceiro,
+        paciente: paraTerceiro
+          ? {
+              nome: req.body?.paciente_nome || "",
+              cpf: req.body?.paciente_cpf || "",
+              rg: req.body?.paciente_rg || "",
+            }
+          : null,
+      },
     );
 
     return res.status(201).json({

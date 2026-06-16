@@ -958,7 +958,8 @@ async function getPharmacyOrders(
     })
     .populate({
       path: "itens.id_receita",
-      select: "url_arquivo nome_arquivo tipo_arquivo hash_arquivo dados_ocr status",
+      select:
+        "url_arquivo nome_arquivo tipo_arquivo hash_arquivo dados_ocr status receita_de_terceiro paciente",
     });
 
   return {
@@ -1292,12 +1293,38 @@ async function validateSngpcDispensation(
   order.markModified("itens");
 
   const buyer = order.id_usuario;
+
+  // Modalidade da receita: própria (paciente = comprador) ou de terceiro
+  // (paciente informado pelo cliente). O SNGPC varia conforme a modalidade.
+  let prescricaoVinculada = null;
+  if (targetItem.id_receita) {
+    prescricaoVinculada = await Prescription.findById(targetItem.id_receita)
+      .select("receita_de_terceiro paciente")
+      .lean();
+  }
+  const deTerceiro = Boolean(
+    prescricaoVinculada?.receita_de_terceiro || payload.receita_de_terceiro,
+  );
+  const patientName = deTerceiro
+    ? prescricaoVinculada?.paciente?.nome || payload.patientName || ""
+    : buyer?.nome || "";
+  const patientCpf = deTerceiro
+    ? prescricaoVinculada?.paciente?.cpf || payload.patientCpf || ""
+    : buyer?.cpf || "";
+  const patientRg = deTerceiro
+    ? prescricaoVinculada?.paciente?.rg || payload.patientRg || ""
+    : buyer?.rg || payload.buyerRg || "";
+
   order.sngpcData = {
     buyerName: buyer?.nome || "",
     buyerCpf: buyer?.cpf || "",
     buyerRg: buyer?.rg || payload.buyerRg || "",
     buyerPhone: buyer?.telefone || payload.buyerPhone || "",
     lgpdConsentAccepted: Boolean(buyer?.lgpd_consentimento?.aceito),
+    receita_de_terceiro: deTerceiro,
+    patientName,
+    patientCpf,
+    patientRg,
     doctorName,
     doctorCrm,
     doctorUf,

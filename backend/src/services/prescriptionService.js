@@ -751,6 +751,7 @@ async function uploadPrescription(
   pharmacyId = null,
   modoValidacao = "assincrono",
   productId = null,
+  { paraTerceiro = false, paciente = null } = {},
 ) {
   const filePath = path.normalize(file.path);
   const urlPath = filePath.split(path.sep).join("/");
@@ -807,7 +808,16 @@ async function uploadPrescription(
       modoValidacao === "chat_ao_vivo" ? "chat_ao_vivo" : "assincrono",
     disponivel_para_novo_pedido: true,
     consumida: false,
+    receita_de_terceiro: Boolean(paraTerceiro),
   };
+
+  if (paraTerceiro && paciente) {
+    dadosCriacao.paciente = {
+      nome: String(paciente.nome || "").trim(),
+      cpf: String(paciente.cpf || "").replace(/\D/g, ""),
+      rg: String(paciente.rg || "").trim(),
+    };
+  }
 
   if (pharmacyId) {
     dadosCriacao.id_farmacia = pharmacyId;

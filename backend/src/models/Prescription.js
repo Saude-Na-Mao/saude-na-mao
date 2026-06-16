@@ -114,6 +114,21 @@ const prescriptionSchema = new mongoose.Schema(
       type: Boolean,
       default: false,
     },
+    /**
+     * Modalidade da compra de medicamento controlado:
+     * false = receita do próprio comprador (paciente = comprador);
+     * true  = receita de outra pessoa (comprador ≠ paciente).
+     */
+    receita_de_terceiro: {
+      type: Boolean,
+      default: false,
+    },
+    /** Dados do paciente quando a receita é de outra pessoa (modalidade terceiro). */
+    paciente: {
+      nome: { type: String, trim: true },
+      cpf: { type: String, trim: true },
+      rg: { type: String, trim: true },
+    },
     /** Histórico de vínculos com pedidos (auditoria); não remove registros ao cancelar */
     pedidos_vinculados: {
       type: [pedidoVinculoSchema],

@@ -181,6 +181,12 @@ const sngpcDataSchema = new mongoose.Schema(
     buyerRg: { type: String, trim: true },
     buyerPhone: { type: String, trim: true },
     lgpdConsentAccepted: { type: Boolean, default: false },
+    // Paciente da receita. Na modalidade "receita própria" é igual ao comprador;
+    // na "receita de terceiro" guarda os dados do paciente informados pelo cliente.
+    receita_de_terceiro: { type: Boolean, default: false },
+    patientName: { type: String, trim: true },
+    patientCpf: { type: String, trim: true },
+    patientRg: { type: String, trim: true },
     doctorName: { type: String, trim: true },
     doctorCrm: { type: String, trim: true },
     doctorUf: {

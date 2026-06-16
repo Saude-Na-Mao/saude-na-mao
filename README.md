@@ -425,6 +425,10 @@ node src/scripts/seedDemoUsers.js          # Cria 3 clientes + 3 entregadores de
 
 ## Conformidade Regulatória (Escopo TCC)
 
+- **SNCR (Sistema Nacional de Controle de Receituários)**: o app é desenvolvido em conformidade com o SNCR para escrituração/controle de receituários de medicamentos sujeitos a controle especial.
+- **Tipos atendidos**: venda livre (MIP); tarja vermelha comum; tarja vermelha antimicrobianos; tarja vermelha de controle especial (Lista C1); Notificação de Receita "A" (amarela); Notificação de Receita "B/B2" (azul).
+- **Fora do escopo**: Notificação de Receita Especial — **retinoides sistêmicos e talidomida** (alto risco teratogênico, termos de consentimento e critérios rígidos). Apresentado à banca como não contemplado pelo app.
+- **Modalidade de receita (SNGPC)**: o cliente pode comprar com **receita própria** (paciente = comprador, dados auto-preenchidos) ou com **receita de outra pessoa** (informa os dados do paciente; o SNGPC registra comprador *e* paciente). O preenchimento do SNGPC varia conforme a modalidade.
 - **ANVISA RDC 344/98 / Portaria 344**: retenção de receita obrigatória para tarja preta e controlados A; prazo de validade de receita (30 dias / 10 dias antimicrobianos) validado no model `Prescription`.
 - **SNGPC simulado**: preenchimento do formulário pelo farmacêutico, débito de lote por FEFO, geração de log XML de dispensação em `prescriptionService.js`.
 - **LGPD**: consentimento capturado nos Termos de Uso no cadastro; dados sensíveis (CPF, RG) criptografados via `lgpdEncryptionService`; vinculação ao pedido apenas com base no consentimento existente.

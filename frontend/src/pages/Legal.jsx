@@ -130,8 +130,20 @@ Medidas técnicas adotadas pela plataforma:
 ## 9. Conformidade Regulatória
 - **LGPD (Lei 13.709/2018)**: consentimento informado, finalidade específica, minimização de dados e direitos do titular.
 - **ANVISA RDC 344/98 e SNGPC**: retenção e validação de receita para controlados, débito de lote rastreável e prazo de validade da receita por tipo de medicamento.
+- **SNCR (Sistema Nacional de Controle de Receituários)**: a plataforma foi desenvolvida em conformidade com o SNCR para a escrituração e o controle de receituários de medicamentos sujeitos a controle especial.
 
-## 10. Alterações
+## 10. Tipos de medicamento atendidos
+O Saúde na Mão contempla:
+- Medicamentos de **venda livre** (MIP, sem receita);
+- **Tarja vermelha comum** (receita simples, sem retenção);
+- **Tarja vermelha antimicrobianos** (retenção da receita);
+- **Tarja vermelha de controle especial — Lista C1** (receita de controle especial);
+- **Notificação de Receita "A" (amarela)** — entorpecentes (A1/A2/A3);
+- **Notificação de Receita "B/B2" (azul)** — psicotrópicos.
+
+**Não contemplados:** medicamentos sujeitos à **Notificação de Receita Especial (retinoides sistêmicos e talidomida)**. Pelo alto risco de malformação fetal, esses medicamentos exigem termos de consentimento assinados e critérios extremamente rígidos, e por isso ficam fora do escopo da plataforma.
+
+## 11. Alterações
 Esta política pode ser atualizada conforme evolução do serviço.
 `.trim()
 

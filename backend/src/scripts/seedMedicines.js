@@ -272,53 +272,10 @@ const interacoes_reais = [
 ];
 
 // CONTRAINDICAÇÕES POR POPULAÇÃO
+// Obs.: retinoides sistêmicos (ex.: isotretinoína) e talidomida — sujeitos a
+// Notificação de Receita Especial — estão fora do escopo do Saúde na Mão e por
+// isso não constam no catálogo nem nesta base de referência.
 const contradicoes_reais = [
-  {
-    medicamento: {
-      nome: "Isotretinoína 20mg",
-      codigoANVISA: "9901234",
-      principioAtivo: "Isotretinoína"
-    },
-    condicoes: [
-      {
-        nome: "Gravidez",
-        risco: "CONTRAINDICADA",
-        motivo: "Causa malformações graves no feto. Teratogênico extremamente potente"
-      },
-      {
-        nome: "Amamentação",
-        risco: "GRAVE",
-        motivo: "Passa para o leite materno. Risco para recém-nascido"
-      }
-    ],
-    restricoes_populacao: [
-      {
-        categoria: "GESTANTES",
-        restricao: "⛔ ABSOLUTAMENTE CONTRAINDICADO - Causa malformações graves",
-        alternativa: "Antibióticos tópicos, limpeza adequada"
-      },
-      {
-        categoria: "MENORES_18",
-        restricao: "Requer consentimento informado e acompanhamento rigoroso",
-        alternativa: "Outros tratamentos para acne"
-      }
-    ],
-    alergias_cruzadas: [
-      {
-        principioAtivo: "Vitamina A",
-        motivo: "Ambos aumentam toxicidade - Isotretinoína é derivado de vitamina A"
-      }
-    ],
-    recomendacoes_dosagem: {
-      maiorIdade: true,
-      idadeMinima: 18,
-      idadeMaxima: null,
-      doserAjustar: true,
-      motivo: "Menores de 18 requerem protocolo especial"
-    },
-    fonte: "ANVISA"
-  },
-
   {
     medicamento: {
       nome: "Misoprostol 200mcg",

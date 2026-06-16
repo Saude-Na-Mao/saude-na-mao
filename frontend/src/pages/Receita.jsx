@@ -68,7 +68,18 @@ export default function Receita() {
   const [fileByItem, setFileByItem] = useState({})
   const [uploadingItem, setUploadingItem] = useState(null)
   const [reenviandoItem, setReenviandoItem] = useState(null)
+  // Modalidade por item: 'mim' (receita própria) | 'terceiro' (receita de outra pessoa)
+  const [modoReceitaPorItem, setModoReceitaPorItem] = useState({})
+  const [pacientePorItem, setPacientePorItem] = useState({})
   const fileInputs = useRef({})
+
+  const setModoReceita = (itemId, modo) =>
+    setModoReceitaPorItem((prev) => ({ ...prev, [itemId]: modo }))
+  const setPacienteCampo = (itemId, campo, valor) =>
+    setPacientePorItem((prev) => ({
+      ...prev,
+      [itemId]: { ...(prev[itemId] || {}), [campo]: valor },
+    }))
 
   const itensReceitaPedido = items.filter((i) => itemExigeReceita(i))
   const pharmacyId = items[0]?.id_farmacia || null
@@ -186,10 +197,21 @@ export default function Receita() {
   const handleUpload = async (itemId) => {
     const file = fileByItem[itemId]
     if (!file) return
+    const paraTerceiro = (modoReceitaPorItem[itemId] || 'mim') === 'terceiro'
+    const paciente = pacientePorItem[itemId] || {}
+    if (paraTerceiro) {
+      if (!String(paciente.nome || '').trim() || !String(paciente.cpf || '').trim()) {
+        setError('Informe pelo menos o nome e o CPF do paciente da receita.')
+        return
+      }
+    }
     try {
       setUploadingItem(itemId)
       setError('')
-      const res = await prescriptionService.upload(file, pharmacyId, mode, itemId)
+      const res = await prescriptionService.upload(file, pharmacyId, mode, itemId, {
+        paraTerceiro,
+        paciente,
+      })
       const dados = res?.data?.data?.receita || res?.data?.data || {}
       setPrescByItem((prev) => ({
         ...prev,
@@ -469,6 +491,63 @@ export default function Receita() {
                 </div>
               ) : (
                 <div className="space-y-3">
+                  {/* Modalidade da receita: própria ou de outra pessoa (paciente) */}
+                  <div>
+                    <p className="text-xs font-semibold text-gray-600 mb-1.5">Para quem é a receita?</p>
+                    <div className="grid grid-cols-2 gap-2">
+                      {[
+                        { key: 'mim', label: 'Para mim' },
+                        { key: 'terceiro', label: 'Para outra pessoa' },
+                      ].map((opt) => {
+                        const ativo = (modoReceitaPorItem[item.id] || 'mim') === opt.key
+                        return (
+                          <button
+                            key={opt.key}
+                            type="button"
+                            onClick={() => setModoReceita(item.id, opt.key)}
+                            className={`rounded-lg border px-3 py-2 text-sm font-medium transition ${
+                              ativo ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-600 hover:border-gray-300'
+                            }`}
+                          >
+                            {opt.label}
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+
+                  {(modoReceitaPorItem[item.id] || 'mim') === 'terceiro' && (
+                    <div className="rounded-xl border border-amber-200 bg-amber-50 p-3 space-y-2">
+                      <p className="text-xs font-semibold text-amber-800">
+                        Dados do paciente (vão para o registro SNGPC junto com os seus dados de comprador)
+                      </p>
+                      <input
+                        type="text"
+                        placeholder="Nome completo do paciente"
+                        value={pacientePorItem[item.id]?.nome || ''}
+                        onChange={(e) => setPacienteCampo(item.id, 'nome', e.target.value)}
+                        className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                      />
+                      <div className="grid grid-cols-2 gap-2">
+                        <input
+                          type="text"
+                          inputMode="numeric"
+                          placeholder="CPF do paciente"
+                          value={pacientePorItem[item.id]?.cpf || ''}
+                          onChange={(e) => setPacienteCampo(item.id, 'cpf', e.target.value)}
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        />
+                        <input
+                          type="text"
+                          placeholder="RG do paciente"
+                          value={pacientePorItem[item.id]?.rg || ''}
+                          onChange={(e) => setPacienteCampo(item.id, 'rg', e.target.value)}
+                          className="w-full px-3 py-2 border border-amber-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+                        />
+                      </div>
+                    </div>
+                  )}
+
                   {!file ? (
                     <div
                       onClick={() => fileInputs.current[item.id]?.click()}

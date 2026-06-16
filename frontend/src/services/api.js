@@ -274,7 +274,7 @@ export const paymentService = {
 }
 
 export const prescriptionService = {
-  upload: (file, pharmacyId = null, modoValidacao = 'assincrono', productId = null) => {
+  upload: (file, pharmacyId = null, modoValidacao = 'assincrono', productId = null, opts = {}) => {
     const formData = new FormData()
     formData.append('receita', file)
     if (pharmacyId) {
@@ -285,6 +285,12 @@ export const prescriptionService = {
     }
     if (modoValidacao) {
       formData.append('modo_validacao', modoValidacao)
+    }
+    if (opts.paraTerceiro) {
+      formData.append('para_terceiro', 'true')
+      formData.append('paciente_nome', opts.paciente?.nome || '')
+      formData.append('paciente_cpf', opts.paciente?.cpf || '')
+      formData.append('paciente_rg', opts.paciente?.rg || '')
     }
     return api.post('/receitas/upload', formData, {
       headers: { 'Content-Type': 'multipart/form-data' }
