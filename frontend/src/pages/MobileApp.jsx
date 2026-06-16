@@ -19,6 +19,7 @@ import {
   Plus,
   Search,
   ShieldCheck,
+  Smartphone,
   ShoppingBag,
   ShoppingCart,
   Star,
@@ -41,7 +42,7 @@ import {
   reviewService,
 } from '../services/api'
 import { getGoogleClientId } from '../config/env'
-import { SELF_REGISTER_TYPES } from '../constants'
+import LgpdConsentModal, { LGPD_CONTRACT_FLAG } from '../components/LgpdConsentModal'
 import AccessibilityMenu from '../components/AccessibilityMenu'
 import DarkModeToggle from '../components/DarkModeToggle'
 import { useAuthStore, useCartStore, usePrescriptionStore } from '../stores/store'
@@ -322,7 +323,7 @@ function MobileAppHeader({ user, role, onCart, cartCount }) {
   )
 }
 
-function AuthScreen({ onSuccess }) {
+function AuthScreen({ onSuccess, onDemo }) {
   const { setUser, setToken } = useAuthStore()
   const [mode, setMode] = useState('login')
   const [loginMode, setLoginMode] = useState('password')
@@ -333,7 +334,7 @@ function AuthScreen({ onSuccess }) {
   const [otpEmail, setOtpEmail] = useState('')
   const [otpCode, setOtpCode] = useState('')
   const [otpSent, setOtpSent] = useState(false)
-  const [accountType, setAccountType] = useState('cliente')
+  // No celular, o cadastro/login real é exclusivo de CLIENTE.
   const [termsAccepted, setTermsAccepted] = useState(false)
   const [register, setRegister] = useState({
     nome: '',
@@ -342,12 +343,9 @@ function AuthScreen({ onSuccess }) {
     cpf: '',
     senha: '',
     confirmaSenha: '',
-    tipo_veiculo: '',
-    cnh: '',
   })
   const googleButtonRef = useRef(null)
   const googleClientId = getGoogleClientId()
-  const mobileAccountTypes = SELF_REGISTER_TYPES.filter((item) => ['cliente', 'entregador'].includes(item.value))
 
   const finish = useCallback(
     async (response) => {
@@ -440,11 +438,6 @@ function AuthScreen({ onSuccess }) {
 
     if (register.senha !== register.confirmaSenha) return 'As senhas não coincidem'
 
-    if (accountType === 'entregador') {
-      if (!register.tipo_veiculo) return 'Tipo de veículo é obrigatório'
-      if (!register.cnh.trim()) return 'CNH é obrigatória'
-    }
-
     if (!termsAccepted) return 'Aceite os termos de uso e a política de privacidade'
     return null
   }
@@ -511,23 +504,23 @@ function AuthScreen({ onSuccess }) {
     try {
       setLoading(true)
       setError('')
+      // Mesmo processo do site: apresenta o contrato LGPD completo logo após criar a conta.
+      try {
+        window.sessionStorage?.setItem(LGPD_CONTRACT_FLAG, '1')
+      } catch {
+        /* ignore */
+      }
       await finish(await authService.register({
         nome: register.nome,
         email: register.email,
         telefone: register.telefone,
         cpf: register.cpf.replace(/\D/g, ''),
         senha: register.senha,
-        tipo_usuario: accountType,
-        dados_entregador: accountType === 'entregador'
-          ? {
-              tipo_veiculo: register.tipo_veiculo,
-              cnh: register.cnh,
-            }
-          : undefined,
+        tipo_usuario: 'cliente',
         lgpd_consentimento: {
           aceito: true,
           data_aceite: new Date().toISOString(),
-          versao_termo: '1.0',
+          versao_termo: '2.0',
         },
       }))
     } catch (err) {
@@ -665,23 +658,9 @@ function AuthScreen({ onSuccess }) {
             </>
           ) : (
             <form onSubmit={handleRegister} className="space-y-3">
-              <div className="grid grid-cols-2 gap-2">
-                {mobileAccountTypes.map((item) => {
-                  const selected = accountType === item.value
-                  const Icon = item.value === 'entregador' ? Truck : ShoppingBag
-                  return (
-                    <button
-                      key={item.value}
-                      type="button"
-                      onClick={() => setAccountType(item.value)}
-                      className={`rounded-2xl border p-3 text-left ${selected ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 bg-white text-gray-600'}`}
-                    >
-                      <Icon className="mb-2 h-5 w-5" />
-                      <span className="block text-sm font-extrabold">{item.label}</span>
-                      <span className="block text-xs leading-tight opacity-75">{item.description}</span>
-                    </button>
-                  )
-                })}
+              <div className="flex items-center gap-2 rounded-2xl border border-primary/20 bg-primary/5 p-3 text-primary">
+                <ShoppingBag className="h-5 w-5" />
+                <span className="text-sm font-extrabold">Conta de cliente</span>
               </div>
               <input
                 value={register.nome}
@@ -724,26 +703,6 @@ function AuthScreen({ onSuccess }) {
                 placeholder="Confirmar senha"
                 className="h-12 w-full rounded-2xl border border-gray-200 bg-white px-4 text-base outline-none focus:border-primary focus:ring-2 focus:ring-primary/20"
               />
-              {accountType === 'entregador' && (
-                <div className="grid grid-cols-1 gap-3 rounded-2xl border border-blue-100 bg-blue-50 p-3">
-                  <select
-                    value={register.tipo_veiculo}
-                    onChange={(event) => setRegister((current) => ({ ...current, tipo_veiculo: event.target.value }))}
-                    className="h-12 w-full rounded-2xl border border-blue-100 bg-white px-4 text-base outline-none focus:border-primary"
-                  >
-                    <option value="">Tipo de veículo</option>
-                    <option value="moto">Moto</option>
-                    <option value="bicicleta">Bicicleta</option>
-                    <option value="carro">Carro</option>
-                  </select>
-                  <input
-                    value={register.cnh}
-                    onChange={(event) => setRegister((current) => ({ ...current, cnh: event.target.value }))}
-                    placeholder="CNH"
-                    className="h-12 w-full rounded-2xl border border-blue-100 bg-white px-4 text-base outline-none focus:border-primary"
-                  />
-                </div>
-              )}
               <label className="flex items-start gap-3 rounded-2xl border border-gray-200 bg-white p-3 text-xs leading-relaxed text-gray-500">
                 <input
                   type="checkbox"
@@ -761,7 +720,7 @@ function AuthScreen({ onSuccess }) {
                 disabled={loading}
                 className="h-12 w-full rounded-2xl bg-primary text-base font-bold text-white shadow-sm disabled:opacity-60"
               >
-                {loading ? 'Criando...' : `Criar conta ${accountType === 'entregador' ? 'entregador' : 'cliente'}`}
+                {loading ? 'Criando...' : 'Criar conta de cliente'}
               </button>
             </form>
           )}
@@ -787,9 +746,30 @@ function AuthScreen({ onSuccess }) {
           )}
         </div>
 
-        <p className="mt-8 text-center text-xs text-gray-400">
-          Entregador acessa pela mesma entrada usando a conta de entregador.
-        </p>
+        <div className="mt-8 border-t border-gray-100 pt-5">
+          <p className="mb-3 text-center text-xs font-bold uppercase tracking-wide text-gray-400">
+            Conheça o app sem criar conta
+          </p>
+          <div className="grid grid-cols-2 gap-2">
+            <button
+              type="button"
+              onClick={() => onDemo?.('cliente')}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700"
+            >
+              <ShoppingBag className="h-4 w-4" /> Demo cliente
+            </button>
+            <button
+              type="button"
+              onClick={() => onDemo?.('entregador')}
+              className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700"
+            >
+              <Truck className="h-4 w-4" /> Demo entregador
+            </button>
+          </div>
+          <p className="mt-3 text-center text-[11px] text-gray-400">
+            Cadastro e login são exclusivos para clientes. Entregadores e farmácia usam seus próprios painéis.
+          </p>
+        </div>
       </div>
     </div>
   )
@@ -1007,6 +987,9 @@ function CheckoutSheet({ open, user, onClose, onDone }) {
   const [busy, setBusy] = useState(false)
   const [uploadingId, setUploadingId] = useState('')
   const [error, setError] = useState('')
+  // Modalidade da receita por item: 'mim' (própria) | 'terceiro' (outra pessoa)
+  const [rxModo, setRxModo] = useState({})
+  const [rxPaciente, setRxPaciente] = useState({})
   const [form, setForm] = useState({
     telefone: user?.telefone || '',
     cpf: user?.cpf || '',
@@ -1041,10 +1024,19 @@ function CheckoutSheet({ open, user, onClose, onDone }) {
       setError('Envie apenas PDF ou XML assinado digitalmente')
       return
     }
+    const paraTerceiro = (rxModo[item.id] || 'mim') === 'terceiro'
+    const paciente = rxPaciente[item.id] || {}
+    if (paraTerceiro && (!String(paciente.nome || '').trim() || !String(paciente.cpf || '').trim())) {
+      setError('Informe nome e CPF do paciente da receita.')
+      return
+    }
     try {
       setUploadingId(item.id)
       setError('')
-      const response = await prescriptionService.upload(file, item.id_farmacia, 'assincrono', item.id)
+      const response = await prescriptionService.upload(file, item.id_farmacia, 'assincrono', item.id, {
+        paraTerceiro,
+        paciente,
+      })
       const receita = response.data?.data?.receita
       if (!receita) throw new Error('Receita não retornada pelo servidor')
       setPrescricao(item.id, receita)
@@ -1184,6 +1176,56 @@ function CheckoutSheet({ open, user, onClose, onDone }) {
                     <div key={item.id} className="rounded-2xl bg-white p-3">
                       <p className="text-sm font-extrabold text-gray-950">{item.nome}</p>
                       <p className="mt-1 text-xs font-bold text-primary">{status}</p>
+
+                      {!receita && (
+                        <>
+                          <p className="mt-3 text-[11px] font-bold text-gray-600">Para quem é a receita?</p>
+                          <div className="mt-1 grid grid-cols-2 gap-2">
+                            {[
+                              { key: 'mim', label: 'Para mim' },
+                              { key: 'terceiro', label: 'Outra pessoa' },
+                            ].map((opt) => {
+                              const ativo = (rxModo[item.id] || 'mim') === opt.key
+                              return (
+                                <button
+                                  key={opt.key}
+                                  type="button"
+                                  onClick={() => setRxModo((c) => ({ ...c, [item.id]: opt.key }))}
+                                  className={`rounded-xl border px-2 py-2 text-xs font-bold ${ativo ? 'border-primary bg-primary/5 text-primary' : 'border-gray-200 text-gray-600'}`}
+                                >
+                                  {opt.label}
+                                </button>
+                              )
+                            })}
+                          </div>
+                          {(rxModo[item.id] || 'mim') === 'terceiro' && (
+                            <div className="mt-2 space-y-2">
+                              <input
+                                value={rxPaciente[item.id]?.nome || ''}
+                                onChange={(e) => setRxPaciente((c) => ({ ...c, [item.id]: { ...(c[item.id] || {}), nome: e.target.value } }))}
+                                placeholder="Nome do paciente"
+                                className="h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm outline-none focus:border-amber-400"
+                              />
+                              <div className="grid grid-cols-2 gap-2">
+                                <input
+                                  inputMode="numeric"
+                                  value={rxPaciente[item.id]?.cpf || ''}
+                                  onChange={(e) => setRxPaciente((c) => ({ ...c, [item.id]: { ...(c[item.id] || {}), cpf: e.target.value } }))}
+                                  placeholder="CPF do paciente"
+                                  className="h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm outline-none focus:border-amber-400"
+                                />
+                                <input
+                                  value={rxPaciente[item.id]?.rg || ''}
+                                  onChange={(e) => setRxPaciente((c) => ({ ...c, [item.id]: { ...(c[item.id] || {}), rg: e.target.value } }))}
+                                  placeholder="RG do paciente"
+                                  className="h-10 w-full rounded-xl border border-amber-200 bg-white px-3 text-sm outline-none focus:border-amber-400"
+                                />
+                              </div>
+                            </div>
+                          )}
+                        </>
+                      )}
+
                       <label className="mt-3 flex h-10 cursor-pointer items-center justify-center gap-2 rounded-xl bg-gray-100 text-xs font-extrabold text-gray-700">
                         <UploadCloud className="h-4 w-4" />
                         {uploadingId === item.id ? 'Enviando...' : receita ? 'Trocar receita' : 'Enviar receita'}
@@ -2539,9 +2581,10 @@ const DEMO_PHARMACIES = [
 ]
 
 const DEMO_CLIENT_ORDERS = [
-  { id: 'A1B2C3D4', date: '12/06/2026', total: 78.4, pharmacy: 'Drogasil · Setor Bueno', items: ['Dipirona 1g · 2un', 'Vitamina C · 1un'], rating: 5 },
-  { id: 'E5F6G7H8', date: '03/06/2026', total: 42.9, pharmacy: 'Pague Menos · Bueno', items: ['Amoxicilina 500mg · 1un'], rating: 4 },
-  { id: 'I9J0K1L2', date: '28/05/2026', total: 120.0, pharmacy: 'Droga Raia · Oeste', items: ['Losartana 50mg · 2un', 'Protetor solar · 1un'], rating: 5 },
+  { id: 'A1B2C3D4', date: '12/06/2026', total: 78.4, pharmacy: 'Drogasil · Setor Bueno', items: ['Dipirona 1g · 2un', 'Vitamina C · 1un'], rating: 5, comReceita: false },
+  { id: 'E5F6G7H8', date: '03/06/2026', total: 42.9, pharmacy: 'Pague Menos · Bueno', items: ['Amoxicilina 500mg · 1un'], rating: 4, comReceita: true },
+  { id: 'I9J0K1L2', date: '28/05/2026', total: 120.0, pharmacy: 'Droga Raia · Oeste', items: ['Clonazepam 2mg · 1un', 'Protetor solar · 1un'], rating: 5, comReceita: true },
+  { id: 'Q1W2E3R4', date: '20/05/2026', total: 31.5, pharmacy: 'Santa Marta · Jd. América', items: ['Paracetamol 750mg · 1un'], rating: 5, comReceita: false },
 ]
 
 const DEMO_DRIVER_ACTIVE = {
@@ -2549,6 +2592,12 @@ const DEMO_DRIVER_ACTIVE = {
   endereco_coleta: { nome: 'Drogasil · Setor Bueno' },
   endereco_entrega: { bairro: 'Setor Oeste', cidade: 'Goiânia' },
 }
+const DEMO_DRIVER_ROUTE = [
+  'Saia da Drogasil (Av. T-9, Setor Bueno).',
+  'Siga pela Av. T-9 sentido Setor Oeste por ~2,4 km.',
+  'Vire à direita na Av. 85 e siga por 800 m.',
+  'Destino: Rua 9, 120 — Setor Oeste. Toque em "Cheguei".',
+]
 const DEMO_DRIVER_AVAILABLE = [
   { _id: 'DLV-AV-8801', id_pedido: 'M3N4O5P6', status: 'disponivel', endereco_coleta: { nome: 'Pague Menos · Bueno' }, endereco_entrega: { bairro: 'Jardim América', cidade: 'Goiânia' }, ganho: 8.5 },
   { _id: 'DLV-AV-8802', id_pedido: 'Q7R8S9T0', status: 'disponivel', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Sul', cidade: 'Goiânia' }, ganho: 11.2 },
@@ -2557,7 +2606,7 @@ const DEMO_DRIVER_HISTORY = [
   { _id: 'DLV-H-1201', id_pedido: 'Z9Y8X7W6', status: 'entregue', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Bueno', cidade: 'Goiânia' }, rating: 5, ganho: 9.4 },
   { _id: 'DLV-H-1202', id_pedido: 'V5U4T3S2', status: 'entregue', endereco_coleta: { nome: 'Drogasil · Setor Bueno' }, endereco_entrega: { bairro: 'Setor Marista', cidade: 'Goiânia' }, rating: 4, ganho: 7.8 },
 ]
-const DEMO_DRIVER_STATS = { ganhos: 64.8, entregas: 7, avaliacao: 4.9 }
+const DEMO_DRIVER_STATS = { ganhos: 64.8, entregas: 7, avaliacao: 4.9, corridasMes: 128, ganhosMes: 1840.5 }
 
 function StarRow({ value = 0 }) {
   return (
@@ -2653,6 +2702,9 @@ function DemoClientApp({ activeTab, setActiveTab, onExit }) {
                   <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
                 </div>
                 <p className="mt-1 text-xs text-gray-500">{o.date} · {o.pharmacy}</p>
+                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${o.comReceita ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
+                  {o.comReceita ? '⚕ Com receita' : 'Sem receita'}
+                </span>
                 <div className="mt-2 flex flex-wrap gap-1">
                   {o.items.map((it) => (
                     <span key={it} className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{it}</span>
@@ -2729,12 +2781,34 @@ function DemoDriverApp({ activeTab, setActiveTab, onExit }) {
               </div>
             </div>
 
+            <div className="grid grid-cols-2 gap-2">
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Corridas no mês</p>
+                <p className="text-lg font-extrabold text-gray-950">{DEMO_DRIVER_STATS.corridasMes}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Ganhos no mês</p>
+                <p className="text-lg font-extrabold text-emerald-700">{money(DEMO_DRIVER_STATS.ganhosMes)}</p>
+              </div>
+            </div>
+
             <p className="mt-1 text-sm font-extrabold text-gray-950">Entrega em andamento</p>
             <DeliveryCard
               delivery={DEMO_DRIVER_ACTIVE}
               actionLabel="Cheguei / finalizar"
               onAction={note}
             />
+
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
+              <p className="mb-2 flex items-center gap-1.5 text-sm font-extrabold text-gray-950">
+                <MapPin className="h-4 w-4 text-primary" /> Rota até o cliente
+              </p>
+              <ol className="list-decimal space-y-1 pl-5 text-xs text-gray-600">
+                {DEMO_DRIVER_ROUTE.map((passo, i) => (
+                  <li key={i}>{passo}</li>
+                ))}
+              </ol>
+            </div>
 
             <p className="mt-1 text-sm font-extrabold text-gray-950">Disponíveis perto de você</p>
             {DEMO_DRIVER_AVAILABLE.map((d) => (
@@ -2815,16 +2889,21 @@ export default function MobileApp() {
     })
   }
 
+  function startDemo(demo) {
+    setSearchParams({ demo })
+  }
+
   function exitDemo() {
     try {
       window.sessionStorage?.removeItem('ssm_mobile_app_lock')
     } catch {
       /* ignore */
     }
-    window.location.href = '/'
+    // Volta para a tela de login do app (no celular continua dentro do app).
+    setSearchParams({})
   }
 
-  // Demonstração pública (sem login) acessível por /app?demo=cliente|entregador
+  // Demonstração (sem login) acessível por /app?demo=cliente|entregador
   if (demoRole === 'entregador') {
     const validTab = DRIVER_TABS.some((item) => item.id === tab) ? tab : 'home'
     return <DemoDriverApp activeTab={validTab} setActiveTab={setActiveTab} onExit={exitDemo} />
@@ -2835,19 +2914,72 @@ export default function MobileApp() {
   }
 
   if (!authenticated) {
-    return <AuthScreen onSuccess={() => setActiveTab('home')} />
+    return <AuthScreen onSuccess={() => setActiveTab('home')} onDemo={startDemo} />
   }
 
-  if (role === 'entregador') {
-    const validTab = DRIVER_TABS.some((item) => item.id === tab) ? tab : 'home'
-    return <DriverApp user={user} activeTab={validTab} setActiveTab={setActiveTab} />
-  }
-
-  if (role === 'farmaceutico' || role === 'dono_farmacia') {
-    const validTab = PHARMACY_TABS.some((item) => item.id === tab) ? tab : 'home'
-    return <PharmacyApp user={user} activeTab={validTab} setActiveTab={setActiveTab} />
+  // No celular, o uso real é exclusivo de CLIENTE. Entregador e farmácia operam
+  // em seus próprios painéis (site); aqui oferecemos apenas a demonstração.
+  if (role && role !== 'cliente') {
+    return (
+      <MobileRoleNotice
+        role={role}
+        onDemo={startDemo}
+        onLogout={() => {
+          useAuthStore.getState().logout()
+          setSearchParams({})
+        }}
+      />
+    )
   }
 
   const validTab = CLIENT_TABS.some((item) => item.id === tab) ? tab : 'home'
-  return <ClientApp user={user} activeTab={validTab} setActiveTab={setActiveTab} />
+  return (
+    <>
+      <LgpdConsentModal />
+      <ClientApp user={user} activeTab={validTab} setActiveTab={setActiveTab} />
+    </>
+  )
+}
+
+function MobileRoleNotice({ role, onDemo, onLogout }) {
+  const labels = {
+    entregador: 'Entregador',
+    farmaceutico: 'Farmacêutico',
+    dono_farmacia: 'Dono de farmácia',
+    administrador: 'Administrador',
+    admin: 'Administrador',
+  }
+  return (
+    <div className="flex min-h-[100dvh] flex-col items-center justify-center gap-4 bg-gray-50 px-6 text-center">
+      <div className="flex h-16 w-16 items-center justify-center rounded-2xl bg-primary/10">
+        <Smartphone className="h-8 w-8 text-primary" />
+      </div>
+      <div>
+        <h1 className="text-xl font-extrabold text-gray-950">App exclusivo para clientes</h1>
+        <p className="mt-2 text-sm text-gray-500">
+          O perfil <span className="font-bold">{labels[role] || role}</span> opera pelo painel no
+          site (computador). Pelo celular, você pode conferir a demonstração.
+        </p>
+      </div>
+      <div className="grid w-full max-w-xs grid-cols-2 gap-2">
+        <button
+          type="button"
+          onClick={() => onDemo?.('cliente')}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700"
+        >
+          <ShoppingBag className="h-4 w-4" /> Demo cliente
+        </button>
+        <button
+          type="button"
+          onClick={() => onDemo?.('entregador')}
+          className="flex items-center justify-center gap-2 rounded-2xl border border-gray-200 bg-white py-3 text-sm font-bold text-gray-700"
+        >
+          <Truck className="h-4 w-4" /> Demo entregador
+        </button>
+      </div>
+      <button type="button" onClick={onLogout} className="mt-2 flex items-center gap-2 text-sm font-bold text-red-600">
+        <LogOut className="h-4 w-4" /> Sair
+      </button>
+    </div>
+  )
 }
