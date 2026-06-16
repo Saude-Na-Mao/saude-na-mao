@@ -157,20 +157,6 @@ export default function Checkout() {
     let cancelled = false
     setRxChecking(true)
 
-    const verificarDisponibilidade = async (prescriptionId) => {
-      try {
-        const res = await prescriptionService.checkAvailability(prescriptionId)
-        return res.data?.data
-      } catch {
-        return {
-          disponivel: false,
-          motivo: 'Erro ao verificar receita',
-          status: '',
-          validade: null,
-        }
-      }
-    }
-
     const run = async () => {
       try {
         const res = await prescriptionService.getAll({ params: { limit: 80 } })
@@ -182,36 +168,29 @@ export default function Checkout() {
         const itensReceita = items.filter((i) => itemExigeReceita(i))
         const map = {}
         let todasEnviadas = true
-        let todasAprovadas = true
         for (const ci of itensReceita) {
-          // 1ª opção: receita aprovada e disponível para uso imediato
+          // Vincula a receita já enviada (aprovada ou em análise) ao item.
           const aprovada = farmFiltered.find((r) =>
             rxCandidataParaProduto(r, ci.id, pharmacyIdCart),
           )
-          if (aprovada) {
-            const resultado = await verificarDisponibilidade(aprovada._id)
-            if (resultado.disponivel) {
-              map[ci.id] = aprovada._id
-              continue
-            }
-          }
-          // 2ª opção: receita já enviada, aguardando validação (fluxo pedido-primeiro)
-          const enviada = farmFiltered.find((r) =>
-            rxEnviadaParaProduto(r, ci.id, pharmacyIdCart),
-          )
+          const enviada =
+            aprovada ||
+            farmFiltered.find((r) =>
+              rxEnviadaParaProduto(r, ci.id, pharmacyIdCart),
+            )
           if (enviada) {
             map[ci.id] = enviada._id
-            todasAprovadas = false
           } else {
             todasEnviadas = false
-            todasAprovadas = false
           }
         }
         if (cancelled) return
         const temItens = itensReceita.length > 0
         setRxPorProduto(map)
         setRxUploaded(todasEnviadas && temItens)
-        setRxApproved(todasAprovadas && temItens)
+        // Fluxo 2: a receita deste pedido é sempre revalidada pela farmácia
+        // antes de liberar o pagamento, mesmo que já exista uma aprovada.
+        setRxApproved(false)
         if (!todasEnviadas) navigate('/receita')
       } catch {
         if (!cancelled) {

@@ -848,31 +848,9 @@ async function uploadPrescription(
     .update(fs.readFileSync(filePath))
     .digest("hex");
 
-  const receitaMesmoArquivo = await Prescription.findOne({
-    id_usuario: userId,
-    hash_arquivo: fileHash,
-  })
-    .sort({ createdAt: -1 })
-    .select("id_pedido_utilizado id_pedido_vinculado");
-
-  if (receitaMesmoArquivo) {
-    const pedidoId =
-      receitaMesmoArquivo.id_pedido_utilizado ||
-      receitaMesmoArquivo.id_pedido_vinculado;
-    if (pedidoId) {
-      const pedido = await Order.findById(pedidoId).select("status").lean();
-      const pedidoAtivo =
-        pedido &&
-        pedido.status !== "cancelado" &&
-        pedido.status !== "rejeitado";
-      if (pedidoAtivo) {
-        throw createError(
-          "Esta receita já foi utilizada em um pedido anterior. Solicite uma nova receita ao seu médico para realizar uma nova compra deste medicamento.",
-          400,
-        );
-      }
-    }
-  }
+  // Reutilização do mesmo arquivo PDF é permitida: a validação real (validade,
+  // CRM, lote) é feita pelo farmacêutico no momento da dispensação, que barra
+  // receitas inválidas. Não bloqueamos por hash de arquivo aqui.
 
   // Persiste o arquivo no R2 (disco do Render é efêmero). Em dev sem R2 cai no disco local.
   let urlArquivo = urlPath;

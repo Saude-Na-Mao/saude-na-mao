@@ -141,8 +141,11 @@ export function getOrderProgressIndex(order) {
 
   // Entregue é a última etapa concluída: índice além do último passo para
   // marcar TODOS como "completed" (sem spinner girando no passo "Chegou").
+  // Pedido com receita aguardando validação do farmacêutico ocorre ANTES do
+  // pagamento: nenhuma etapa do progresso (que começa em "Aprovado") iniciou.
+  if (st === 'aguardando_confirmacao_receita_farmacia') return -1
   if (st === 'entregue') return ORDER_PROGRESS_STEPS.length
-  if (st === 'a_caminho' || st === 'aguardando_confirmacao_receita_farmacia') return 3
+  if (st === 'a_caminho') return 3
   if (st === 'confirmado') return 2
   if (st === 'em_processamento') return hasDelivery ? 2 : 1
   if (payApproved || order?.aprovado_farmaceutico) return 0

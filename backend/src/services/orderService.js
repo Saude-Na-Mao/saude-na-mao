@@ -764,10 +764,12 @@ async function createOrder(userId, orderData) {
   const hasPrescriptionItems = sanitizedItems.some(
     (item) => item.receita_obrigatoria || item.controlado || item.id_receita,
   );
+  // Quando o cliente pede validação (Fluxo 2), o pedido SEMPRE passa pela
+  // farmácia antes do pagamento — mesmo que exista uma receita já aprovada
+  // anteriormente. A liberação do pagamento só ocorre após o farmacêutico
+  // aprovar a receita deste pedido.
   const hasPendingPrescriptionValidation =
-    hasPrescriptionItems &&
-    allowPendingPrescriptions &&
-    linkedPrescriptions.some((receita) => receita.status !== "Aprovada");
+    hasPrescriptionItems && allowPendingPrescriptions;
   const initialStatus = hasPendingPrescriptionValidation
     ? "aguardando_confirmacao_receita_farmacia"
     : "aguardando_pagamento";
