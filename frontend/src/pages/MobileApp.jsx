@@ -283,7 +283,7 @@ function orderActionMessage(order) {
   return ''
 }
 
-function MobileAppHeader({ user, role, onCart, cartCount }) {
+function MobileAppHeader({ user, role, onCart, cartCount, onProfile, connected = false }) {
   return (
     <header
       className="sticky top-0 z-30 border-b border-gray-100 bg-white/95 px-4 pb-3 backdrop-blur"
@@ -291,9 +291,9 @@ function MobileAppHeader({ user, role, onCart, cartCount }) {
     >
       <div className="mx-auto flex max-w-md items-center justify-between gap-3">
         <div className="min-w-0">
-          <p className="text-xs font-semibold uppercase tracking-wide text-primary">{greeting()}</p>
+          <p className="text-xs font-semibold uppercase tracking-wide text-primary">Saúde na Mão</p>
           <h1 className="truncate text-lg font-bold text-gray-950">
-            {role === 'entregador' ? 'Boas entregas' : `Olá, ${firstName(user)}`}
+            {role === 'entregador' ? firstName(user) : `Olá, ${firstName(user)}`}
           </h1>
         </div>
         <div className="flex items-center gap-2">
@@ -314,9 +314,17 @@ function MobileAppHeader({ user, role, onCart, cartCount }) {
               )}
             </button>
           )}
-          <div className="flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white">
+          <button
+            type="button"
+            onClick={onProfile}
+            className="relative flex h-10 w-10 items-center justify-center rounded-full bg-primary text-sm font-bold text-white"
+            aria-label="Conta"
+          >
             {firstName(user).charAt(0).toUpperCase()}
-          </div>
+            {connected && (
+              <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+            )}
+          </button>
         </div>
       </div>
     </header>
@@ -2564,27 +2572,47 @@ function DriverApp({ user, activeTab, setActiveTab }) {
 
 /* ───────────────────────── Demonstração do app (sem login) ───────────────────────── */
 
-const DEMO_CLIENT_USER = { nome: 'Visitante Demonstração', email: 'demo.cliente@saudenamao.com', telefone: '(62) 99999-0000' }
-const DEMO_DRIVER_USER = { nome: 'Entregador Demonstração', email: 'demo.entregador@saudenamao.com', telefone: '(62) 98888-0000' }
+// Todos os dados de demonstração abaixo são fictícios.
+const DEMO_CLIENT_USER = {
+  nome: 'Ana Beatriz', email: 'ana.demo@saudenamao.com', telefone: '(62) 99632-1100',
+  cpf: '123.456.789-00', rg: '5.123.456 SSP/GO', endereco: 'Rua 9, 120 · Setor Oeste · Goiânia/GO',
+  desde: 'mar/2025', pedidos: 14, receitas: 5,
+}
+const DEMO_DRIVER_USER = {
+  nome: 'Eduardo Reis', email: 'eduardo.demo@saudenamao.com', telefone: '(62) 98477-2200',
+  veiculo: 'Moto Honda CG 160', placa: 'NXG-7H21', cnh: '04617xxxxxx', desde: 'jan/2025',
+  entregasTotais: 1487, nota: 4.9,
+}
 
 const DEMO_PRODUCTS = [
-  { nome: 'Dipirona Sódica 1g (10 cp)', farmacia: 'Drogasil · Setor Bueno', preco: 12.9, tarja: 'sem_receita' },
-  { nome: 'Vitamina C 1g (10 cp efervescente)', farmacia: 'Pague Menos · Bueno', preco: 24.5, tarja: 'sem_receita' },
-  { nome: 'Amoxicilina 500mg (21 cp)', farmacia: 'Droga Raia · Oeste', preco: 38.7, tarja: 'antimicrobiano' },
-  { nome: 'Protetor Solar FPS 50', farmacia: 'Santa Marta · Jd. América', preco: 49.9, tarja: 'sem_receita' },
+  { id: 'p1', nome: 'Dipirona Sódica 1g', dosagem: '10 comprimidos', fabricante: 'Medley', principio: 'Dipirona monoidratada', tarja: 'sem_receita', preco: 12.9, farmacia: 'Drogasil · Setor Bueno', descricao: 'Analgésico e antitérmico indicado para dores leves a moderadas e febre.', posologia: '1 comprimido até 4x ao dia, com água.', categoria: 'Dor e febre' },
+  { id: 'p2', nome: 'Vitamina C 1g', dosagem: '10 cp efervescentes', fabricante: 'Cimed', principio: 'Ácido ascórbico', tarja: 'sem_receita', preco: 24.5, farmacia: 'Pague Menos · Bueno', descricao: 'Suplemento de vitamina C que auxilia o sistema imunológico.', posologia: '1 comprimido ao dia, dissolvido em água.', categoria: 'Vitaminas' },
+  { id: 'p3', nome: 'Amoxicilina 500mg', dosagem: '21 cápsulas', fabricante: 'EMS', principio: 'Amoxicilina', tarja: 'antimicrobiano', preco: 38.7, farmacia: 'Droga Raia · Oeste', descricao: 'Antibiótico de amplo espectro. Exige receita (antimicrobiano).', posologia: 'Conforme prescrição médica.', categoria: 'Antibióticos' },
+  { id: 'p4', nome: 'Protetor Solar FPS 50', dosagem: '120 ml', fabricante: 'La Roche', principio: 'Filtro solar', tarja: 'sem_receita', preco: 49.9, farmacia: 'Santa Marta · Jd. América', descricao: 'Proteção UVA/UVB de alta cobertura, resistente à água.', posologia: 'Aplicar 30 min antes da exposição e reaplicar a cada 2h.', categoria: 'Higiene' },
+  { id: 'p5', nome: 'Paracetamol 750mg', dosagem: '20 comprimidos', fabricante: 'Neo Química', principio: 'Paracetamol', tarja: 'sem_receita', preco: 9.9, farmacia: 'Drogasil · Setor Bueno', descricao: 'Analgésico e antitérmico para dor e febre.', posologia: '1 comprimido a cada 6h, se necessário.', categoria: 'Dor e febre' },
 ]
+
+const DEMO_TARJA_LABEL = {
+  sem_receita: { label: 'Venda livre', cls: 'bg-emerald-50 text-emerald-700' },
+  antimicrobiano: { label: 'Antimicrobiano · receita', cls: 'bg-blue-50 text-blue-700' },
+  tarja_vermelha: { label: 'Tarja vermelha · receita', cls: 'bg-red-50 text-red-700' },
+  tarja_preta: { label: 'Notificação · receita', cls: 'bg-gray-900 text-white' },
+}
+
+const DEMO_CATEGORIES = ['Dor e febre', 'Vitaminas', 'Antibióticos', 'Higiene', 'Infantil']
 
 const DEMO_PHARMACIES = [
-  { nome: 'Drogasil · Setor Bueno', bairro: 'Setor Bueno', nota: 4.8 },
-  { nome: 'Pague Menos · Bueno', bairro: 'Setor Bueno', nota: 4.6 },
-  { nome: 'Droga Raia · Oeste', bairro: 'Setor Oeste', nota: 4.7 },
+  { id: 'f1', nome: 'Drogasil · Setor Bueno', nota: 4.8, totalAval: 312, endereco: 'Av. T-9, 1500 · Setor Bueno · Goiânia/GO', horario: 'Aberta agora · 07h às 23h', dist: '1,2 km', reviews: [{ nome: 'Marcos A.', nota: 5, texto: 'Entrega rápida e atendimento ótimo.' }, { nome: 'Júlia P.', nota: 5, texto: 'Preço justo e farmacêutico atencioso.' }, { nome: 'Rafael S.', nota: 4, texto: 'Tudo certo, recomendo.' }] },
+  { id: 'f2', nome: 'Pague Menos · Bueno', nota: 4.6, totalAval: 208, endereco: 'Av. 85, 980 · Setor Bueno · Goiânia/GO', horario: 'Aberta agora · 24 horas', dist: '2,0 km', reviews: [{ nome: 'Carla D.', nota: 5, texto: 'Aberto 24h salvou minha noite.' }, { nome: 'Pedro L.', nota: 4, texto: 'Boa variedade de genéricos.' }] },
+  { id: 'f3', nome: 'Droga Raia · Oeste', nota: 4.7, totalAval: 174, endereco: 'Av. República do Líbano, 1850 · Setor Oeste', horario: 'Aberta agora · 07h às 22h', dist: '2,6 km', reviews: [{ nome: 'Fernanda R.', nota: 5, texto: 'App muito prático para controlados.' }, { nome: 'Iago M.', nota: 4, texto: 'Entrega no prazo.' }] },
 ]
 
+const DEMO_ORDER_STEPS = ['Aprovado', 'Em preparação', 'Esperando entregador', 'A caminho', 'Entregue']
+
 const DEMO_CLIENT_ORDERS = [
-  { id: 'A1B2C3D4', date: '12/06/2026', total: 78.4, pharmacy: 'Drogasil · Setor Bueno', items: ['Dipirona 1g · 2un', 'Vitamina C · 1un'], rating: 5, comReceita: false },
-  { id: 'E5F6G7H8', date: '03/06/2026', total: 42.9, pharmacy: 'Pague Menos · Bueno', items: ['Amoxicilina 500mg · 1un'], rating: 4, comReceita: true },
-  { id: 'I9J0K1L2', date: '28/05/2026', total: 120.0, pharmacy: 'Droga Raia · Oeste', items: ['Clonazepam 2mg · 1un', 'Protetor solar · 1un'], rating: 5, comReceita: true },
-  { id: 'Q1W2E3R4', date: '20/05/2026', total: 31.5, pharmacy: 'Santa Marta · Jd. América', items: ['Paracetamol 750mg · 1un'], rating: 5, comReceita: false },
+  { id: 'A1B2C3D4', date: '12/06/2026', total: 78.4, pharmacy: 'Drogasil · Setor Bueno', items: ['Dipirona 1g · 2un', 'Vitamina C · 1un'], rating: 5, comReceita: false, etapa: 5, entregador: 'Eduardo R.' },
+  { id: 'E5F6G7H8', date: '03/06/2026', total: 42.9, pharmacy: 'Pague Menos · Bueno', items: ['Amoxicilina 500mg · 1un'], rating: 4, comReceita: true, etapa: 5, entregador: 'Diego A.' },
+  { id: 'I9J0K1L2', date: '28/05/2026', total: 120.0, pharmacy: 'Droga Raia · Oeste', items: ['Vitamina D · 1un', 'Protetor solar · 1un'], rating: 5, comReceita: false, etapa: 5, entregador: 'Felipe N.' },
 ]
 
 const DEMO_DRIVER_ACTIVE = {
@@ -2599,14 +2627,20 @@ const DEMO_DRIVER_ROUTE = [
   'Destino: Rua 9, 120 — Setor Oeste. Toque em "Cheguei".',
 ]
 const DEMO_DRIVER_AVAILABLE = [
-  { _id: 'DLV-AV-8801', id_pedido: 'M3N4O5P6', status: 'disponivel', endereco_coleta: { nome: 'Pague Menos · Bueno' }, endereco_entrega: { bairro: 'Jardim América', cidade: 'Goiânia' }, ganho: 8.5 },
-  { _id: 'DLV-AV-8802', id_pedido: 'Q7R8S9T0', status: 'disponivel', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Sul', cidade: 'Goiânia' }, ganho: 11.2 },
+  { _id: 'DLV-AV-8801', id_pedido: 'M3N4O5P6', status: 'disponivel', endereco_coleta: { nome: 'Pague Menos · Bueno' }, endereco_entrega: { bairro: 'Jardim América', cidade: 'Goiânia' }, ganho: 8.5, dist: '1,4 km' },
+  { _id: 'DLV-AV-8802', id_pedido: 'Q7R8S9T0', status: 'disponivel', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Sul', cidade: 'Goiânia' }, ganho: 11.2, dist: '2,1 km' },
 ]
 const DEMO_DRIVER_HISTORY = [
-  { _id: 'DLV-H-1201', id_pedido: 'Z9Y8X7W6', status: 'entregue', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Bueno', cidade: 'Goiânia' }, rating: 5, ganho: 9.4 },
-  { _id: 'DLV-H-1202', id_pedido: 'V5U4T3S2', status: 'entregue', endereco_coleta: { nome: 'Drogasil · Setor Bueno' }, endereco_entrega: { bairro: 'Setor Marista', cidade: 'Goiânia' }, rating: 4, ganho: 7.8 },
+  { _id: 'DLV-H-1201', id_pedido: 'Z9Y8X7W6', status: 'entregue', date: '15/06/2026', endereco_coleta: { nome: 'Droga Raia · Oeste' }, endereco_entrega: { bairro: 'Setor Bueno', cidade: 'Goiânia' }, rating: 5, ganho: 9.4 },
+  { _id: 'DLV-H-1202', id_pedido: 'V5U4T3S2', status: 'entregue', date: '15/06/2026', endereco_coleta: { nome: 'Drogasil · Setor Bueno' }, endereco_entrega: { bairro: 'Setor Marista', cidade: 'Goiânia' }, rating: 4, ganho: 7.8 },
+  { _id: 'DLV-H-1203', id_pedido: 'K1L2M3N4', status: 'entregue', date: '14/06/2026', endereco_coleta: { nome: 'Pague Menos · Bueno' }, endereco_entrega: { bairro: 'Jardim Goiás', cidade: 'Goiânia' }, rating: 5, ganho: 12.6 },
 ]
-const DEMO_DRIVER_STATS = { ganhos: 64.8, entregas: 7, avaliacao: 4.9, corridasMes: 128, ganhosMes: 1840.5 }
+const DEMO_DRIVER_EARN = {
+  dia: { label: 'Dia', ganhos: 64.8, corridas: 7 },
+  mes: { label: 'Mês', ganhos: 1840.5, corridas: 128 },
+  ano: { label: 'Ano', ganhos: 21360.0, corridas: 1487 },
+}
+const DEMO_DRIVER_STATS = { avaliacao: 4.9 }
 
 function StarRow({ value = 0 }) {
   return (
@@ -2631,236 +2665,428 @@ function DemoBanner({ onExit }) {
   )
 }
 
+/** Mini-mapa estilizado com a linha da rota (origem → destino) para a demonstração. */
+function DemoMap({ from = 'Farmácia', to = 'Você', height = 'h-28' }) {
+  return (
+    <div className={`relative w-full ${height} overflow-hidden rounded-2xl border border-gray-100 bg-[#e9f1ed]`}>
+      <svg viewBox="0 0 320 120" preserveAspectRatio="none" className="h-full w-full">
+        <g stroke="#d3ded8" strokeWidth="7">
+          <line x1="0" y1="42" x2="320" y2="42" />
+          <line x1="0" y1="88" x2="320" y2="88" />
+          <line x1="86" y1="0" x2="86" y2="120" />
+          <line x1="226" y1="0" x2="226" y2="120" />
+        </g>
+        <polyline points="42,98 42,42 226,42 286,26" fill="none" stroke="#0d9488" strokeWidth="4" strokeLinecap="round" strokeLinejoin="round" />
+        <circle cx="42" cy="98" r="7" fill="#0d9488" />
+        <circle cx="286" cy="26" r="7" fill="#ef4444" />
+      </svg>
+      <span className="absolute bottom-1 left-2 rounded bg-white/85 px-1.5 text-[10px] font-bold text-gray-600">{from}</span>
+      <span className="absolute right-2 top-1 rounded bg-white/85 px-1.5 text-[10px] font-bold text-gray-600">{to}</span>
+    </div>
+  )
+}
+
+/** Cabeçalho de tela de detalhe (voltar). */
+function DemoDetailHeader({ title, onBack }) {
+  return (
+    <div className="flex items-center gap-2">
+      <button type="button" onClick={onBack} className="flex h-9 w-9 items-center justify-center rounded-full bg-gray-100">
+        <ArrowLeft className="h-5 w-5 text-gray-700" />
+      </button>
+      <h2 className="text-base font-extrabold text-gray-950">{title}</h2>
+    </div>
+  )
+}
+
 function DemoClientApp({ activeTab, setActiveTab, onExit }) {
   const [toast, setToast] = useState('')
-  const note = () => setToast('Crie sua conta para comprar de verdade. Aqui é só uma demonstração.')
+  const [detail, setDetail] = useState(null) // { type, data }
+  const [busca, setBusca] = useState('')
+  const [categoria, setCategoria] = useState('')
+  const note = () => setToast('Demonstração — crie sua conta para comprar de verdade.')
+
+  const openProduct = (p) => setDetail({ type: 'product', data: p })
+  const openPharmacy = (f) => setDetail({ type: 'pharmacy', data: f })
+  const openOrder = (o) => setDetail({ type: 'order', data: o })
+  const back = () => setDetail(null)
+
+  const termo = busca.trim().toLowerCase()
+  const produtosFiltrados = DEMO_PRODUCTS.filter((p) => {
+    if (categoria && p.categoria !== categoria) return false
+    if (!termo) return true
+    return [p.nome, p.principio, p.categoria].some((v) => String(v).toLowerCase().includes(termo))
+  })
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
+    <div className="flex h-[100dvh] flex-col bg-gray-50">
       <DemoBanner onExit={onExit} />
-      <MobileAppHeader user={DEMO_CLIENT_USER} role="cliente" cartCount={2} onCart={note} />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 py-4" style={{ paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' }}>
+      <MobileAppHeader user={DEMO_CLIENT_USER} role="cliente" cartCount={2} onCart={note} onProfile={() => { setDetail(null); setActiveTab('conta') }} />
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 overflow-y-auto px-4 py-3" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
         {toast && (
-          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-3 text-left text-sm font-bold text-white">
+          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-2.5 text-left text-xs font-bold text-white">
             {toast}
           </button>
         )}
 
-        {(activeTab === 'home' || activeTab === 'buscar') && (
-          <>
-            <SearchBox value="" onChange={() => {}} onSubmit={(e) => { e.preventDefault(); note() }} />
-            <p className="mt-1 text-sm font-extrabold text-gray-950">Mais comprados</p>
-            {DEMO_PRODUCTS.map((p) => (
-              <div key={p.nome} className="rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-                <div className="flex gap-3">
-                  <div className="flex h-16 w-16 shrink-0 items-center justify-center rounded-2xl bg-gray-100">
-                    <PackageSearch className="h-7 w-7 text-primary" />
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <h3 className="text-sm font-bold text-gray-950">{p.nome}</h3>
-                    <p className="text-xs text-gray-500">{p.farmacia}</p>
-                    <div className="mt-1 flex items-center justify-between">
-                      <span className="text-base font-extrabold text-gray-950">{money(p.preco)}</span>
-                      <button type="button" onClick={note} className="flex h-9 w-9 items-center justify-center rounded-full bg-primary text-white">
-                        <Plus className="h-5 w-5" />
-                      </button>
-                    </div>
-                  </div>
-                </div>
+        {detail?.type === 'product' && (
+          <div className="space-y-3">
+            <DemoDetailHeader title="Medicamento" onBack={back} />
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-center rounded-2xl bg-gray-100 py-6">
+                <PackageSearch className="h-12 w-12 text-primary" />
               </div>
-            ))}
-          </>
+              <h3 className="mt-3 text-lg font-extrabold text-gray-950">{detail.data.nome}</h3>
+              <span className={`mt-1 inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${DEMO_TARJA_LABEL[detail.data.tarja]?.cls}`}>
+                {DEMO_TARJA_LABEL[detail.data.tarja]?.label}
+              </span>
+              <p className="mt-2 text-2xl font-extrabold text-primary">{money(detail.data.preco)}</p>
+              <dl className="mt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between"><dt className="text-gray-400">Apresentação</dt><dd className="font-bold text-gray-700">{detail.data.dosagem}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Princípio ativo</dt><dd className="font-bold text-gray-700">{detail.data.principio}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Fabricante</dt><dd className="font-bold text-gray-700">{detail.data.fabricante}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Farmácia</dt><dd className="font-bold text-gray-700">{detail.data.farmacia}</dd></div>
+              </dl>
+              <p className="mt-3 text-xs font-bold text-gray-900">Informações</p>
+              <p className="text-xs text-gray-600">{detail.data.descricao}</p>
+              <p className="mt-1 text-xs text-gray-600"><span className="font-bold">Posologia:</span> {detail.data.posologia}</p>
+              <button type="button" onClick={note} className="mt-4 h-11 w-full rounded-2xl bg-primary text-sm font-extrabold text-white">Adicionar ao carrinho</button>
+            </div>
+          </div>
         )}
 
-        {activeTab === 'farmacias' && (
-          <>
+        {detail?.type === 'pharmacy' && (
+          <div className="space-y-3">
+            <DemoDetailHeader title="Farmácia" onBack={back} />
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <h3 className="text-lg font-extrabold text-gray-950">{detail.data.nome}</h3>
+              <p className="mt-1 flex items-center gap-1 text-sm font-bold text-amber-500">
+                <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {detail.data.nota}
+                <span className="font-medium text-gray-400">· {detail.data.totalAval} avaliações</span>
+              </p>
+              <p className="mt-2 flex items-start gap-1.5 text-xs text-gray-600"><MapPin className="mt-0.5 h-4 w-4 shrink-0 text-primary" />{detail.data.endereco}</p>
+              <p className="mt-1 flex items-center gap-1.5 text-xs text-gray-600"><Clock3 className="h-4 w-4 text-primary" />{detail.data.horario} · {detail.data.dist}</p>
+            </div>
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <p className="mb-2 text-sm font-extrabold text-gray-950">Avaliações</p>
+              <div className="space-y-2">
+                {detail.data.reviews.map((r) => (
+                  <div key={r.nome} className="border-b border-gray-50 pb-2 last:border-0 last:pb-0">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-bold text-gray-800">{r.nome}</span>
+                      <StarRow value={r.nota} />
+                    </div>
+                    <p className="text-xs text-gray-500">{r.texto}</p>
+                  </div>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {detail?.type === 'order' && (
+          <div className="space-y-3">
+            <DemoDetailHeader title={`Pedido #${detail.data.id}`} onBack={back} />
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <div className="flex items-center justify-between">
+                <p className="text-xs text-gray-500">{detail.data.date} · {detail.data.pharmacy}</p>
+                <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
+              </div>
+              <div className="mt-2 flex flex-wrap gap-1">
+                {detail.data.items.map((it) => (
+                  <span key={it} className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{it}</span>
+                ))}
+              </div>
+              <p className="mt-2 text-sm font-extrabold text-primary">{money(detail.data.total)}</p>
+            </div>
+            <DemoMap from={detail.data.pharmacy.split(' · ')[0]} to="Você" height="h-32" />
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <p className="mb-2 text-sm font-extrabold text-gray-950">Etapas</p>
+              <ol className="space-y-2">
+                {DEMO_ORDER_STEPS.map((s) => (
+                  <li key={s} className="flex items-center gap-2 text-xs">
+                    <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+                    <span className="font-bold text-gray-700">{s}</span>
+                  </li>
+                ))}
+              </ol>
+              <p className="mt-3 text-xs text-gray-500">Entregue por {detail.data.entregador}</p>
+              <div className="mt-1 flex items-center gap-2">
+                <span className="text-[11px] font-bold text-gray-400">Sua avaliação</span>
+                <StarRow value={detail.data.rating} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!detail && activeTab === 'home' && (
+          <div className="space-y-3">
+            <div className="rounded-2xl bg-gradient-to-br from-primary to-secondary p-4 text-white shadow-sm">
+              <p className="text-sm font-bold opacity-90">Bem-vinda de volta</p>
+              <p className="text-xl font-extrabold">{DEMO_CLIENT_USER.nome}</p>
+              <div className="mt-3 flex gap-4">
+                <div><p className="text-lg font-extrabold">{DEMO_CLIENT_USER.pedidos}</p><p className="text-[10px] uppercase opacity-80">Pedidos</p></div>
+                <div><p className="text-lg font-extrabold">{DEMO_CLIENT_USER.receitas}</p><p className="text-[10px] uppercase opacity-80">Receitas</p></div>
+              </div>
+            </div>
+            <p className="text-sm font-extrabold text-gray-950">Comprar de novo</p>
+            {DEMO_PRODUCTS.slice(0, 2).map((p) => (
+              <button key={p.id} type="button" onClick={() => openProduct(p)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100"><PackageSearch className="h-6 w-6 text-primary" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-gray-950">{p.nome}</p>
+                  <p className="text-xs text-gray-500">{money(p.preco)} · {p.farmacia}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-300" />
+              </button>
+            ))}
+            <button type="button" onClick={() => openPharmacy(DEMO_PHARMACIES[0])} className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-primary/10"><Store className="h-6 w-6 text-primary" /></div>
+              <div className="min-w-0 flex-1">
+                <p className="truncate text-sm font-bold text-gray-950">Sua farmácia favorita</p>
+                <p className="text-xs text-gray-500">{DEMO_PHARMACIES[0].nome}</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-gray-300" />
+            </button>
+          </div>
+        )}
+
+        {!detail && activeTab === 'buscar' && (
+          <div className="space-y-3">
+            <SearchBox value={busca} onChange={setBusca} onSubmit={(e) => e.preventDefault()} />
+            <div className="flex flex-wrap gap-1.5">
+              {DEMO_CATEGORIES.map((c) => (
+                <button key={c} type="button" onClick={() => setCategoria(categoria === c ? '' : c)} className={`rounded-full px-3 py-1 text-xs font-bold ${categoria === c ? 'bg-primary text-white' : 'bg-white text-gray-600 border border-gray-200'}`}>{c}</button>
+              ))}
+            </div>
+            {produtosFiltrados.map((p) => (
+              <button key={p.id} type="button" onClick={() => openProduct(p)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
+                <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gray-100"><PackageSearch className="h-6 w-6 text-primary" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-gray-950">{p.nome}</p>
+                  <p className="text-xs text-gray-500">{money(p.preco)} · {p.farmacia}</p>
+                </div>
+                <ChevronRight className="h-5 w-5 text-gray-300" />
+              </button>
+            ))}
+            {produtosFiltrados.length === 0 && <p className="py-8 text-center text-sm text-gray-400">Nada encontrado.</p>}
+          </div>
+        )}
+
+        {!detail && activeTab === 'farmacias' && (
+          <div className="space-y-2">
             <p className="text-sm font-extrabold text-gray-950">Farmácias perto de você</p>
             {DEMO_PHARMACIES.map((f) => (
-              <div key={f.nome} className="flex items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 shadow-sm">
-                <div className="flex h-11 w-11 items-center justify-center rounded-2xl bg-primary/10">
-                  <Store className="h-5 w-5 text-primary" />
+              <button key={f.id} type="button" onClick={() => openPharmacy(f)} className="flex w-full items-center gap-3 rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
+                <div className="flex h-11 w-11 shrink-0 items-center justify-center rounded-2xl bg-primary/10"><Store className="h-5 w-5 text-primary" /></div>
+                <div className="min-w-0 flex-1">
+                  <p className="truncate text-sm font-bold text-gray-950">{f.nome}</p>
+                  <p className="truncate text-xs text-gray-500">{f.endereco}</p>
                 </div>
-                <div className="flex-1">
-                  <p className="text-sm font-bold text-gray-950">{f.nome}</p>
-                  <p className="text-xs text-gray-500">{f.bairro}</p>
-                </div>
-                <span className="flex items-center gap-1 text-sm font-bold text-amber-500">
-                  <Star className="h-4 w-4 fill-amber-400 text-amber-400" /> {f.nota}
-                </span>
-              </div>
+                <span className="flex items-center gap-1 text-sm font-bold text-amber-500"><Star className="h-4 w-4 fill-amber-400 text-amber-400" />{f.nota}</span>
+              </button>
             ))}
-          </>
+          </div>
         )}
 
-        {activeTab === 'pedidos' && (
-          <>
+        {!detail && activeTab === 'pedidos' && (
+          <div className="space-y-2">
             <p className="text-sm font-extrabold text-gray-950">Suas compras anteriores</p>
             {DEMO_CLIENT_ORDERS.map((o) => (
-              <div key={o.id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <button key={o.id} type="button" onClick={() => openOrder(o)} className="w-full rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-extrabold text-gray-950">Pedido #{o.id}</p>
                   <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
                 </div>
-                <p className="mt-1 text-xs text-gray-500">{o.date} · {o.pharmacy}</p>
-                <span className={`mt-2 inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[11px] font-bold ${o.comReceita ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>
-                  {o.comReceita ? '⚕ Com receita' : 'Sem receita'}
-                </span>
-                <div className="mt-2 flex flex-wrap gap-1">
-                  {o.items.map((it) => (
-                    <span key={it} className="rounded-full bg-gray-100 px-2 py-1 text-[11px] text-gray-600">{it}</span>
-                  ))}
+                <p className="mt-0.5 text-xs text-gray-500">{o.date} · {o.pharmacy}</p>
+                <div className="mt-1.5 flex items-center justify-between">
+                  <span className={`inline-flex rounded-full px-2 py-0.5 text-[11px] font-bold ${o.comReceita ? 'bg-amber-100 text-amber-700' : 'bg-gray-100 text-gray-600'}`}>{o.comReceita ? '⚕ Com receita' : 'Sem receita'}</span>
+                  <span className="flex items-center gap-1 text-xs font-bold text-primary">Ver etapas <ChevronRight className="h-4 w-4" /></span>
                 </div>
-                <div className="mt-3 flex items-center justify-between">
-                  <span className="text-sm font-extrabold text-primary">{money(o.total)}</span>
-                  <div className="flex items-center gap-2">
-                    <span className="text-[11px] font-bold text-gray-400">Sua avaliação</span>
-                    <StarRow value={o.rating} />
-                  </div>
-                </div>
-              </div>
+              </button>
             ))}
-          </>
+          </div>
         )}
 
-        {activeTab === 'conta' && (
+        {!detail && activeTab === 'conta' && (
           <div className="space-y-3">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-base font-extrabold text-gray-950">{DEMO_CLIENT_USER.nome}</p>
-              <p className="mt-1 text-sm text-gray-500">{DEMO_CLIENT_USER.email}</p>
-              <p className="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Conta demonstração</p>
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-white">{DEMO_CLIENT_USER.nome.charAt(0)}</div>
+                <div>
+                  <p className="text-base font-extrabold text-gray-950">{DEMO_CLIENT_USER.nome}</p>
+                  <p className="text-xs text-gray-500">Cliente desde {DEMO_CLIENT_USER.desde}</p>
+                </div>
+              </div>
+              <dl className="mt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between"><dt className="text-gray-400">E-mail</dt><dd className="font-bold text-gray-700">{DEMO_CLIENT_USER.email}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Telefone</dt><dd className="font-bold text-gray-700">{DEMO_CLIENT_USER.telefone}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">CPF</dt><dd className="font-bold text-gray-700">{DEMO_CLIENT_USER.cpf}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">RG</dt><dd className="font-bold text-gray-700">{DEMO_CLIENT_USER.rg}</dd></div>
+                <div className="flex justify-between gap-3"><dt className="text-gray-400">Endereço</dt><dd className="text-right font-bold text-gray-700">{DEMO_CLIENT_USER.endereco}</dd></div>
+              </dl>
             </div>
             <div className="rounded-2xl bg-white p-4 shadow-sm">
               <p className="mb-2 text-sm font-extrabold text-gray-950">Avaliações que você deu</p>
               {DEMO_CLIENT_ORDERS.map((o) => (
                 <div key={o.id} className="flex items-center justify-between border-b border-gray-50 py-2 last:border-0">
-                  <span className="text-xs text-gray-500">#{o.id}</span>
+                  <span className="truncate pr-2 text-xs font-medium text-gray-600">{o.pharmacy}</span>
                   <StarRow value={o.rating} />
                 </div>
               ))}
             </div>
-            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">
+            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-3.5 text-sm font-bold text-red-600 shadow-sm">
               <LogOut className="h-4 w-4" /> Sair da demonstração
             </button>
           </div>
         )}
       </main>
-      <BottomNav tabs={CLIENT_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav tabs={CLIENT_TABS} activeTab={activeTab} onChange={(t) => { setDetail(null); setActiveTab(t) }} />
     </div>
   )
 }
 
 function DemoDriverApp({ activeTab, setActiveTab, onExit }) {
   const [toast, setToast] = useState('')
-  const note = () => setToast('Crie sua conta de entregador para aceitar corridas reais. Aqui é só uma demonstração.')
+  const [periodo, setPeriodo] = useState('dia')
+  const [detail, setDetail] = useState(null)
+  const note = () => setToast('Demonstração — crie sua conta de entregador para aceitar corridas reais.')
+  const earn = DEMO_DRIVER_EARN[periodo]
 
   return (
-    <div className="flex min-h-[100dvh] flex-col bg-gray-50">
+    <div className="flex h-[100dvh] flex-col bg-gray-50">
       <DemoBanner onExit={onExit} />
-      <MobileAppHeader user={DEMO_DRIVER_USER} role="entregador" />
-      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 px-4 py-4" style={{ paddingBottom: 'calc(5.75rem + env(safe-area-inset-bottom))' }}>
+      <MobileAppHeader user={DEMO_DRIVER_USER} role="entregador" connected onProfile={() => { setDetail(null); setActiveTab('conta') }} />
+      <main className="mx-auto flex w-full max-w-md flex-1 flex-col gap-3 overflow-y-auto px-4 py-3" style={{ paddingBottom: 'calc(5.5rem + env(safe-area-inset-bottom))' }}>
         {toast && (
-          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-3 text-left text-sm font-bold text-white">
+          <button type="button" onClick={() => setToast('')} className="w-full rounded-2xl bg-gray-950 px-4 py-2.5 text-left text-xs font-bold text-white">
             {toast}
           </button>
         )}
 
-        {(activeTab === 'home' || activeTab === 'entregas') && (
+        {detail && (
+          <div className="space-y-3">
+            <DemoDetailHeader title={`Entrega #${String(detail.id_pedido).slice(-6)}`} onBack={() => setDetail(null)} />
+            <DemoMap from={detail.endereco_coleta.nome.split(' · ')[0]} to={detail.endereco_entrega.bairro} height="h-32" />
+            <div className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <p className="flex items-center gap-1 text-xs text-gray-500"><Store className="h-3.5 w-3.5" />{detail.endereco_coleta.nome}</p>
+              <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500"><MapPin className="h-3.5 w-3.5" />{detail.endereco_entrega.bairro} · {detail.endereco_entrega.cidade}</p>
+              <p className="mt-2 text-xs text-gray-400">Concluída em {detail.date}</p>
+              <div className="mt-2 flex items-center justify-between">
+                <span className="text-sm font-extrabold text-emerald-700">{money(detail.ganho)}</span>
+                <StarRow value={detail.rating} />
+              </div>
+            </div>
+          </div>
+        )}
+
+        {!detail && (activeTab === 'home' || activeTab === 'entregas') && (
           <>
+            <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
+              <div className="flex items-center gap-2">
+                <span className="h-3 w-3 rounded-full bg-green-500" />
+                <span className="text-sm font-extrabold text-gray-950">Conectado</span>
+              </div>
+              <span className="text-xs text-gray-500">{DEMO_DRIVER_USER.veiculo}</span>
+            </div>
+
+            <div className="grid grid-cols-3 gap-1.5 rounded-2xl bg-gray-100 p-1">
+              {Object.entries(DEMO_DRIVER_EARN).map(([key, v]) => (
+                <button key={key} type="button" onClick={() => setPeriodo(key)} className={`rounded-xl py-1.5 text-xs font-bold ${periodo === key ? 'bg-white text-gray-950 shadow-sm' : 'text-gray-500'}`}>{v.label}</button>
+              ))}
+            </div>
             <div className="grid grid-cols-3 gap-2">
               <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Hoje</p>
-                <p className="text-lg font-extrabold text-emerald-700">{money(DEMO_DRIVER_STATS.ganhos)}</p>
+                <p className="text-[11px] font-bold uppercase text-gray-400">Ganhos</p>
+                <p className="text-base font-extrabold text-emerald-700">{money(earn.ganhos)}</p>
               </div>
               <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Entregas</p>
-                <p className="text-lg font-extrabold text-gray-950">{DEMO_DRIVER_STATS.entregas}</p>
+                <p className="text-[11px] font-bold uppercase text-gray-400">Corridas</p>
+                <p className="text-base font-extrabold text-gray-950">{earn.corridas}</p>
               </div>
               <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
                 <p className="text-[11px] font-bold uppercase text-gray-400">Nota</p>
-                <p className="text-lg font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
+                <p className="text-base font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Corridas no mês</p>
-                <p className="text-lg font-extrabold text-gray-950">{DEMO_DRIVER_STATS.corridasMes}</p>
-              </div>
-              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Ganhos no mês</p>
-                <p className="text-lg font-extrabold text-emerald-700">{money(DEMO_DRIVER_STATS.ganhosMes)}</p>
-              </div>
-            </div>
-
-            <p className="mt-1 text-sm font-extrabold text-gray-950">Entrega em andamento</p>
-            <DeliveryCard
-              delivery={DEMO_DRIVER_ACTIVE}
-              actionLabel="Cheguei / finalizar"
-              onAction={note}
-            />
-
-            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-4">
-              <p className="mb-2 flex items-center gap-1.5 text-sm font-extrabold text-gray-950">
-                <MapPin className="h-4 w-4 text-primary" /> Rota até o cliente
-              </p>
-              <ol className="list-decimal space-y-1 pl-5 text-xs text-gray-600">
-                {DEMO_DRIVER_ROUTE.map((passo, i) => (
-                  <li key={i}>{passo}</li>
-                ))}
+            <p className="text-sm font-extrabold text-gray-950">Entrega em andamento</p>
+            <DeliveryCard delivery={DEMO_DRIVER_ACTIVE} actionLabel="Cheguei / finalizar" onAction={note} />
+            <DemoMap from="Drogasil" to="Setor Oeste" height="h-28" />
+            <div className="rounded-2xl border border-primary/20 bg-primary/5 p-3">
+              <p className="mb-1.5 flex items-center gap-1.5 text-xs font-extrabold text-gray-950"><MapPin className="h-4 w-4 text-primary" /> Rota até o cliente</p>
+              <ol className="list-decimal space-y-0.5 pl-5 text-[11px] text-gray-600">
+                {DEMO_DRIVER_ROUTE.map((passo, i) => <li key={i}>{passo}</li>)}
               </ol>
             </div>
 
-            <p className="mt-1 text-sm font-extrabold text-gray-950">Disponíveis perto de você</p>
+            <p className="text-sm font-extrabold text-gray-950">Disponíveis perto de você</p>
             {DEMO_DRIVER_AVAILABLE.map((d) => (
-              <DeliveryCard key={d._id} delivery={d} actionLabel={`Aceitar · ${money(d.ganho)}`} onAction={note} />
+              <DeliveryCard key={d._id} delivery={d} actionLabel={`Aceitar · ${money(d.ganho)} · ${d.dist}`} onAction={note} />
             ))}
           </>
         )}
 
-        {activeTab === 'historico' && (
-          <>
+        {!detail && activeTab === 'historico' && (
+          <div className="space-y-2">
             <p className="text-sm font-extrabold text-gray-950">Entregas concluídas</p>
             {DEMO_DRIVER_HISTORY.map((d) => (
-              <div key={d._id} className="rounded-2xl border border-gray-100 bg-white p-4 shadow-sm">
+              <button key={d._id} type="button" onClick={() => setDetail(d)} className="w-full rounded-2xl border border-gray-100 bg-white p-3 text-left shadow-sm">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-extrabold text-gray-950">Entrega #{String(d.id_pedido).slice(-6)}</p>
-                  <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[11px] font-bold text-green-700">Entregue</span>
+                  <span className="flex items-center gap-1 text-xs font-bold text-primary">Ver rota <ChevronRight className="h-4 w-4" /></span>
                 </div>
-                <p className="mt-1 flex items-center gap-1 text-xs text-gray-500"><Store className="h-3.5 w-3.5" />{d.endereco_coleta.nome}</p>
-                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500"><MapPin className="h-3.5 w-3.5" />{d.endereco_entrega.bairro}</p>
-                <div className="mt-3 flex items-center justify-between">
+                <p className="mt-0.5 flex items-center gap-1 text-xs text-gray-500"><MapPin className="h-3.5 w-3.5" />{d.endereco_entrega.bairro} · {d.date}</p>
+                <div className="mt-1.5 flex items-center justify-between">
                   <span className="text-sm font-extrabold text-emerald-700">{money(d.ganho)}</span>
                   <StarRow value={d.rating} />
                 </div>
-              </div>
+              </button>
             ))}
-          </>
+          </div>
         )}
 
-        {activeTab === 'conta' && (
+        {!detail && activeTab === 'conta' && (
           <div className="space-y-3">
-            <div className="rounded-2xl bg-white p-5 shadow-sm">
-              <p className="text-base font-extrabold text-gray-950">{DEMO_DRIVER_USER.nome}</p>
-              <p className="mt-1 text-sm text-gray-500">{DEMO_DRIVER_USER.email}</p>
-              <p className="mt-3 inline-flex rounded-full bg-amber-50 px-3 py-1 text-xs font-bold text-amber-700">Conta demonstração</p>
-            </div>
-            <div className="grid grid-cols-2 gap-2">
-              <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Ganhos no mês</p>
-                <p className="text-lg font-extrabold text-emerald-700">{money(984.5)}</p>
+            <div className="rounded-2xl bg-white p-4 shadow-sm">
+              <div className="flex items-center gap-3">
+                <div className="relative flex h-12 w-12 items-center justify-center rounded-full bg-primary text-lg font-extrabold text-white">
+                  {DEMO_DRIVER_USER.nome.charAt(0)}
+                  <span className="absolute -bottom-0.5 -right-0.5 h-3 w-3 rounded-full border-2 border-white bg-green-500" />
+                </div>
+                <div>
+                  <p className="text-base font-extrabold text-gray-950">{DEMO_DRIVER_USER.nome}</p>
+                  <p className="text-xs font-bold text-green-600">Conectado · desde {DEMO_DRIVER_USER.desde}</p>
+                </div>
               </div>
-              <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
-                <p className="text-[11px] font-bold uppercase text-gray-400">Avaliação média</p>
-                <p className="text-lg font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
+              <dl className="mt-3 space-y-1.5 text-xs">
+                <div className="flex justify-between"><dt className="text-gray-400">E-mail</dt><dd className="font-bold text-gray-700">{DEMO_DRIVER_USER.email}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Telefone</dt><dd className="font-bold text-gray-700">{DEMO_DRIVER_USER.telefone}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Veículo</dt><dd className="font-bold text-gray-700">{DEMO_DRIVER_USER.veiculo}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">Placa</dt><dd className="font-bold text-gray-700">{DEMO_DRIVER_USER.placa}</dd></div>
+                <div className="flex justify-between"><dt className="text-gray-400">CNH</dt><dd className="font-bold text-gray-700">{DEMO_DRIVER_USER.cnh}</dd></div>
+              </dl>
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Entregas</p>
+                <p className="text-base font-extrabold text-gray-950">{DEMO_DRIVER_USER.entregasTotais}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">No mês</p>
+                <p className="text-base font-extrabold text-emerald-700">{money(DEMO_DRIVER_EARN.mes.ganhos)}</p>
+              </div>
+              <div className="rounded-2xl bg-white p-3 text-center shadow-sm">
+                <p className="text-[11px] font-bold uppercase text-gray-400">Nota</p>
+                <p className="text-base font-extrabold text-amber-500">{DEMO_DRIVER_STATS.avaliacao}</p>
               </div>
             </div>
-            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-4 text-sm font-bold text-red-600 shadow-sm">
+            <button type="button" onClick={onExit} className="flex w-full items-center justify-center gap-2 rounded-2xl bg-white p-3.5 text-sm font-bold text-red-600 shadow-sm">
               <LogOut className="h-4 w-4" /> Sair da demonstração
             </button>
           </div>
         )}
       </main>
-      <BottomNav tabs={DRIVER_TABS} activeTab={activeTab} onChange={setActiveTab} />
+      <BottomNav tabs={DRIVER_TABS} activeTab={activeTab} onChange={(t) => { setDetail(null); setActiveTab(t) }} />
     </div>
   )
 }
