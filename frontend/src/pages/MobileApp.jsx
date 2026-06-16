@@ -2979,7 +2979,7 @@ function DemoDriverApp({ activeTab, setActiveTab, onExit }) {
           </div>
         )}
 
-        {!detail && (activeTab === 'home' || activeTab === 'entregas') && (
+        {!detail && activeTab === 'home' && (
           <>
             <div className="flex items-center justify-between rounded-2xl bg-white p-3 shadow-sm">
               <div className="flex items-center gap-2">
@@ -3009,6 +3009,23 @@ function DemoDriverApp({ activeTab, setActiveTab, onExit }) {
               </div>
             </div>
 
+            <button type="button" onClick={() => setActiveTab('entregas')} className="flex items-center justify-between rounded-2xl border border-primary/20 bg-primary/5 p-4 text-left">
+              <div>
+                <p className="text-sm font-extrabold text-gray-950">1 entrega em andamento</p>
+                <p className="text-xs text-gray-500">Toque para ver a rota e finalizar</p>
+              </div>
+              <ChevronRight className="h-5 w-5 text-primary" />
+            </button>
+            <div className="rounded-2xl bg-white p-4 text-center shadow-sm">
+              <p className="text-xs font-bold uppercase text-gray-400">Disponíveis agora</p>
+              <p className="text-2xl font-extrabold text-gray-950">{DEMO_DRIVER_AVAILABLE.length}</p>
+              <button type="button" onClick={() => setActiveTab('entregas')} className="mt-2 text-xs font-bold text-primary">Ver entregas disponíveis</button>
+            </div>
+          </>
+        )}
+
+        {!detail && activeTab === 'entregas' && (
+          <>
             <p className="text-sm font-extrabold text-gray-950">Entrega em andamento</p>
             <DeliveryCard delivery={DEMO_DRIVER_ACTIVE} actionLabel="Cheguei / finalizar" onAction={note} />
             <DemoMap from="Drogasil" to="Setor Oeste" height="h-28" />
