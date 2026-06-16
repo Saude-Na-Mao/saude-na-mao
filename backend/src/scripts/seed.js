@@ -22,6 +22,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/drogasil-logo.jpg",
     foto: "/imagens/farmacias/drogasil-foto.png",
+    taxa_entrega: 7,
     location: { type: "Point", coordinates: [-49.2680, -16.7045] },
   },
   {
@@ -41,6 +42,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/pacheco-logo.jpg",
     foto: "/imagens/farmacias/pacheco-foto.png",
+    taxa_entrega: 6,
     location: { type: "Point", coordinates: [-49.2670, -16.7090] },
   },
   {
@@ -60,6 +62,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/droga-raia-logo.jpg",
     foto: "/imagens/farmacias/droga-raia-foto.png",
+    taxa_entrega: 8,
     location: { type: "Point", coordinates: [-49.2710, -16.6920] },
   },
   {
@@ -79,6 +82,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/pague-menos-logo.jpg",
     foto: "/imagens/farmacias/pague-menos-foto.png",
+    taxa_entrega: 6,
     location: { type: "Point", coordinates: [-49.2720, -16.7050] },
   },
   {
@@ -98,6 +102,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/santa-marta-logo.png",
     foto: "/imagens/farmacias/santa-marta-foto.png",
+    taxa_entrega: 7,
     location: { type: "Point", coordinates: [-49.2620, -16.7180] },
   },
   {
@@ -117,6 +122,7 @@ const farmacias = [
     ativa: true,
     logo: "/imagens/farmacias/medfacil-logo.png",
     foto: "/imagens/farmacias/medfacil-foto.png",
+    taxa_entrega: 8,
     location: { type: "Point", coordinates: [-49.2560, -16.6960] },
   },
 ];

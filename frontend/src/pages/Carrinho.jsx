@@ -60,15 +60,18 @@ export default function Carrinho() {
     })
   }
 
+  // Frete da farmácia do carrinho (definido por farmácia); fallback R$ 8
+  const freteMoto = Number(items[0]?.taxa_entrega) > 0 ? Number(items[0].taxa_entrega) : 8.00
+
   // Update delivery fee when delivery type changes
   useEffect(() => {
-    const fees = { moto: 8.00, retirada: 0, emergencia: 20.00 }
-    let taxa = fees[deliveryType] ?? 8.00
+    const fees = { moto: freteMoto, retirada: 0, emergencia: 20.00 }
+    let taxa = fees[deliveryType] ?? freteMoto
     const subtotal = getTotal()
     if (subtotal >= 150 && deliveryType === 'moto') taxa = 0
     if (couponData?.frete_gratis) taxa = 0
     setTaxaEntrega(taxa)
-  }, [deliveryType, couponData, items])
+  }, [deliveryType, couponData, items, freteMoto])
 
   // Reorder: load items from localStorage if present
   useEffect(() => {
@@ -470,7 +473,7 @@ export default function Carrinho() {
             </h3>
             <div className="space-y-2">
               {[
-                { value: 'moto', label: 'Motoboy', desc: 'Até 60 min', fee: subtotal >= 150 ? 0 : 8 },
+                { value: 'moto', label: 'Motoboy', desc: 'Até 60 min', fee: subtotal >= 150 ? 0 : freteMoto },
                 { value: 'retirada', label: 'Retirada', desc: 'Retire na farmácia', fee: 0 },
               ].map((opt) => (
                 <label

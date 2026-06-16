@@ -6,6 +6,7 @@ import Logger from './utils/logger'
 import Navbar from './components/Navbar'
 import Footer from './components/Footer'
 import ChatSupport from './components/ChatSupport'
+import MiniCart from './components/MiniCart'
 import NotificationToast from './components/NotificationToast'
 import Home from './pages/Home'
 import Farmacias from './pages/Farmacias'
@@ -256,6 +257,7 @@ function AppContent() {
         </Routes>
       </main>
       {!isMobileAppRoute && <Footer />}
+      {!isMobileAppRoute && <MiniCart />}
       {!isMobileAppRoute && <ChatSupport />}
     </div>
   )

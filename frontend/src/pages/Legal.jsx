@@ -1,5 +1,8 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { useSearchParams } from 'react-router-dom'
 import { ChevronDown, CheckCircle, Shield, FileText, HelpCircle } from 'lucide-react'
+
+const VALID_TABS = ['termos', 'privacidade', 'faq']
 
 const TABS = [
   { id: 'termos', label: 'Termos de Uso', icon: FileText },
@@ -44,6 +47,30 @@ const FAQS = [
     resposta:
       'O projeto deve coletar apenas o necessário, informar a finalidade, proteger arquivos enviados e permitir correção/exclusão de dados conforme a LGPD.',
   },
+  {
+    id: 7,
+    pergunta: 'Como funciona o frete?',
+    resposta:
+      'Cada farmácia define a sua própria taxa de entrega, exibida antes de confirmar o pedido. Você pode comparar farmácias pelo menor frete e pelo menor preço total (produto + entrega).',
+  },
+  {
+    id: 8,
+    pergunta: 'Quais formas de pagamento são aceitas?',
+    resposta:
+      'Pix, cartão de crédito, cartão de débito e dinheiro na entrega, conforme as opções oferecidas por cada farmácia. O pagamento é confirmado no carrinho, na etapa final da compra.',
+  },
+  {
+    id: 9,
+    pergunta: 'Como acompanho a entrega do meu pedido?',
+    resposta:
+      'Após a confirmação, acompanhe o status em tempo real em "Meus Pedidos". Você verá quando o pedido é separado, sai para entrega e chega, e confirma o recebimento com um código.',
+  },
+  {
+    id: 10,
+    pergunta: 'Preciso estar logado para comprar?',
+    resposta:
+      'Sim. Para adicionar produtos ao carrinho, enviar receitas e finalizar a compra é necessário ter uma conta e estar logado, garantindo a segurança dos seus dados.',
+  },
 ]
 
 const TERMOS_CONTENT = `
@@ -71,13 +98,28 @@ O usuário deve informar dados corretos de cadastro, endereço e contato. A conf
 - Não inserir dados de terceiros sem autorização.
 - Não tentar burlar autenticação, regras de receita ou validações de segurança.
 
-## 6. Limitação de Responsabilidade
+## 6. Pagamentos
+- O pagamento é processado no momento da finalização do pedido, pelos meios oferecidos pela farmácia (Pix, cartão ou dinheiro na entrega).
+- Para medicamentos com retenção de receita, a cobrança só é liberada após a validação do farmacêutico.
+- O valor total exibido inclui os produtos, o frete da farmácia escolhida e eventuais descontos de cupom.
+
+## 7. Frete e Entrega
+- O valor do frete é definido por cada farmácia e exibido antes da confirmação do pedido.
+- O prazo de entrega é estimado e pode variar conforme a distância, o trânsito e a disponibilidade de entregadores.
+- A entrega é confirmada por código, garantindo que o pedido foi recebido pelo cliente correto.
+
+## 8. Cancelamento e Devolução
+- Pedidos podem ser cancelados antes da separação/coleta sem custo.
+- Medicamentos só são devolvidos conforme as regras sanitárias aplicáveis e a política da farmácia.
+- Receitas rejeitadas permitem ao cliente cancelar o pedido ou reenviar o documento.
+
+## 9. Limitação de Responsabilidade
 A plataforma organiza o fluxo do pedido. Decisões clínicas, prescrição, substituição terapêutica e dispensação dependem de profissionais habilitados e farmácias autorizadas.
 
-## 7. Alterações
+## 10. Alterações
 Estes termos podem ser alterados conforme evolução do serviço, exigências legais ou melhorias operacionais.
 
-## 8. Lei Aplicável
+## 11. Lei Aplicável
 Estes Termos de Uso são regidos pelas leis da República Federativa do Brasil.
 `.trim()
 
@@ -148,8 +190,23 @@ Esta política pode ser atualizada conforme evolução do serviço.
 `.trim()
 
 export default function Legal() {
-  const [activeTab, setActiveTab] = useState('termos')
+  const [searchParams, setSearchParams] = useSearchParams()
+  const initialTab = VALID_TABS.includes(searchParams.get('tab')) ? searchParams.get('tab') : 'termos'
+  const [activeTab, setActiveTab] = useState(initialTab)
   const [expandedFAQ, setExpandedFAQ] = useState(null)
+
+  // Sincroniza a aba ativa com o parâmetro ?tab= (links do rodapé apontam para cada documento)
+  useEffect(() => {
+    const tab = searchParams.get('tab')
+    if (VALID_TABS.includes(tab) && tab !== activeTab) {
+      setActiveTab(tab)
+    }
+  }, [searchParams])
+
+  const changeTab = (tab) => {
+    setActiveTab(tab)
+    setSearchParams({ tab }, { replace: true })
+  }
 
   const renderInline = (text) => {
     const parts = text.split(/(\*\*[^*]+\*\*)/)
@@ -169,7 +226,7 @@ export default function Legal() {
     const flushList = () => {
       if (listItems.length > 0) {
         elements.push(
-          <ul key={`ul-${elements.length}`} className="list-disc pl-5 space-y-1 text-sm leading-relaxed">
+          <ul key={`ul-${elements.length}`} className="list-disc pl-6 space-y-2 text-sm sm:text-[15px] leading-relaxed text-gray-700">
             {listItems.map((item, i) => (
               <li key={i}>{renderInline(item)}</li>
             ))}
@@ -186,9 +243,9 @@ export default function Legal() {
         const text = line.replace(/^#+\s/, '')
         elements.push(
           level === 1 ? (
-            <h1 key={index} className="text-3xl font-bold text-gray-900 mt-6 mb-4">{renderInline(text)}</h1>
+            <h1 key={index} className="text-2xl sm:text-3xl font-bold text-gray-900 mt-8 mb-5 first:mt-0">{renderInline(text)}</h1>
           ) : (
-            <h2 key={index} className="text-xl font-bold text-gray-800 mt-4 mb-2">{renderInline(text)}</h2>
+            <h2 key={index} className="text-lg sm:text-xl font-bold text-gray-800 mt-7 mb-3">{renderInline(text)}</h2>
           )
         )
       } else if (line.trimStart().startsWith('- ')) {
@@ -196,7 +253,7 @@ export default function Legal() {
       } else if (line.trim()) {
         flushList()
         elements.push(
-          <p key={index} className="text-sm leading-relaxed">{renderInline(line)}</p>
+          <p key={index} className="text-sm sm:text-[15px] leading-relaxed text-gray-700">{renderInline(line)}</p>
         )
       } else {
         flushList()
@@ -224,14 +281,14 @@ export default function Legal() {
 
       case 'faq':
         return (
-          <div className="space-y-3">
+          <div className="space-y-4">
             {FAQS.map((faq) => (
-              <div key={faq.id} className="border border-gray-200 rounded-lg overflow-hidden">
+              <div key={faq.id} className="border border-gray-200 rounded-xl overflow-hidden">
                 <button
                   onClick={() => setExpandedFAQ(expandedFAQ === faq.id ? null : faq.id)}
-                  className="w-full px-4 py-3 flex justify-between items-center hover:bg-gray-50 transition text-left"
+                  className="w-full px-5 py-4 flex justify-between items-center gap-3 hover:bg-gray-50 transition text-left"
                 >
-                  <h3 className="font-semibold text-gray-800 text-sm">{faq.pergunta}</h3>
+                  <h3 className="font-semibold text-gray-800 text-sm sm:text-[15px]">{faq.pergunta}</h3>
                   <ChevronDown
                     size={20}
                     className={`text-gray-500 transition ${
@@ -240,8 +297,8 @@ export default function Legal() {
                   />
                 </button>
                 {expandedFAQ === faq.id && (
-                  <div className="px-4 py-3 bg-blue-50 border-t border-gray-200">
-                    <p className="text-sm text-gray-700 leading-relaxed">{faq.resposta}</p>
+                  <div className="px-5 py-4 bg-blue-50 border-t border-gray-200">
+                    <p className="text-sm sm:text-[15px] text-gray-700 leading-relaxed">{faq.resposta}</p>
                   </div>
                 )}
               </div>
@@ -271,21 +328,21 @@ export default function Legal() {
               return (
                 <button
                   key={tab.id}
-                  onClick={() => setActiveTab(tab.id)}
+                  onClick={() => changeTab(tab.id)}
                   className={`flex-1 px-4 py-4 flex items-center justify-center gap-2 font-medium text-sm transition border-b-2 ${
                     activeTab === tab.id
                       ? 'border-green-500 text-green-600 bg-green-50'
                       : 'border-transparent text-gray-600 hover:text-gray-900 hover:bg-gray-50'
                   }`}
                 >
-                  <Icon size={18} />
-                  <span className="hidden sm:inline">{tab.label}</span>
+                  <Icon size={18} className="shrink-0" />
+                  <span className="text-xs sm:text-sm">{tab.label}</span>
                 </button>
               )
             })}
           </div>
 
-          <div className="p-6 max-h-[70vh] overflow-y-auto">{renderTabContent()}</div>
+          <div className="p-6 sm:p-8 lg:p-10 max-h-[72vh] overflow-y-auto">{renderTabContent()}</div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-8">

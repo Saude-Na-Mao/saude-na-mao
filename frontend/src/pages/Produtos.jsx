@@ -24,6 +24,13 @@ const TARJA_CONFIG = {
   controlado_a: { label: 'Tarja Amarela (Lista A)', bg: 'bg-yellow-50', text: 'text-yellow-800', border: 'border-l-4 border-l-yellow-500' },
 }
 
+const FRETE_PADRAO = 8
+
+function freteDaFarmacia(pharmacy) {
+  const taxa = Number(pharmacy?.taxa_entrega_base)
+  return Number.isFinite(taxa) && taxa > 0 ? taxa : FRETE_PADRAO
+}
+
 export default function Produtos() {
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState([])
@@ -68,7 +75,7 @@ export default function Produtos() {
 
   useEffect(() => {
     loadData()
-  }, [query, sortBy])
+  }, [query])
 
   useEffect(() => {
     if (!onlyOnlinePharmacist) return undefined
@@ -158,10 +165,36 @@ export default function Produtos() {
       const pharmacy = pharmacies[getPharmacyId(p)]
       return Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
     })
+
+
+  // Agrupa o mesmo medicamento (mesmo nome) vendido por várias farmácias.
+  // Cada grupo guarda as ofertas ranqueadas de forma crescente por preço + frete.
+  const groupsMap = new Map()
+  filtered.forEach((product) => {
+    const key = (product.nome || '').trim().toLowerCase()
+    if (!groupsMap.has(key)) groupsMap.set(key, [])
+    const pharmId = getPharmacyId(product)
+    const pharmacy = pharmacies[pharmId]
+    const preco = getDisplayPrice(product)
+    const frete = freteDaFarmacia(pharmacy)
+    groupsMap.get(key).push({ product, pharmacy, pharmacyId: pharmId, preco, frete, total: preco + frete })
+  })
+
+  const groups = Array.from(groupsMap.values())
+    .map((ofertas) => {
+      const ranked = [...ofertas].sort((a, b) => a.total - b.total)
+      return {
+        representante: ranked[0].product,
+        ofertas: ranked,
+        menorPreco: Math.min(...ranked.map((o) => o.preco)),
+        menorFrete: Math.min(...ranked.map((o) => o.frete)),
+        menorTotal: ranked[0].total,
+      }
+    })
     .sort((a, b) => {
-      if (sortBy === 'preco-asc') return (a.preco_final || a.preco) - (b.preco_final || b.preco)
-      if (sortBy === 'preco-desc') return (b.preco_final || b.preco) - (a.preco_final || a.preco)
-      return (a.nome || '').localeCompare(b.nome || '')
+      if (sortBy === 'preco-asc') return a.menorTotal - b.menorTotal
+      if (sortBy === 'preco-desc') return b.menorTotal - a.menorTotal
+      return (a.representante.nome || '').localeCompare(b.representante.nome || '')
     })
 
   return (
@@ -319,7 +352,7 @@ export default function Produtos() {
             </div>
 
             <p className="text-xs text-gray-400 pt-2 border-t border-gray-100">
-              {filtered.length} de {products.length} produtos
+              {groups.length} medicamentos · {filtered.length} ofertas
             </p>
           </div>
         </aside>
@@ -328,7 +361,7 @@ export default function Produtos() {
         <main className="flex-1">
           {loading ? (
             <LoadingSpinner />
-          ) : filtered.length === 0 ? (
+          ) : groups.length === 0 ? (
             <div className="text-center py-16 bg-gray-50 rounded-2xl">
               <Package2 className="w-12 h-12 text-gray-300 mx-auto mb-4" />
               <p className="text-gray-500 text-lg mb-2">Nenhum produto encontrado</p>
@@ -340,17 +373,9 @@ export default function Produtos() {
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
-              {filtered.map((product) => {
-                const pharmId = getPharmacyId(product)
-                return (
-                  <ProductCardWithPharmacy
-                    key={product._id || product.id}
-                    product={product}
-                    pharmacy={pharmacies[pharmId]}
-                    pharmacyId={pharmId}
-                  />
-                )
-              })}
+              {groups.map((group) => (
+                <GroupOfferCard key={group.representante.nome} group={group} />
+              ))}
             </div>
           )}
         </main>
@@ -359,141 +384,31 @@ export default function Produtos() {
   )
 }
 
-function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
-  const { addItem, replaceCartWithItem } = useCartStore()
-  const { addNotification } = useUiStore()
-  const navigate = useNavigate()
-  const [quantity, setQuantity] = useState(1)
-  const [added, setAdded] = useState(false)
-  const [showConflict, setShowConflict] = useState(false)
-  const [conflictPharmacy, setConflictPharmacy] = useState('')
+function GroupOfferCard({ group }) {
   const [modalAberto, setModalAberto] = useState(false)
-
-  const preco = getDisplayPrice(product)
-  const temPromocao = showPromo(product)
+  const product = group.representante
   const precisaReceita = requiresPrescription(product)
   const remoteBlocked = isRemoteCheckoutBlocked(product)
-  const availableStock = getAvailableStock(product)
-  const isOutOfStock = isProductUnavailable(product)
   const tarja = TARJA_CONFIG[product.classificacao_receita] || null
-
-  const pharmacyName = pharmacy?.nome || 'Farmácia'
-  const supportOnline = Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
   const productImage = resolveMediaUrl(product.imagens?.[0] || product.imagem_url)
   const hideProductImage = shouldHideProductImage(product)
+  const nFarmacias = group.ofertas.length
 
-  const productData = {
-    id: product._id || product.id,
-    nome: product.nome,
-    preco,
-    estoque: availableStock,
-    controlado: product.controlado,
-    receita_obrigatoria: precisaReceita,
-    classificacao_receita: product.classificacao_receita || 'sem_receita',
-    imagem_url: productImage,
-    id_farmacia: pharmacyId,
-    nome_farmacia: pharmacyName,
-    quantity,
-  }
-
-  const handleAdd = () => {
-    if (isOutOfStock) {
-      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
-      return
-    }
-
-    if (remoteBlocked) {
-      addNotification?.({
-        type: 'warning',
-        message: 'Por segurança regulatória, este medicamento exige atendimento da farmácia.',
-      })
-      return
-    }
-
-    const result = addItem(productData)
-    if (result?.unavailable) {
-      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
-      return
-    }
-    if (result?.authRequired) {
-      addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
-      navigate('/login')
-      return
-    }
-
-    if (result?.pharmacyConflict) {
-      setConflictPharmacy(result.currentPharmacyName)
-      setShowConflict(true)
-      return
-    }
-    setAdded(true)
-    addNotification?.({ type: 'success', message: `${product.nome} adicionado ao carrinho` })
-    setTimeout(() => setAdded(false), 2000)
-  }
-
-  const handleReplaceCart = () => {
-    if (isOutOfStock) {
-      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
-      return
-    }
-
-    if (remoteBlocked) {
-      addNotification?.({
-        type: 'warning',
-        message: 'Por segurança regulatória, este medicamento exige atendimento da farmácia.',
-      })
-      return
-    }
-
-    const result = replaceCartWithItem(productData)
-    if (result?.unavailable) {
-      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
-      return
-    }
-    if (result?.authRequired) {
-      addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
-      navigate('/login')
-      return
-    }
-
-    setShowConflict(false)
-    setAdded(true)
-    addNotification?.({ type: 'success', message: `Carrinho atualizado com item de ${pharmacyName}` })
-    setTimeout(() => setAdded(false), 2000)
-  }
+  const vd =
+    product.validade_receita_dias != null && product.validade_receita_dias > 0
+      ? product.validade_receita_dias
+      : product.classificacao_receita === 'antimicrobiano'
+        ? 10
+        : null
 
   return (
-    <div className={`${isOutOfStock ? 'bg-gray-100 opacity-70' : 'bg-white'} rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
-      {/* Tarja classification bar */}
+    <div className={`bg-white rounded-xl border border-gray-100 overflow-hidden hover:shadow-md transition-all h-full flex flex-col ${tarja?.border || ''}`}>
       {tarja && (
         <div className={`px-4 py-1.5 ${tarja.bg} ${tarja.text} text-[10px] font-bold flex items-center gap-1`}>
           <AlertTriangle className="w-3 h-3" />
           {tarja.label}
         </div>
       )}
-      {/* Pharmacy badge */}
-      <div className="px-4 py-2.5 bg-gray-50 border-b border-gray-100 flex items-center gap-2">
-        <Store className="w-3.5 h-3.5 text-primary" />
-        <Link
-          to={`/farmacia/${pharmacyId}`}
-          className="text-xs font-medium text-gray-700 hover:text-primary transition truncate"
-        >
-          {pharmacy?.nome || 'Farmácia'}
-        </Link>
-        {pharmacy && (
-          <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
-            supportOnline
-              ? 'bg-emerald-50 text-emerald-700'
-              : 'bg-gray-100 text-gray-500'
-          }`}>
-            <span className={`h-1.5 w-1.5 rounded-full ${supportOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
-            {supportOnline ? 'suporte online' : 'sem suporte agora'}
-          </span>
-        )}
-        {pharmacy?.bairro && (
-          <span className="text-xs text-gray-400 ml-auto truncate">{pharmacy.bairro}</span>
-        )}
-      </div>
 
       <div className="p-4 flex-1 flex flex-col">
         <div className="flex gap-3">
@@ -501,11 +416,7 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
             {hideProductImage ? (
               <FileText className="w-8 h-8 text-amber-500" />
             ) : productImage ? (
-              <img
-                src={productImage}
-                alt=""
-                className="w-full h-full object-contain"
-              />
+              <img src={productImage} alt="" className="w-full h-full object-contain" />
             ) : (
               <Package2 className="w-8 h-8 text-gray-300" />
             )}
@@ -523,21 +434,12 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
           </div>
         </div>
 
-        {/* Badges */}
         <div className="flex flex-wrap gap-1.5 mt-3">
-          {(() => {
-            const vd =
-              product.validade_receita_dias != null && product.validade_receita_dias > 0
-                ? product.validade_receita_dias
-                : product.classificacao_receita === 'antimicrobiano'
-                  ? 10
-                  : null
-            return vd != null ? (
-              <span className="flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
-                <FileText className="w-3 h-3" /> Validade: {vd} dias
-              </span>
-            ) : null
-          })()}
+          {vd != null && (
+            <span className="flex items-center gap-1 text-[10px] font-bold bg-blue-50 text-blue-700 px-2 py-1 rounded-lg">
+              <FileText className="w-3 h-3" /> Validade: {vd} dias
+            </span>
+          )}
           {precisaReceita && (
             <span className="flex items-center gap-1 text-[10px] font-bold bg-amber-50 text-amber-600 px-2 py-1 rounded-lg">
               <FileText className="w-3 h-3" /> Receita obrigatória
@@ -548,120 +450,235 @@ function ProductCardWithPharmacy({ product, pharmacy, pharmacyId }) {
               <AlertTriangle className="w-3 h-3" /> Atendimento obrigatório
             </span>
           )}
-          {temPromocao && (
-            <span className="text-[10px] font-bold bg-emerald-50 text-emerald-600 px-2 py-1 rounded-lg">
-              Promoção
-            </span>
-          )}
         </div>
 
-        {/* Price + add */}
-        <div className="flex flex-col gap-3 sm:flex-row sm:items-end sm:justify-between mt-auto pt-3 border-t border-gray-50">
-          <div>
-            {temPromocao && (
-              <span className="text-xs text-gray-400 line-through mr-1">
-                R$ {product.preco?.toFixed(2)}
-              </span>
-            )}
-            <div className="text-xl font-bold text-primary">
-              R$ {preco?.toFixed(2)}
-            </div>
-            {!isOutOfStock ? (
-              <p className="text-[10px] text-emerald-600">Em estoque</p>
-            ) : (
-              <p className="text-[10px] text-red-500">Indisponível</p>
-            )}
+        <div className="mt-auto pt-3 border-t border-gray-50">
+          <p className="text-[11px] text-gray-400">A partir de</p>
+          <div className="flex items-end gap-2 flex-wrap">
+            <span className="text-2xl font-bold text-primary leading-none">R$ {group.menorPreco.toFixed(2)}</span>
+            <span className="text-[11px] text-gray-400 mb-0.5">+ frete a partir de R$ {group.menorFrete.toFixed(2)}</span>
           </div>
+          <p className="text-[11px] text-gray-500 mt-1">
+            {nFarmacias} {nFarmacias === 1 ? 'farmácia disponível' : 'farmácias disponíveis'}
+          </p>
 
-          {!isOutOfStock && (
-            <div className="flex items-center gap-2">
-              <div className="flex items-center border rounded-lg overflow-hidden">
-                <button
-                  onClick={() => setQuantity(Math.max(1, quantity - 1))}
-                  className="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm"
-                >-</button>
-                <span className="w-6 text-center text-xs font-medium">{quantity}</span>
-                <button
-                  onClick={() => setQuantity(Math.min(availableStock, quantity + 1))}
-                  className="px-2 py-1 text-gray-500 hover:bg-gray-50 text-sm"
-                >+</button>
-              </div>
-              <button
-                onClick={handleAdd}
-                disabled={remoteBlocked}
-                className={`p-2 rounded-lg transition ${
-                  added
-                    ? 'bg-emerald-500 text-white'
-                    : remoteBlocked
-                      ? 'bg-gray-300 text-gray-500 cursor-not-allowed'
-                      : 'bg-primary text-white hover:bg-secondary'
-                }`}
-                title={remoteBlocked ? 'Atendimento direto da farmácia' : 'Adicionar ao carrinho'}
-              >
-                <ShoppingCart className="w-4 h-4" />
-              </button>
-            </div>
-          )}
+          <button
+            onClick={() => setModalAberto(true)}
+            className="mt-3 w-full py-2.5 rounded-lg font-semibold flex items-center justify-center gap-2 transition bg-primary text-white hover:bg-secondary text-sm"
+          >
+            <Store className="w-4 h-4" />
+            Ver ofertas e comprar
+          </button>
         </div>
-
-        <button
-          onClick={() => setModalAberto(true)}
-          className="mt-3 w-full py-2 rounded-lg font-semibold flex items-center justify-center gap-2 transition border border-gray-200 text-gray-700 hover:bg-gray-50 text-sm"
-        >
-          <Info className="w-4 h-4" />
-          Ver detalhes / Tirar dúvida
-        </button>
       </div>
 
-      <ProdutoDetalheModal
-        produto={{
-          ...product,
-          estoque: availableStock,
-          id: product._id || product.id,
-          imagem: product.imagem || product.imagem_url || product.imagens?.[0],
-          id_farmacia: pharmacy?._id
-            ? {
-                _id: pharmacy._id,
-                nome: pharmacy.nome,
-                cidade: pharmacy.cidade,
-                estado: pharmacy.estado,
-                telefone: pharmacy.telefone,
-                bairro: pharmacy.bairro,
-                logradouro: pharmacy.logradouro,
-                horario_funcionamento: pharmacy.horario_funcionamento,
-                avaliacao: pharmacy.avaliacao,
-              }
-            : pharmacyId,
-          nome_farmacia: pharmacyName,
-        }}
-        isOpen={modalAberto}
-        onClose={() => setModalAberto(false)}
-      />
-
-      {showConflict && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setShowConflict(false)}>
-          <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
-            <h3 className="text-lg font-bold text-gray-900 mb-2">Farmácia diferente</h3>
-            <p className="text-sm text-gray-600 mb-4">
-              Seu carrinho contém itens de <strong>{conflictPharmacy}</strong>. Deseja limpar o carrinho e adicionar itens de <strong>{pharmacyName}</strong>?
-            </p>
-            <div className="flex gap-3">
-              <button
-                onClick={() => setShowConflict(false)}
-                className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={handleReplaceCart}
-                className="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-secondary transition"
-              >
-                Limpar e adicionar
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      <OffersModal group={group} isOpen={modalAberto} onClose={() => setModalAberto(false)} />
     </div>
+  )
+}
+
+function OffersModal({ group, isOpen, onClose }) {
+  const { addItem, replaceCartWithItem } = useCartStore()
+  const { addNotification } = useUiStore()
+  const navigate = useNavigate()
+  const [conflict, setConflict] = useState(null)
+  const [detalheOferta, setDetalheOferta] = useState(null)
+
+  if (!isOpen) return null
+
+  const buildProductData = (offer) => ({
+    id: offer.product._id || offer.product.id,
+    nome: offer.product.nome,
+    preco: offer.preco,
+    estoque: getAvailableStock(offer.product),
+    controlado: offer.product.controlado,
+    receita_obrigatoria: requiresPrescription(offer.product),
+    classificacao_receita: offer.product.classificacao_receita || 'sem_receita',
+    imagem_url: resolveMediaUrl(offer.product.imagens?.[0] || offer.product.imagem_url),
+    id_farmacia: offer.pharmacyId,
+    nome_farmacia: offer.pharmacy?.nome || 'Farmácia',
+    taxa_entrega: offer.frete,
+    quantity: 1,
+  })
+
+  const goToPharmacy = (offer) => {
+    onClose()
+    navigate(`/farmacia/${offer.pharmacyId}`)
+  }
+
+  const handleAdd = (offer) => {
+    if (isProductUnavailable(offer.product)) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+    if (isRemoteCheckoutBlocked(offer.product)) {
+      addNotification?.({ type: 'warning', message: 'Por segurança regulatória, este medicamento exige atendimento da farmácia.' })
+      return
+    }
+    const result = addItem(buildProductData(offer))
+    if (result?.unavailable) {
+      addNotification?.({ type: 'warning', message: 'Medicamento indisponível nesta farmácia.' })
+      return
+    }
+    if (result?.authRequired) {
+      addNotification?.({ type: 'warning', message: 'Faça login para adicionar produtos ao carrinho.' })
+      onClose()
+      navigate('/login')
+      return
+    }
+    if (result?.pharmacyConflict) {
+      setConflict({ offer, currentPharmacyName: result.currentPharmacyName })
+      return
+    }
+    addNotification?.({ type: 'success', message: `${offer.product.nome} adicionado ao carrinho` })
+    goToPharmacy(offer)
+  }
+
+  const handleReplace = () => {
+    const { offer } = conflict
+    const result = replaceCartWithItem(buildProductData(offer))
+    if (result?.authRequired) {
+      onClose()
+      navigate('/login')
+      return
+    }
+    setConflict(null)
+    addNotification?.({ type: 'success', message: `Carrinho atualizado com item de ${offer.pharmacy?.nome || 'Farmácia'}` })
+    goToPharmacy(offer)
+  }
+
+  const detalhePharmacy = detalheOferta?.pharmacy
+
+  return (
+    <>
+      <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={onClose}>
+        <div className="bg-white rounded-2xl w-full max-w-lg max-h-[85vh] overflow-hidden flex flex-col shadow-xl" onClick={(e) => e.stopPropagation()}>
+          <div className="flex items-start justify-between gap-3 p-5 border-b border-gray-100">
+            <div className="min-w-0">
+              <h3 className="font-bold text-gray-900 truncate">{group.representante.nome}</h3>
+              <p className="text-xs text-gray-500 mt-0.5">Ofertas ordenadas pelo menor preço + frete</p>
+            </div>
+            <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition shrink-0" aria-label="Fechar">
+              <X className="w-5 h-5" />
+            </button>
+          </div>
+
+          <div className="overflow-y-auto p-4 space-y-3">
+            {group.ofertas.map((offer, idx) => {
+              const indisponivel = isProductUnavailable(offer.product)
+              const remoteBlocked = isRemoteCheckoutBlocked(offer.product)
+              const supportOnline = Boolean(offer.pharmacy?.farmaceutico_online || offer.pharmacy?.farmaceuticos_online > 0)
+              return (
+                <div
+                  key={`${offer.pharmacyId}-${idx}`}
+                  className={`rounded-xl border p-4 ${idx === 0 ? 'border-primary bg-primary/5' : 'border-gray-100'}`}
+                >
+                  {idx === 0 && (
+                    <span className="inline-block mb-2 text-[10px] font-bold bg-primary text-white px-2 py-0.5 rounded-full">
+                      Melhor preço
+                    </span>
+                  )}
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <Link to={`/farmacia/${offer.pharmacyId}`} className="font-semibold text-gray-900 hover:text-primary transition truncate block">
+                        {offer.pharmacy?.nome || 'Farmácia'}
+                      </Link>
+                      <div className="flex items-center gap-2 mt-1 flex-wrap">
+                        {offer.pharmacy?.bairro && (
+                          <span className="text-xs text-gray-400">{offer.pharmacy.bairro}</span>
+                        )}
+                        <span className={`inline-flex items-center gap-1 rounded-full px-2 py-0.5 text-[10px] font-semibold ${
+                          supportOnline ? 'bg-emerald-50 text-emerald-700' : 'bg-gray-100 text-gray-500'
+                        }`}>
+                          <span className={`h-1.5 w-1.5 rounded-full ${supportOnline ? 'bg-emerald-500' : 'bg-gray-400'}`} />
+                          {supportOnline ? 'suporte online' : 'sem suporte'}
+                        </span>
+                      </div>
+                    </div>
+                    <div className="text-right shrink-0">
+                      <div className="text-lg font-bold text-primary leading-none">R$ {offer.preco.toFixed(2)}</div>
+                      <div className="text-xs text-gray-500 mt-1">+ frete R$ {offer.frete.toFixed(2)}</div>
+                      <div className="text-[11px] text-gray-400">Total c/ entrega R$ {offer.total.toFixed(2)}</div>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => handleAdd(offer)}
+                    disabled={indisponivel || remoteBlocked}
+                    className={`mt-3 w-full py-2 rounded-lg text-sm font-semibold flex items-center justify-center gap-2 transition ${
+                      indisponivel || remoteBlocked
+                        ? 'bg-gray-200 text-gray-500 cursor-not-allowed'
+                        : 'bg-primary text-white hover:bg-secondary'
+                    }`}
+                  >
+                    <ShoppingCart className="w-4 h-4" />
+                    {indisponivel ? 'Indisponível' : remoteBlocked ? 'Atendimento na farmácia' : 'Adicionar e ir à farmácia'}
+                  </button>
+                </div>
+              )
+            })}
+
+            <button
+              onClick={() => setDetalheOferta(group.ofertas[0])}
+              className="w-full py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center gap-2"
+            >
+              <Info className="w-4 h-4" />
+              Ver informações do medicamento
+            </button>
+          </div>
+
+          {conflict && (
+            <div className="absolute inset-0 bg-black/50 z-[60] flex items-center justify-center p-4" onClick={() => setConflict(null)}>
+              <div className="bg-white rounded-xl p-6 max-w-sm w-full shadow-xl" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold text-gray-900 mb-2">Farmácia diferente</h3>
+                <p className="text-sm text-gray-600 mb-4">
+                  Seu carrinho contém itens de <strong>{conflict.currentPharmacyName}</strong>. Deseja limpar o carrinho e adicionar itens de <strong>{conflict.offer.pharmacy?.nome || 'Farmácia'}</strong>?
+                </p>
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => setConflict(null)}
+                    className="flex-1 py-2 border border-gray-300 rounded-lg text-sm font-medium text-gray-700 hover:bg-gray-50 transition"
+                  >
+                    Cancelar
+                  </button>
+                  <button
+                    onClick={handleReplace}
+                    className="flex-1 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-secondary transition"
+                  >
+                    Limpar e adicionar
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {detalheOferta && (
+        <ProdutoDetalheModal
+          produto={{
+            ...detalheOferta.product,
+            estoque: getAvailableStock(detalheOferta.product),
+            id: detalheOferta.product._id || detalheOferta.product.id,
+            imagem: detalheOferta.product.imagem || detalheOferta.product.imagem_url || detalheOferta.product.imagens?.[0],
+            id_farmacia: detalhePharmacy?._id
+              ? {
+                  _id: detalhePharmacy._id,
+                  nome: detalhePharmacy.nome,
+                  cidade: detalhePharmacy.cidade,
+                  estado: detalhePharmacy.estado,
+                  telefone: detalhePharmacy.telefone,
+                  bairro: detalhePharmacy.bairro,
+                  logradouro: detalhePharmacy.logradouro,
+                  horario_funcionamento: detalhePharmacy.horario_funcionamento,
+                  avaliacao: detalhePharmacy.avaliacao,
+                }
+              : detalheOferta.pharmacyId,
+            nome_farmacia: detalhePharmacy?.nome || 'Farmácia',
+          }}
+          isOpen={!!detalheOferta}
+          onClose={() => setDetalheOferta(null)}
+        />
+      )}
+    </>
   )
 }

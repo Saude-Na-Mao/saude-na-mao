@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
-import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle, Store } from 'lucide-react'
+import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle, Store, Truck } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
 import { pharmacyService } from '../services/api'
 
@@ -55,7 +55,7 @@ export default function Farmacias() {
 
   const sorted = [...filtered].sort((a, b) => {
     if (sortBy === 'avaliacao') return getDisplayRating(b) - getDisplayRating(a)
-    if (sortBy === 'frete') return (a.taxa_entrega || 0) - (b.taxa_entrega || 0)
+    if (sortBy === 'frete') return getFrete(a) - getFrete(b)
     return 0
   })
 
@@ -142,6 +142,11 @@ function isPharmacistOnline(pharmacy) {
   return Boolean(pharmacy?.farmaceutico_online || pharmacy?.farmaceuticos_online > 0)
 }
 
+function getFrete(pharmacy) {
+  const taxa = Number(pharmacy?.taxa_entrega_base)
+  return Number.isFinite(taxa) && taxa > 0 ? taxa : 8
+}
+
 function PharmacyCard({ pharmacy }) {
   const displayRating = pharmacy.avaliacao || 0
   const displayTotal = pharmacy.total_avaliacoes || 0
@@ -222,6 +227,10 @@ function PharmacyCard({ pharmacy }) {
           <div className="flex items-center gap-2 text-gray-500 text-sm">
             <Clock className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="truncate">{pharmacy.horario_funcionamento}</span>
+          </div>
+          <div className="flex items-center gap-2 text-gray-500 text-sm">
+            <Truck className="w-3.5 h-3.5 flex-shrink-0 text-primary" />
+            <span>Frete <span className="font-semibold text-gray-900">R$ {getFrete(pharmacy).toFixed(2)}</span></span>
           </div>
         </div>
 

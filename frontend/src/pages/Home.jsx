@@ -116,7 +116,7 @@ export default function Home() {
                 {[
                   { label: 'Farmácias abertas', to: '/farmacias' },
                   { label: 'Medicamentos populares', to: '/produtos' },
-                  { label: 'Enviar receita', to: '/receita' },
+                  { label: 'Farmacêutico online', to: '/farmacias' },
                 ].map((item) => (
                   <button
                     key={item.label}
@@ -161,9 +161,10 @@ export default function Home() {
                     <Shield className="w-5 h-5 text-emerald-700" />
                   </div>
                   <div>
-                    <h2 className="font-bold">Receitas com validação</h2>
-                    <Link to="/receita" className="mt-4 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
-                      Enviar receita <ChevronRight className="w-4 h-4" />
+                    <h2 className="font-bold">Atendimento farmacêutico</h2>
+                    <p className="text-sm text-gray-600 mt-1">Tire dúvidas com farmacêuticos online ao escolher a farmácia.</p>
+                    <Link to="/farmacias" className="mt-3 inline-flex items-center gap-1 text-sm font-semibold text-emerald-700 hover:text-emerald-800">
+                      Ver farmácias <ChevronRight className="w-4 h-4" />
                     </Link>
                   </div>
                 </div>

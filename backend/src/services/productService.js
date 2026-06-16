@@ -120,7 +120,8 @@ async function searchProducts({
     page,
     limit,
     sort: ordenacao,
-    populate: { path: "id_farmacia", select: "nome cidade estado avaliacao" },
+    lean: true,
+    populate: { path: "id_farmacia", select: "nome cidade estado avaliacao bairro taxa_entrega_base" },
     projection: termo ? { score: { $meta: "textScore" } } : {},
   });
 

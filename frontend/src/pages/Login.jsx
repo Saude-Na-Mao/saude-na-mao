@@ -8,7 +8,7 @@ import Alert from '../components/Alert'
 import Logger from '../utils/logger'
 import { getApiErrorMessage } from '../utils/apiErrorMessage'
 import { getGoogleClientId } from '../config/env'
-import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart, KeyRound, Smartphone, Truck, ShoppingBag } from 'lucide-react'
+import { Mail, Lock, Eye, EyeOff, ArrowRight, Heart, KeyRound } from 'lucide-react'
 import './Login.css'
 
 const logger = new Logger('Login')
@@ -552,33 +552,6 @@ export default function Login() {
                 Cadastre-se gratuitamente
               </Link>
             </p>
-
-            {/* Demonstração do aplicativo móvel (mesma experiência do QR Code) */}
-            <div className="mt-6 pt-6 border-t border-gray-100">
-              <div className="flex items-center justify-center gap-2 text-gray-500 text-xs font-semibold uppercase tracking-wide mb-3">
-                <Smartphone className="w-4 h-4" />
-                Conheça o app pelo celular
-              </div>
-              <p className="text-center text-xs text-gray-400 mb-3">
-                Veja uma demonstração de como o aplicativo funciona — a mesma tela de quem escaneia o QR Code.
-              </p>
-              <div className="grid grid-cols-2 gap-2">
-                <a
-                  href="/app?demo=cliente"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary transition"
-                >
-                  <ShoppingBag className="w-4 h-4" />
-                  Demo Cliente
-                </a>
-                <a
-                  href="/app?demo=entregador"
-                  className="flex items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white py-2.5 text-sm font-semibold text-gray-700 hover:border-primary hover:text-primary transition"
-                >
-                  <Truck className="w-4 h-4" />
-                  Demo Entregador
-                </a>
-              </div>
-            </div>
           </div>
         </div>
       </div>

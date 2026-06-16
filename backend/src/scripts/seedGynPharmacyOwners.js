@@ -154,7 +154,7 @@ async function ensureOwnerAndStock(ownerRow) {
     formas_pagamento: ["pix", "cartao_credito", "cartao_debito", "dinheiro"],
     tipos_entrega: ["moto", "bicicleta", "retirada"],
     raio_entrega_km: 12,
-    taxa_entrega_base: 6,
+    taxa_entrega_base: f.taxa_entrega ?? 6,
     taxa_por_km: 1.8,
   });
 
