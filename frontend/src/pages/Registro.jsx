@@ -138,9 +138,10 @@ export default function Registro() {
       window.google.accounts.id.renderButton(googleBtnRef.current, {
         theme: 'outline',
         size: 'large',
-        width: Math.min(360, googleBtnRef.current.offsetWidth || 320),
+        width: Math.min(400, googleBtnRef.current.offsetWidth || 360),
         text: 'signup_with',
         shape: 'rectangular',
+        logo_alignment: 'center',
         locale: 'pt-BR',
       })
     }

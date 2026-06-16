@@ -4,7 +4,7 @@ import { useCartStore, useUiStore } from '../stores/store'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
 import { productService, pharmacyService } from '../services/api'
-import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle, Package2 } from 'lucide-react'
+import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle, Package2, X } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,

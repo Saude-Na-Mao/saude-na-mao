@@ -145,7 +145,8 @@ export default function Login() {
         size: 'large',
         text: 'continue_with',
         shape: 'rectangular',
-        width: Math.min(360, googleButtonRef.current.offsetWidth || 320),
+        logo_alignment: 'center',
+        width: Math.min(400, googleButtonRef.current.offsetWidth || 360),
         locale: 'pt-BR',
       })
     }
@@ -261,8 +262,8 @@ export default function Login() {
 
   return (
     <div className="min-h-[calc(100svh-4rem)] flex flex-col lg:flex-row">
-      <div className="hidden lg:flex lg:w-[48%] lg:min-h-[calc(100svh-4rem)] bg-gradient-to-br from-emerald-700 via-teal-700 to-slate-900 relative overflow-hidden">
-        <div className="relative z-10 flex flex-col justify-center px-12 xl:px-20 text-white">
+      <div className="hidden lg:flex lg:w-[48%] bg-gradient-to-br from-emerald-700 via-teal-700 to-slate-900 relative">
+        <div className="lg:sticky lg:top-16 flex h-[calc(100svh-4rem)] flex-col justify-center px-12 xl:px-20 text-white">
           <div className="w-14 h-14 bg-white/15 backdrop-blur rounded-2xl flex items-center justify-center mb-8">
             <Heart className="w-7 h-7" />
           </div>
@@ -289,7 +290,7 @@ export default function Login() {
         </div>
       </div>
 
-      <div className="w-full lg:w-[52%] lg:min-h-[calc(100svh-4rem)] flex items-center justify-center px-4 sm:px-8 py-8 sm:py-10 lg:py-12 bg-gray-50">
+      <div className="w-full lg:w-[52%] flex items-start justify-center px-4 sm:px-8 py-8 sm:py-10 lg:py-12 bg-gray-50">
         <div className="w-full max-w-md">
           <div className="lg:hidden text-center mb-6">
             <div className="inline-flex items-center gap-2.5 mb-2">
