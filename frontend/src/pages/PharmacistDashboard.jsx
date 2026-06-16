@@ -341,16 +341,13 @@ function PharmacistPresenceToggle() {
   const onToggle = async () => {
     const next = !online;
     setSaving(true);
+    setOnline(next); // resposta imediata; reconcilia com o servidor abaixo
     try {
       const res = await pharmacistService.setPresence(next);
       const ph = res.data?.data?.pharmacist;
-      setOnline(
-        ph
-          ? Boolean(ph.logado && ph.disponivel_chat !== false)
-          : next,
-      );
+      if (ph) setOnline(Boolean(ph.logado && ph.disponivel_chat !== false));
     } catch {
-      /* keep previous state */
+      setOnline(!next); // falhou: volta ao estado anterior
     } finally {
       setSaving(false);
     }

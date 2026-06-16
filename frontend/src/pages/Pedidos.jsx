@@ -439,6 +439,27 @@ export default function Pedidos() {
                 </div>
               </div>
 
+              {Array.isArray(order.itens_rejeitados) && order.itens_rejeitados.length > 0 &&
+                !['cancelado', 'rejeitado'].includes(String(order.status || '').trim()) && (
+                <div className="mt-4 p-4 rounded-xl bg-amber-50 border border-amber-200">
+                  <p className="text-sm font-semibold text-amber-900 mb-1">
+                    Algumas receitas não foram aprovadas
+                  </p>
+                  <p className="text-xs text-amber-800 mb-3">
+                    Os itens abaixo foram removidos do pedido. Você pode <strong>pagar apenas os itens
+                    liberados</strong> ou <strong>cancelar o pedido</strong>.
+                  </p>
+                  <ul className="space-y-1.5">
+                    {order.itens_rejeitados.map((it, idx) => (
+                      <li key={idx} className="text-xs text-amber-900 bg-amber-100/60 rounded-lg px-3 py-2">
+                        <span className="font-semibold">✕ {it.nome_produto}</span>
+                        {it.motivo ? <span className="block text-amber-800 mt-0.5">Motivo: {it.motivo}</span> : null}
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              )}
+
               {!['cancelado', 'rejeitado'].includes(String(order.status || '').trim()) && (
                 <div className="mt-5 rounded-xl border border-gray-100 bg-gray-50 p-4">
                   <p className="text-sm font-semibold text-gray-900 mb-3">Status do pedido</p>

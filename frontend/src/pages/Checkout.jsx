@@ -319,10 +319,13 @@ export default function Checkout() {
   const pharmacyId = items[0]?.id_farmacia || cartState.pharmacyId || ''
 
   const needsAddress = deliveryType === 'moto'
+  // Pedido com receita ainda não totalmente aprovada: não cobra agora.
+  // O cliente só envia para validação e paga depois (em Meus Pedidos).
+  const aguardandoAprovacao = precisaReceitaNoPedido && !rxApproved
 
   const handleSubmit = async () => {
     if (loading || orderDoneRef.current) return
-    if (!paymentMethod) return
+    if (!aguardandoAprovacao && !paymentMethod) return
     if (temBloqueioRemoto) {
       setError('Por segurança regulatória, medicamentos controlados exigem atendimento da farmácia.')
       return
@@ -344,7 +347,7 @@ export default function Checkout() {
         subtotal,
         taxa_entrega: taxaEntrega,
         total,
-        metodo_pagamento: paymentMethod,
+        metodo_pagamento: paymentMethod || 'pix',
         aguardar_validacao_receita: aguardarValidacao,
         cupom: couponData
           ? { codigo: couponData.cupom?.codigo, desconto, frete_gratis: couponData.frete_gratis }
@@ -680,7 +683,22 @@ export default function Checkout() {
             </div>
           )}
 
+          {/* Aguardando aprovação da receita: sem pagamento neste momento */}
+          {aguardandoAprovacao && (
+            <div className="bg-amber-50 border border-amber-200 rounded-xl p-6">
+              <h2 className="text-lg font-bold mb-2 flex items-center gap-2 text-amber-900">
+                <Clock className="w-5 h-5 text-amber-500" /> Aguardando aprovação da receita
+              </h2>
+              <p className="text-sm text-amber-800">
+                O pagamento só é liberado <strong>depois</strong> que o farmacêutico aprovar sua(s) receita(s).
+                Envie o pedido para validação: você será avisado e poderá pagar — ou cancelar — em
+                <strong> Meus Pedidos</strong> assim que o farmacêutico decidir.
+              </p>
+            </div>
+          )}
+
           {/* Método de Pagamento */}
+          {!aguardandoAprovacao && (
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
             <h2 className="text-lg font-bold mb-4 flex items-center gap-2">
               <CreditCard className="w-5 h-5 text-primary" /> Método de Pagamento
@@ -885,6 +903,7 @@ export default function Checkout() {
               </div>
             )}
           </div>
+          )}
         </div>
 
         {/* Resumo lateral */}
@@ -942,7 +961,9 @@ export default function Checkout() {
               <div className="flex items-center gap-2 p-3 bg-green-50 border border-green-200 rounded-lg text-xs text-green-800 mb-4">
                 <CheckCircle className="w-4 h-4 shrink-0" />
                 <p>
-                  Sua receita será validada pelo farmacêutico antes da separação do pedido.
+                  {aguardandoAprovacao
+                    ? 'Sua receita será validada pelo farmacêutico. O pagamento só é liberado após a aprovação.'
+                    : 'Sua receita será validada pelo farmacêutico antes da separação do pedido.'}
                 </p>
               </div>
             )}
@@ -950,7 +971,7 @@ export default function Checkout() {
             <button
               onClick={handleSubmit}
               disabled={
-                !paymentMethod ||
+                (!aguardandoAprovacao && !paymentMethod) ||
                 loading ||
                 temBloqueioRemoto ||
                 (precisaReceitaNoPedido && !rxUploaded)
@@ -959,6 +980,11 @@ export default function Checkout() {
             >
               {loading ? (
                 <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+              ) : aguardandoAprovacao ? (
+                <>
+                  <Clock className="w-4 h-4" />
+                  Enviar para validação
+                </>
               ) : (
                 <>
                   <ShieldCheck className="w-4 h-4" />

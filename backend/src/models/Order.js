@@ -231,6 +231,22 @@ const orderSchema = new mongoose.Schema(
       type: [orderItemSchema],
       default: [],
     },
+    /** Itens removidos do pedido porque a receita foi rejeitada pelo farmacêutico
+     * (rejeição parcial). Mantidos só para exibir ao cliente o que não passou. */
+    itens_rejeitados: {
+      type: [
+        new mongoose.Schema(
+          {
+            nome_produto: { type: String, trim: true },
+            quantidade: { type: Number, min: 0 },
+            preco_unitario: { type: Number, min: 0 },
+            motivo: { type: String, trim: true },
+          },
+          { _id: false },
+        ),
+      ],
+      default: [],
+    },
     tipo_entrega: {
       type: String,
       enum: ["moto", "drone", "retirada", "drive-thru", "emergencia"],

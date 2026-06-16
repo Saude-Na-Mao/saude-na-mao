@@ -14,6 +14,71 @@ function getOwnerPharmacyId(user = {}) {
   );
 }
 
+/**
+ * Localiza o registro de Pharmacist do usuário logado. Se o usuário é
+ * farmacêutico e ainda não tem o registro (contas criadas só como User),
+ * cria/vincula automaticamente a partir dos dados do cadastro, evitando o
+ * 404 silencioso que travava o botão "ficar online".
+ */
+async function resolvePharmacistForUser(reqUser) {
+  const userId = reqUser?._id || reqUser?.id;
+  if (!userId) return null;
+
+  let pharmacist = await Pharmacist.findOne({ id_usuario: userId, ativo: true });
+  if (pharmacist) return pharmacist;
+
+  const user = await User.findById(userId);
+  if (!user) return null;
+  const tipo = user.tipo_usuario || user.role;
+  if (tipo !== "farmaceutico") return null;
+
+  // Vincula um registro existente pelo e-mail (criado por seed sem id_usuario).
+  if (user.email) {
+    pharmacist = await Pharmacist.findOne({ email: user.email.toLowerCase() });
+    if (pharmacist) {
+      if (!pharmacist.id_usuario) pharmacist.id_usuario = user._id;
+      pharmacist.ativo = true;
+      await pharmacist.save();
+      return pharmacist;
+    }
+  }
+
+  // Cria o registro a partir do cadastro do farmacêutico.
+  const idFarmacia = user?.dados_farmaceutico?.id_farmacia;
+  if (!idFarmacia) return null;
+
+  const baseDoc = {
+    id_usuario: user._id,
+    nome: user.nome,
+    email: (user.email || "").toLowerCase(),
+    telefone: user.telefone,
+    id_farmacia: idFarmacia,
+    foto: user.foto_perfil || null,
+    ativo: true,
+    disponivel_chat: true,
+    logado: false,
+  };
+  const crfCadastro =
+    user?.dados_farmaceutico?.crf && String(user.dados_farmaceutico.crf).trim();
+  // CRM sempre único por usuário evita colisão (índice unique) com docs de seed.
+  const crmUnico = `CRF-${String(user._id).toUpperCase()}`;
+
+  try {
+    pharmacist = await Pharmacist.create({
+      ...baseDoc,
+      crm: crfCadastro || crmUnico,
+    });
+  } catch (err) {
+    // CRM já em uso por outro registro: tenta de novo com CRM único do usuário.
+    if (err?.code === 11000) {
+      pharmacist = await Pharmacist.create({ ...baseDoc, crm: crmUnico });
+    } else {
+      throw err;
+    }
+  }
+  return pharmacist;
+}
+
 exports.listAvailable = async (req, res, next) => {
   try {
     const { id_farmacia, especialidade } = req.query;
@@ -331,10 +396,7 @@ exports.setPresence = async (req, res, next) => {
       });
     }
 
-    const pharmacist = await Pharmacist.findOne({
-      id_usuario: userId,
-      ativo: true,
-    });
+    const pharmacist = await resolvePharmacistForUser(req.user);
 
     if (!pharmacist) {
       return res.status(404).json({
@@ -381,19 +443,16 @@ exports.getMe = async (req, res, next) => {
       });
     }
 
-    const pharmacist = await Pharmacist.findOne({
-      id_usuario: userId,
-      ativo: true,
-    })
-      .populate("id_farmacia", "nome cidade estado")
-      .lean();
-
-    if (!pharmacist) {
+    const resolved = await resolvePharmacistForUser(req.user);
+    if (!resolved) {
       return res.status(404).json({
         success: false,
         message: "Farmacêutico não vinculado a uma farmácia",
       });
     }
+    const pharmacist = await Pharmacist.findById(resolved._id)
+      .populate("id_farmacia", "nome cidade estado")
+      .lean();
 
     return res.json({
       success: true,

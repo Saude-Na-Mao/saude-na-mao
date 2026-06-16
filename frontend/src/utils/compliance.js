@@ -82,6 +82,8 @@ export function getDisplayPrice(product) {
   return Number(product?.preco ?? product?.preco_final ?? 0)
 }
 
-export function shouldHideProductImage(product) {
-  return requiresPrescription(product)
+export function shouldHideProductImage() {
+  // Todos os produtos exibem a foto real do medicamento. A exigência de receita
+  // é sinalizada pelo selo "Receita", não escondendo a imagem.
+  return false
 }

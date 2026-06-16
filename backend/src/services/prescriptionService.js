@@ -552,9 +552,41 @@ async function syncLinkedOrderAfterPrescriptionValidation(orderId) {
   const receitas = await Prescription.find({
     _id: { $in: prescriptionIds },
   }).select("status observacoes nome_arquivo");
+  const receitaById = new Map(receitas.map((r) => [String(r._id), r]));
 
-  const invalid = receitas.find((receita) => receita.status === "Rejeitada");
-  if (invalid) {
+  // Só decide quando TODAS as receitas vinculadas foram avaliadas; enquanto
+  // houver alguma pendente, mantém o pedido aguardando.
+  const anyPending = receitas.some(
+    (r) => r.status !== "Aprovada" && r.status !== "Rejeitada",
+  );
+  if (anyPending) return order;
+
+  const rejeitadas = receitas.filter((r) => r.status === "Rejeitada");
+
+  // Itens cuja receita foi rejeitada x itens que seguem no pedido.
+  const itemFoiRejeitado = (item) =>
+    item.id_receita &&
+    receitaById.get(String(item.id_receita))?.status === "Rejeitada";
+  const itensRejeitados = (order.itens || []).filter(itemFoiRejeitado);
+  const itensMantidos = (order.itens || []).filter((i) => !itemFoiRejeitado(i));
+
+  // Restaura lote/estoque apenas dos itens que tinham baixa registrada.
+  const restaurarEstoqueDoItem = async (item) => {
+    if (!item.id_produto || !item.quantidade) return;
+    const quantity = Number(item.quantidade) || 0;
+    const batchNumber = item.lote_consumido?.batchNumber;
+    if (batchNumber) {
+      await Product.updateOne(
+        { _id: item.id_produto, "batches.batchNumber": batchNumber },
+        { $inc: { estoque: quantity, "batches.$.quantity": quantity } },
+      );
+      item.lote_consumido = undefined;
+    }
+  };
+
+  // Caso 1 — TODAS as receitas rejeitadas (ou nada sobra): cancela o pedido.
+  if (rejeitadas.length > 0 && itensMantidos.length === 0) {
+    const invalid = rejeitadas[0];
     const motivo =
       invalid.observacoes ||
       `Receita ${invalid.nome_arquivo || ""} não foi validada pelo farmacêutico.`;
@@ -568,28 +600,7 @@ async function syncLinkedOrderAfterPrescriptionValidation(orderId) {
 
     if (order.estoque_baixado === true) {
       for (const item of order.itens || []) {
-        if (!item.id_produto || !item.quantidade) continue;
-        const quantity = Number(item.quantidade) || 0;
-        const batchNumber = item.lote_consumido?.batchNumber;
-        if (batchNumber) {
-          await Product.updateOne(
-            {
-              _id: item.id_produto,
-              "batches.batchNumber": batchNumber,
-            },
-            {
-              $inc: {
-                estoque: quantity,
-                "batches.$.quantity": quantity,
-              },
-            },
-          );
-          item.lote_consumido = undefined;
-        } else {
-          await Product.findByIdAndUpdate(item.id_produto, {
-            $inc: { estoque: quantity },
-          });
-        }
+        await restaurarEstoqueDoItem(item);
       }
       order.estoque_baixado = false;
       order.markModified("itens");
@@ -610,6 +621,83 @@ async function syncLinkedOrderAfterPrescriptionValidation(orderId) {
     return order;
   }
 
+  // Caso 2 — REJEIÇÃO PARCIAL: parte aprovada, parte rejeitada. Não cancela:
+  // remove os itens rejeitados, recalcula o total e libera o pagamento dos
+  // itens aprovados. O cliente decide pagar (só os liberados) ou cancelar.
+  if (rejeitadas.length > 0 && itensMantidos.length > 0) {
+    order.itens_rejeitados = itensRejeitados.map((item) => {
+      const r = receitaById.get(String(item.id_receita));
+      return {
+        nome_produto: item.nome_produto,
+        quantidade: item.quantidade,
+        preco_unitario: item.preco_unitario,
+        motivo:
+          r?.observacoes ||
+          `Receita ${r?.nome_arquivo || ""} não foi validada pelo farmacêutico.`,
+      };
+    });
+
+    if (order.estoque_baixado === true) {
+      for (const item of itensRejeitados) {
+        await restaurarEstoqueDoItem(item);
+      }
+    }
+
+    order.itens = itensMantidos;
+    order.markModified("itens");
+
+    const novoSubtotal =
+      Math.round(
+        itensMantidos.reduce(
+          (sum, item) =>
+            sum +
+            (Number(item.subtotal) ||
+              Number(item.preco_unitario || 0) * Number(item.quantidade || 0)),
+          0,
+        ) * 100,
+      ) / 100;
+    const desconto = Number(order.cupom?.desconto || 0);
+    const frete = Number(order.taxa_entrega || 0);
+    order.subtotal = novoSubtotal;
+    order.total = Math.max(0, Math.round((novoSubtotal - desconto + frete) * 100) / 100);
+
+    const nomesRejeitados = itensRejeitados
+      .map((i) => i.nome_produto)
+      .filter(Boolean)
+      .join(", ");
+    order.adicionarHistoricoStatus(
+      "aguardando_pagamento",
+      `Parte das receitas não foi aprovada (${nomesRejeitados}). Você pode pagar apenas os itens liberados ou cancelar o pedido.`,
+    );
+
+    // Libera as receitas rejeitadas para reenvio/novo pedido.
+    for (const r of rejeitadas) {
+      const rx = await Prescription.findById(r._id);
+      if (rx) {
+        rx.disponivel_para_novo_pedido = true;
+        rx.consumida = false;
+        if (String(rx.id_pedido_vinculado) === String(order._id)) {
+          rx.id_pedido_vinculado = null;
+        }
+        await rx.save();
+      }
+    }
+
+    await order.save();
+
+    const usuario = await getUserForNotification(order.id_usuario);
+    if (usuario) {
+      await notificationService.sendOrderStatusNotification(
+        usuario,
+        order,
+        "Receitas parcialmente aprovadas",
+      );
+    }
+
+    return order;
+  }
+
+  // Caso 3 — TODAS aprovadas: libera o pagamento.
   const allApproved =
     receitas.length === prescriptionIds.length &&
     receitas.every((receita) => receita.status === "Aprovada");
