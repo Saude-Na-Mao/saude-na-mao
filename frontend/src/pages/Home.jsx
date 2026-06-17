@@ -202,7 +202,7 @@ export default function Home() {
             {[
               ['50k+', 'Pedidos entregues'],
               ['4.9', 'Avaliação média'],
-              ['2h', 'Entrega média'],
+              ['1h', 'Entrega média'],
               ['1000+', 'Produtos'],
             ].map(([value, label]) => (
               <div key={label} className="rounded-xl border border-white/15 bg-white/10 px-4 py-3">

@@ -265,15 +265,30 @@ export default function Checkout() {
     setAddress({ logradouro: '', numero: '', complemento: '', bairro: '', cidade: 'Goiânia', estado: 'GO', cep: '' })
   }
 
-  const handleCepBlur = async () => {
-    const cep = address.cep?.replace(/\D/g, '')
-    if (cep?.length !== 8) return
+  const preencherEnderecoPorCep = async (cepValor) => {
+    const cep = String(cepValor ?? address.cep).replace(/\D/g, '')
+    if (cep.length !== 8) return
+    setCepLoading(true)
     try {
-      setCepLoading(true)
-      const res = await geoService.geocodeCep(cep)
-      const data = res.data?.data
+      // 1ª tentativa: serviço próprio (backend). Fallback: ViaCEP direto.
+      let data = null
+      try {
+        const res = await geoService.geocodeCep(cep)
+        data = res.data?.data || null
+      } catch {
+        /* tenta ViaCEP abaixo */
+      }
+      if (!data?.logradouro && !data?.bairro) {
+        try {
+          const vc = await fetch(`https://viacep.com.br/ws/${cep}/json/`)
+          const j = await vc.json()
+          if (!j?.erro) data = j
+        } catch {
+          /* sem CEP automático */
+        }
+      }
       if (data) {
-        setAddress(prev => ({
+        setAddress((prev) => ({
           ...prev,
           logradouro: data.logradouro || prev.logradouro,
           bairro: data.bairro || prev.bairro,
@@ -281,9 +296,12 @@ export default function Checkout() {
           estado: data.estado || data.uf || prev.estado,
         }))
       }
-    } catch { /* ignore */ }
-    finally { setCepLoading(false) }
+    } finally {
+      setCepLoading(false)
+    }
   }
+
+  const handleCepBlur = () => preencherEnderecoPorCep()
 
   const cartState = JSON.parse(localStorage.getItem('checkout_data') || '{}')
   // Sempre pelo carrinho atual; localStorage pode ter subtotal/total de um fluxo antigo
@@ -619,7 +637,11 @@ export default function Checkout() {
                     <input
                       type="text"
                       value={address.cep}
-                      onChange={(e) => setAddress({ ...address, cep: maskCep(e.target.value) })}
+                      onChange={(e) => {
+                        const val = maskCep(e.target.value)
+                        setAddress({ ...address, cep: val })
+                        if (val.replace(/\D/g, '').length === 8) preencherEnderecoPorCep(val)
+                      }}
                       onBlur={handleCepBlur}
                       inputMode="numeric"
                       maxLength={9}

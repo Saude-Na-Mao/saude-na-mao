@@ -476,12 +476,12 @@ function GroupOfferCard({ group, temEndereco }) {
         </div>
       </div>
 
-      <OffersModal group={group} isOpen={modalAberto} onClose={() => setModalAberto(false)} />
+      <OffersModal group={group} isOpen={modalAberto} onClose={() => setModalAberto(false)} temEndereco={temEndereco} />
     </div>
   )
 }
 
-function OffersModal({ group, isOpen, onClose }) {
+function OffersModal({ group, isOpen, onClose, temEndereco }) {
   const { addItem, replaceCartWithItem } = useCartStore()
   const { addNotification } = useUiStore()
   const navigate = useNavigate()
