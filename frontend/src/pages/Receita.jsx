@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuthStore, useCartStore, usePrescriptionStore } from '../stores/store'
-import { prescriptionService, orderService, userService } from '../services/api'
+import { prescriptionService } from '../services/api'
 import PrescriptionChat from '../components/PrescriptionChat'
 import { itemExigeReceita } from '../utils/receitaCart'
 import {
@@ -15,6 +15,7 @@ import {
   Shield,
   Clock,
   Truck,
+  ShoppingCart,
   MessageCircle,
 } from 'lucide-react'
 
@@ -55,14 +56,11 @@ export default function Receita() {
   const forcarNovoUpload = location.state?.forcarNovoUpload === true
   const { token } = useAuthStore()
   const { items } = useCartStore()
-  const clearCart = useCartStore((s) => s.clearCart)
-  const getTotal = useCartStore((s) => s.getTotal)
   const setPrescricao = usePrescriptionStore((s) => s.setPrescricao)
   const prescricoesPendentes = usePrescriptionStore((s) => s.prescricoesPendentes)
 
   const [mode, setMode] = useState('assincrono')
   const [loading, setLoading] = useState(false)
-  const [enviandoPedido, setEnviandoPedido] = useState(false)
   const [error, setError] = useState('')
   // itemId -> { status, data }
   const [prescByItem, setPrescByItem] = useState({})
@@ -133,15 +131,8 @@ export default function Receita() {
           const ativa = prescricaoDoItem(candidatas, item.id, sessao)
           if (!ativa) continue
 
-          if (ativa.status === 'Aprovada') {
-            try {
-              const chk = await prescriptionService.checkAvailability(ativa._id)
-              const { disponivel } = chk.data?.data || {}
-              if (!disponivel) continue
-            } catch {
-              continue
-            }
-          }
+          // A aprovação do farmacêutico é refletida imediatamente na tela. A
+          // disponibilidade do lote é reconfirmada no Checkout.
           next[item.id] = { status: ativa.status, data: ativa }
           setPrescricao?.(item.id, {
             _id: ativa._id,
@@ -295,85 +286,6 @@ export default function Receita() {
   ).length
   const todasEnviadas =
     itensReceitaPedido.length > 0 && itensEnviados === itensReceitaPedido.length
-
-  /**
-   * Cria o pedido em modo "aguardando validação da farmácia" (sem pagamento e
-   * sem pedir endereço — usa o endereço padrão do cliente). O cliente paga ou
-   * cancela depois, em Meus Pedidos, assim que o farmacêutico decidir.
-   */
-  const enviarParaValidacao = async () => {
-    if (enviandoPedido || !todasEnviadas) return
-    try {
-      setEnviandoPedido(true)
-      setError('')
-
-      // Endereço padrão do cliente (silencioso — não é pedido nesta etapa).
-      let endereco = {}
-      try {
-        const res = await userService.getAddresses()
-        const list = res.data?.data?.enderecos || []
-        const def = list.find((a) => a.padrao) || list[0]
-        if (def) {
-          endereco = {
-            logradouro: def.logradouro || '',
-            numero: def.numero || '',
-            complemento: def.complemento || '',
-            bairro: def.bairro || '',
-            cidade: def.cidade || 'Goiânia',
-            estado: def.estado || 'GO',
-            cep: def.cep || '',
-          }
-        }
-      } catch {
-        /* segue sem endereço; é confirmado no pagamento */
-      }
-
-      const cartState = JSON.parse(localStorage.getItem('checkout_data') || '{}')
-      const subtotal = getTotal()
-      const taxaEntrega = cartState.taxaEntrega ?? 8
-      const desconto = cartState.desconto || 0
-      const total = Math.max(0, subtotal - desconto + taxaEntrega)
-      const deliveryType = cartState.deliveryType || 'moto'
-      const couponData = cartState.couponData || null
-
-      const orderData = {
-        id_farmacia: pharmacyId,
-        tipo_entrega: deliveryType,
-        endereco_entrega: endereco,
-        subtotal,
-        taxa_entrega: taxaEntrega,
-        total,
-        metodo_pagamento: 'pix',
-        aguardar_validacao_receita: true,
-        cupom: couponData
-          ? { codigo: couponData.cupom?.codigo, desconto, frete_gratis: couponData.frete_gratis }
-          : {},
-        itens: items.map((item) => ({
-          id_produto: item.id,
-          nome_produto: item.nome,
-          preco_unitario: item.preco,
-          quantidade: item.quantity,
-          subtotal: item.preco * item.quantity,
-          controlado: item.controlado || false,
-          id_receita: itemExigeReceita(item)
-            ? prescByItem[item.id]?.data?._id || null
-            : null,
-        })),
-      }
-
-      await orderService.create(orderData)
-      clearCart()
-      localStorage.removeItem('checkout_data')
-      navigate('/pedidos')
-    } catch (err) {
-      setError(
-        err.response?.data?.message ||
-          err.message ||
-          'Não foi possível enviar o pedido para validação. Tente novamente.',
-      )
-      setEnviandoPedido(false)
-    }
-  }
 
   return (
     <div className="max-w-3xl mx-auto px-4 py-8">
@@ -715,37 +627,52 @@ export default function Receita() {
         </div>
       </div>
 
-      {/* Aguardando aprovação da receita (antes do pagamento) */}
-      {todasEnviadas && (
+      {/* Aguardando aprovação do farmacêutico (enviada, ainda não aprovada) */}
+      {todasEnviadas && !todasAprovadas && (
         <div className="bg-amber-50 border border-amber-200 rounded-xl p-5 mb-6">
           <h2 className="text-base font-bold mb-1.5 flex items-center gap-2 text-amber-900">
             <Clock className="w-5 h-5 text-amber-500" /> Aguardando aprovação da receita
           </h2>
           <p className="text-sm text-amber-800">
             O pagamento só é liberado <strong>depois</strong> que o farmacêutico aprovar
-            sua(s) receita(s). Envie o pedido para validação: você será avisado e poderá
-            pagar — ou cancelar — em <strong>Meus Pedidos</strong> assim que o farmacêutico
-            decidir.
+            sua(s) receita(s). Esta página atualiza sozinha — assim que for aprovada, o
+            botão <strong>Continuar para pagamento</strong> é liberado.
           </p>
         </div>
       )}
 
-      {/* Enviar para validação (cria o pedido sem pagamento) */}
+      {/* Receita aprovada: segue para pagamento normal */}
+      {todasAprovadas && (
+        <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-5 mb-6">
+          <h2 className="text-base font-bold mb-1.5 flex items-center gap-2 text-emerald-900">
+            <CheckCircle className="w-5 h-5 text-emerald-500" /> Receita aprovada
+          </h2>
+          <p className="text-sm text-emerald-800">
+            O farmacêutico validou sua(s) receita(s). Continue para o pagamento e
+            acompanhe a entrega normalmente.
+          </p>
+        </div>
+      )}
+
+      {/* Continuar para pagamento (só após aprovação) */}
       <button
-        onClick={enviarParaValidacao}
-        disabled={!todasEnviadas || enviandoPedido}
+        onClick={() => navigate('/checkout')}
+        disabled={!todasAprovadas}
         className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
-          todasEnviadas && !enviandoPedido
+          todasAprovadas
             ? 'bg-primary text-white hover:bg-secondary'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
       >
-        {enviandoPedido ? (
-          <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+        {todasAprovadas ? (
+          <>
+            <ShoppingCart className="w-4 h-4" />
+            Continuar para pagamento
+          </>
         ) : todasEnviadas ? (
           <>
             <Clock className="w-4 h-4" />
-            Enviar para validação
+            Aguardando aprovação do farmacêutico
           </>
         ) : (
           <>

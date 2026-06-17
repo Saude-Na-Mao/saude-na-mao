@@ -4,7 +4,7 @@ import { useCartStore, useUiStore } from '../stores/store'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
 import { productService, pharmacyService } from '../services/api'
-import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, Info, MessageCircle, Package2, X } from 'lucide-react'
+import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, MessageCircle, Package2, X } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
 import {
   getDisplayPrice,
@@ -616,14 +616,6 @@ function OffersModal({ group, isOpen, onClose }) {
                 </div>
               )
             })}
-
-            <button
-              onClick={() => setDetalheOferta(group.ofertas[0])}
-              className="w-full py-2 rounded-lg text-sm font-medium text-gray-600 border border-gray-200 hover:bg-gray-50 transition flex items-center justify-center gap-2"
-            >
-              <Info className="w-4 h-4" />
-              Ver informações do medicamento
-            </button>
           </div>
 
           {conflict && (

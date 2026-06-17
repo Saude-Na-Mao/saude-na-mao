@@ -1278,10 +1278,30 @@ export function PharmacistDashboard() {
         const key = prev.id_pedido_utilizado ? 'id_pedido_utilizado' : 'id_pedido_vinculado';
         return pedido ? { ...prev, [key]: pedido } : prev;
       });
+      const traceCode =
+        pedido?.sngpcData?.traceabilityCode ||
+        res.data?.data?.traceabilityCode ||
+        null;
+      const loteUsado =
+        pedido?.sngpcData?.selectedBatchNumber || sngpcForm.selectedBatchNumber || '';
+      useUiStore.getState().addNotification({
+        type: 'success',
+        title: 'Rastreabilidade registrada no SNGPC',
+        message: traceCode
+          ? `Dispensação registrada com sucesso${loteUsado ? ` (lote ${loteUsado})` : ''}. Código de rastreabilidade: ${traceCode}. Já pode aprovar a receita.`
+          : `Dispensação registrada com sucesso${loteUsado ? ` (lote ${loteUsado})` : ''}. Já pode aprovar a receita.`,
+        duration: 9000,
+      });
       await fetchOrders({ silent: true });
     } catch (err) {
       const apiMsg = err.response?.data?.message || err.message;
       setError(apiMsg || 'Erro ao registrar dispensação');
+      useUiStore.getState().addNotification({
+        type: 'error',
+        title: 'Falha ao registrar no SNGPC',
+        message: apiMsg || 'Não foi possível registrar a rastreabilidade. Verifique o lote e tente novamente.',
+        duration: 9000,
+      });
     } finally {
       setSngpcSaving(false);
     }

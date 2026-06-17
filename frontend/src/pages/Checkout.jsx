@@ -67,15 +67,6 @@ function rxCandidataParaProduto(rx, productId, pharmacyId) {
   return receitaVinculadaAoProduto(rx, productId)
 }
 
-const RX_STATUS_ATIVO = ['Pendente', 'Em Análise', 'Aprovada']
-/** Receita já enviada (qualquer status ativo) vinculada ao produto, mesma farmácia.
- * Permite criar o pedido em modo "aguardando validação" antes da aprovação. */
-function rxEnviadaParaProduto(rx, productId, pharmacyId) {
-  if (!rx || !RX_STATUS_ATIVO.includes(rx.status)) return false
-  const fid = rx.id_farmacia?._id || rx.id_farmacia
-  if (fid && pharmacyId && String(fid) !== String(pharmacyId)) return false
-  return receitaVinculadaAoProduto(rx, productId)
-}
 
 /** Detecta a bandeira pelos primeiros dígitos (uso só visual/armazenamento). */
 function detectarBandeira(numero) {
@@ -137,16 +128,6 @@ export default function Checkout() {
   const temBloqueioRemoto = false // Bloqueio removido para checkout remoto de controlados no TCC
   const pharmacyIdCart = items[0]?.id_farmacia || null
 
-  // Pedido com receita não passa pelo Checkout: o envio para validação (sem
-  // endereço/pagamento) é feito na tela de Receita. O pagamento ocorre depois,
-  // em Meus Pedidos, após a aprovação do farmacêutico.
-  useEffect(() => {
-    if (!token) return
-    if (precisaReceitaNoPedido && !orderCreated && !orderDoneRef.current) {
-      navigate('/receita')
-    }
-  }, [token, precisaReceitaNoPedido, orderCreated, navigate])
-
   const receitaSig = items
     .filter((i) => itemExigeReceita(i))
     .map(
@@ -156,6 +137,9 @@ export default function Checkout() {
     .sort()
     .join(',')
 
+  // O Checkout só é alcançado quando todas as receitas já foram APROVADAS na
+  // tela de Receita. Aqui apenas confirmamos a aprovação e vinculamos a receita
+  // ao item; se algo não estiver aprovado, volta para /receita.
   useEffect(() => {
     if (!token || !precisaReceitaNoPedido) {
       setRxChecking(false)
@@ -167,6 +151,15 @@ export default function Checkout() {
     let cancelled = false
     setRxChecking(true)
 
+    const verificarDisponibilidade = async (prescriptionId) => {
+      try {
+        const res = await prescriptionService.checkAvailability(prescriptionId)
+        return res.data?.data
+      } catch {
+        return { disponivel: false }
+      }
+    }
+
     const run = async () => {
       try {
         const res = await prescriptionService.getAll({ params: { limit: 80 } })
@@ -177,31 +170,27 @@ export default function Checkout() {
         })
         const itensReceita = items.filter((i) => itemExigeReceita(i))
         const map = {}
-        let todasEnviadas = true
+        let todasAprovadas = true
         for (const ci of itensReceita) {
-          // Vincula a receita já enviada (aprovada ou em análise) ao item.
           const aprovada = farmFiltered.find((r) =>
             rxCandidataParaProduto(r, ci.id, pharmacyIdCart),
           )
-          const enviada =
-            aprovada ||
-            farmFiltered.find((r) =>
-              rxEnviadaParaProduto(r, ci.id, pharmacyIdCart),
-            )
-          if (enviada) {
-            map[ci.id] = enviada._id
-          } else {
-            todasEnviadas = false
+          if (aprovada) {
+            const resultado = await verificarDisponibilidade(aprovada._id)
+            if (resultado.disponivel) {
+              map[ci.id] = aprovada._id
+              continue
+            }
           }
+          todasAprovadas = false
         }
         if (cancelled) return
         const temItens = itensReceita.length > 0
         setRxPorProduto(map)
-        setRxUploaded(todasEnviadas && temItens)
-        // Fluxo 2: a receita deste pedido é sempre revalidada pela farmácia
-        // antes de liberar o pagamento, mesmo que já exista uma aprovada.
-        setRxApproved(false)
-        if (!todasEnviadas) navigate('/receita')
+        setRxApproved(todasAprovadas && temItens)
+        setRxUploaded(todasAprovadas && temItens)
+        // Receita ainda não aprovada: a decisão acontece na tela de Receita.
+        if (!todasAprovadas) navigate('/receita')
       } catch {
         if (!cancelled) {
           setRxUploaded(false)
@@ -507,16 +496,6 @@ export default function Checkout() {
             </div>
           )}
         </div>
-      </div>
-    )
-  }
-
-  // Carrinho com receita é redirecionado para /receita (efeito acima).
-  // Evita exibir o checkout (endereço/pagamento) por um instante.
-  if (precisaReceitaNoPedido && !orderCreated) {
-    return (
-      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
-        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     )
   }
