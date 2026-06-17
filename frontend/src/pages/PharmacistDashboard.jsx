@@ -433,6 +433,7 @@ export function PharmacistDashboard() {
     doctorUf: '',
     digitalSignatureCode: '',
     selectedBatchNumber: '',
+    issueDate: '',
   });
   const [sngpcSaving, setSngpcSaving] = useState(false);
   const [sngpcReadyByPrescription, setSngpcReadyByPrescription] = useState({});
@@ -1212,6 +1213,7 @@ export function PharmacistDashboard() {
       doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
       digitalSignatureCode: digitalSignatureCodeFromPrescription(receita),
       selectedBatchNumber: (livres[0] || batches[0])?.batchNumber || '',
+      issueDate: '',
     };
   };
 
@@ -2384,6 +2386,18 @@ export function PharmacistDashboard() {
                           placeholder={(selectedReceita.hash_arquivo || '').slice(0, 32) || 'Hash ICP-Brasil'}
                           onChange={(value) => setSngpcForm((prev) => ({ ...prev, digitalSignatureCode: value }))}
                         />
+                        <div>
+                          <label className="text-xs text-gray-500">Data de emissão da receita</label>
+                          <input
+                            type="date"
+                            value={sngpcForm.issueDate}
+                            onChange={(e) => setSngpcForm((prev) => ({ ...prev, issueDate: e.target.value }))}
+                            className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                          />
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            Validade legal: até 30 dias da emissão (RDC ANVISA). Receita vencida é recusada pelo SNGPC.
+                          </p>
+                        </div>
                       </div>
                     </div>
 
@@ -2432,7 +2446,8 @@ export function PharmacistDashboard() {
                         !sngpcForm.doctorCrm ||
                         !sngpcForm.doctorUf ||
                         !sngpcForm.digitalSignatureCode ||
-                        !sngpcForm.selectedBatchNumber
+                        !sngpcForm.selectedBatchNumber ||
+                        !sngpcForm.issueDate
                       }
                       className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
                     >

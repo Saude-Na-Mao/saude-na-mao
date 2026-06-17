@@ -1250,6 +1250,35 @@ async function validateSngpcDispensation(
     throw createError("Quantidade insuficiente no lote selecionado", 400);
   }
 
+  // Validade legal da receita (RDC ANVISA): a contagem parte da data de emissão
+  // informada pelo farmacêutico. Receita vencida não pode ser registrada no SNGPC.
+  // Todos os demais dados (médico, CRM, UF) são aceitos como digitados; apenas a
+  // validade reprova a dispensação.
+  let issueDate = payload.issueDate ? new Date(payload.issueDate) : null;
+  if ((!issueDate || Number.isNaN(issueDate.getTime())) && targetItem.id_receita) {
+    const presc = await Prescription.findById(targetItem.id_receita)
+      .select("dados_ocr.data_emissao")
+      .lean();
+    const ocrEmissao = presc?.dados_ocr?.data_emissao;
+    issueDate = ocrEmissao ? new Date(ocrEmissao) : null;
+  }
+  if (!issueDate || Number.isNaN(issueDate.getTime())) {
+    throw createError(
+      "Informe a data de emissão da receita para validar no SNGPC.",
+      400,
+    );
+  }
+  const VALIDADE_MAX_DIAS = 30;
+  const limiteValidade = new Date(issueDate);
+  limiteValidade.setDate(limiteValidade.getDate() + VALIDADE_MAX_DIAS);
+  if (now > limiteValidade) {
+    const emissaoBr = `${String(issueDate.getDate()).padStart(2, "0")}/${String(issueDate.getMonth() + 1).padStart(2, "0")}/${issueDate.getFullYear()}`;
+    throw createError(
+      `Receita vencida: a validade legal é de ${VALIDADE_MAX_DIAS} dias a partir da emissão (${emissaoBr}). Não é possível registrar a dispensação no SNGPC.`,
+      400,
+    );
+  }
+
   const incPayload = {
     "batches.$.quantity": -quantity,
   };
