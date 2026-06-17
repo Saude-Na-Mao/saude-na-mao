@@ -37,12 +37,6 @@ const STATUS_OPCOES = [
   { valor: 'Rejeitada', label: 'Rejeitadas', cor: 'bg-red-100 text-red-700' },
 ];
 
-const UF_OPTIONS = [
-  'AC', 'AL', 'AP', 'AM', 'BA', 'CE', 'DF', 'ES', 'GO', 'MA', 'MT', 'MS',
-  'MG', 'PA', 'PB', 'PR', 'PE', 'PI', 'RJ', 'RN', 'RS', 'RO', 'RR', 'SC',
-  'SP', 'SE', 'TO',
-];
-
 const NO_CONTROLLED_BATCH_CLIENT_REASON =
   'Não foi possível aprovar sua receita porque o medicamento sujeito ao SNGPC não possui lote disponível nesta farmácia. Escolha outra farmácia ou aguarde reposição.';
 
@@ -1210,7 +1204,7 @@ export function PharmacistDashboard() {
       productId: objectIdValue(item?.id_produto),
       doctorName: ocr?.nome_medico || '',
       doctorCrm: ocr?.crm || '',
-      doctorUf: String(ocr?.uf_crm || '').toUpperCase(),
+      doctorUf: String(ocr?.uf_crm || ''),
       digitalSignatureCode: digitalSignatureCodeFromPrescription(receita),
       selectedBatchNumber: (livres[0] || batches[0])?.batchNumber || '',
       issueDate: '',
@@ -1281,7 +1275,6 @@ export function PharmacistDashboard() {
       const res = await orderService.validateSngpc(order._id, {
         pharmacyId: String(farmaciaIdEfetiva),
         ...sngpcForm,
-        doctorUf: String(sngpcForm.doctorUf || '').toUpperCase(),
         buyerRg: selectedReceita?.id_usuario?.rg || '',
       });
       const pedido = res.data?.data?.pedido;
@@ -2366,22 +2359,15 @@ export function PharmacistDashboard() {
                             placeholder={selectedReceita.dados_ocr?.crm || '18452'}
                             onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorCrm: value }))}
                           />
-                          <div>
-                            <label className="text-xs text-gray-500">UF do conselho</label>
-                            <select
-                              value={sngpcForm.doctorUf}
-                              onChange={(e) => setSngpcForm((prev) => ({ ...prev, doctorUf: e.target.value }))}
-                              className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
-                            >
-                              <option value="">{selectedReceita.dados_ocr?.uf_crm || 'UF'}</option>
-                              {UF_OPTIONS.map((uf) => (
-                                <option key={uf} value={uf}>{uf}</option>
-                              ))}
-                            </select>
-                          </div>
+                          <SngpcInput
+                            label="UF"
+                            value={sngpcForm.doctorUf}
+                            placeholder={selectedReceita.dados_ocr?.uf_crm || 'GO'}
+                            onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorUf: value }))}
+                          />
                         </div>
                         <SngpcInput
-                          label="Código da assinatura digital ICP-Brasil"
+                          label="Código da assinatura digital ICP-Brasil (opcional)"
                           value={sngpcForm.digitalSignatureCode}
                           placeholder={(selectedReceita.hash_arquivo || '').slice(0, 32) || 'Hash ICP-Brasil'}
                           onChange={(value) => setSngpcForm((prev) => ({ ...prev, digitalSignatureCode: value }))}
@@ -2395,7 +2381,7 @@ export function PharmacistDashboard() {
                             className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
                           />
                           <p className="text-[11px] text-gray-500 mt-1">
-                            Validade legal: até 30 dias da emissão (RDC ANVISA). Receita vencida é recusada pelo SNGPC.
+                            Para esta validação SNGPC, somente receitas emitidas em 2026 são aceitas.
                           </p>
                         </div>
                       </div>
@@ -2445,7 +2431,6 @@ export function PharmacistDashboard() {
                         !sngpcForm.doctorName ||
                         !sngpcForm.doctorCrm ||
                         !sngpcForm.doctorUf ||
-                        !sngpcForm.digitalSignatureCode ||
                         !sngpcForm.selectedBatchNumber ||
                         !sngpcForm.issueDate
                       }
@@ -2485,10 +2470,6 @@ export function PharmacistDashboard() {
                             selectedControlledItem?.nome_produto ||
                             '—'
                           }
-                        />
-                        <ReadonlySngpcField
-                          label="Princípio ativo (receita)"
-                          value={selectedReceita.dados_ocr?.principio_ativo || '—'}
                         />
                       </div>
                       <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 space-y-1">
@@ -2534,10 +2515,6 @@ export function PharmacistDashboard() {
                             productFromPrescription(selectedReceita)?.nome ||
                             '—'
                           }
-                        />
-                        <ReadonlySngpcField
-                          label="Princípio ativo (receita)"
-                          value={selectedReceita.dados_ocr?.principio_ativo || '—'}
                         />
                         <ReadonlySngpcField label="Médico (OCR)" value={selectedReceita.dados_ocr?.nome_medico || '—'} />
                         <ReadonlySngpcField label="CRM / UF" value={`${selectedReceita.dados_ocr?.crm || '—'}${selectedReceita.dados_ocr?.uf_crm ? ' / ' + selectedReceita.dados_ocr.uf_crm : ''}`} />

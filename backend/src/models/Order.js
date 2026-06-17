@@ -192,10 +192,9 @@ const sngpcDataSchema = new mongoose.Schema(
     doctorUf: {
       type: String,
       trim: true,
-      uppercase: true,
-      maxlength: 2,
     },
     digitalSignatureCode: { type: String, trim: true },
+    issueDate: { type: Date },
     selectedBatchNumber: { type: String, trim: true },
     batchExpirationDate: { type: Date },
     productId: { type: mongoose.Schema.Types.ObjectId, ref: "Product" },
