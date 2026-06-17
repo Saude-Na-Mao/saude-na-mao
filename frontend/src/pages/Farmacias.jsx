@@ -2,9 +2,11 @@ import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Star, Clock, MapPin, Search, ChevronRight, SlidersHorizontal, MessageCircle, Store, Truck } from 'lucide-react'
 import LoadingSpinner from '../components/LoadingSpinner'
+import useHasRegisteredAddress from '../hooks/useHasRegisteredAddress'
 import { pharmacyService } from '../services/api'
 
 export default function Farmacias() {
+  const temEndereco = useHasRegisteredAddress()
   const [pharmacies, setPharmacies] = useState([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -130,6 +132,7 @@ export default function Farmacias() {
             <PharmacyCard
               key={pharmacy._id}
               pharmacy={pharmacy}
+              temEndereco={temEndereco}
             />
           ))}
         </div>
@@ -147,7 +150,7 @@ function getFrete(pharmacy) {
   return Number.isFinite(taxa) && taxa > 0 ? taxa : 8
 }
 
-function PharmacyCard({ pharmacy }) {
+function PharmacyCard({ pharmacy, temEndereco }) {
   const displayRating = pharmacy.avaliacao || 0
   const displayTotal = pharmacy.total_avaliacoes || 0
   const initial = pharmacy.nome?.charAt(0) || 'F'
@@ -228,10 +231,12 @@ function PharmacyCard({ pharmacy }) {
             <Clock className="w-3.5 h-3.5 flex-shrink-0" />
             <span className="truncate">{pharmacy.horario_funcionamento}</span>
           </div>
-          <div className="flex items-center gap-2 text-gray-500 text-sm">
-            <Truck className="w-3.5 h-3.5 flex-shrink-0 text-primary" />
-            <span>Frete <span className="font-semibold text-gray-900">R$ {getFrete(pharmacy).toFixed(2)}</span></span>
-          </div>
+          {temEndereco && (
+            <div className="flex items-center gap-2 text-gray-500 text-sm">
+              <Truck className="w-3.5 h-3.5 flex-shrink-0 text-primary" />
+              <span>Frete <span className="font-semibold text-gray-900">R$ {getFrete(pharmacy).toFixed(2)}</span></span>
+            </div>
+          )}
         </div>
 
         <div className="mt-4 pt-3 border-t border-gray-100 flex items-center justify-between gap-3">

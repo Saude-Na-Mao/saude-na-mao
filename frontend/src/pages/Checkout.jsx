@@ -290,13 +290,19 @@ export default function Checkout() {
   const subtotal = getTotal()
   const taxaEntrega = cartState.taxaEntrega ?? 8
   const desconto = cartState.desconto || 0
-  const total = Math.max(0, subtotal - desconto + taxaEntrega)
   const deliveryType = cartState.deliveryType || 'moto'
   const couponData = cartState.couponData || null
   const pharmacyName = items[0]?.nome_farmacia || cartState.pharmacyName || 'Farmácia'
   const pharmacyId = items[0]?.id_farmacia || cartState.pharmacyId || ''
 
   const needsAddress = deliveryType === 'moto'
+  // Frete só aparece depois que o cliente tem/escolheu um endereço de entrega.
+  const temEnderecoParaFrete =
+    !needsAddress ||
+    (addressMode === 'saved' && Boolean(selectedAddressId)) ||
+    Boolean(address.logradouro && address.numero && address.bairro)
+  const taxaEntregaVisivel = temEnderecoParaFrete ? taxaEntrega : 0
+  const total = Math.max(0, subtotal - desconto + taxaEntregaVisivel)
   // Pedido com receita ainda não totalmente aprovada: não cobra agora.
   // O cliente só envia para validação e paga depois (em Meus Pedidos).
   const aguardandoAprovacao = precisaReceitaNoPedido && !rxApproved
@@ -609,6 +615,24 @@ export default function Checkout() {
               {(addressMode === 'new' || savedAddresses.length === 0) && addressMode !== 'loading' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">CEP</label>
+                    <input
+                      type="text"
+                      value={address.cep}
+                      onChange={(e) => setAddress({ ...address, cep: maskCep(e.target.value) })}
+                      onBlur={handleCepBlur}
+                      inputMode="numeric"
+                      maxLength={9}
+                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
+                      placeholder="74000-000"
+                    />
+                    {cepLoading ? (
+                      <span className="text-xs text-gray-400 mt-1">Buscando CEP...</span>
+                    ) : (
+                      <span className="text-xs text-gray-400 mt-1">Digite o CEP para preencher o endereço automaticamente.</span>
+                    )}
+                  </div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Rua / Avenida</label>
                     <input
                       type="text"
@@ -632,7 +656,7 @@ export default function Checkout() {
                       placeholder="Apto, Bloco..."
                     />
                   </div>
-                  <div>
+                  <div className="sm:col-span-2">
                     <label className="block text-xs font-medium text-gray-500 mb-1">Bairro</label>
                     <input
                       type="text"
@@ -641,20 +665,6 @@ export default function Checkout() {
                       className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
                       placeholder="Ex: Setor Bueno"
                     />
-                  </div>
-                  <div>
-                    <label className="block text-xs font-medium text-gray-500 mb-1">CEP</label>
-                    <input
-                      type="text"
-                      value={address.cep}
-                      onChange={(e) => setAddress({ ...address, cep: maskCep(e.target.value) })}
-                      onBlur={handleCepBlur}
-                      inputMode="numeric"
-                      maxLength={9}
-                      className="w-full px-3 py-2.5 border border-gray-200 rounded-xl text-sm focus:outline-none focus:ring-2 focus:ring-primary/30 focus:border-primary"
-                      placeholder="74000-000"
-                    />
-                    {cepLoading && <span className="text-xs text-gray-400 mt-1">Buscando CEP...</span>}
                   </div>
                 </div>
               )}
@@ -912,9 +922,13 @@ export default function Checkout() {
               </div>
               <div className="flex justify-between text-sm">
                 <span className="text-gray-500">Frete</span>
-                <span className={taxaEntrega === 0 ? 'text-emerald-600 font-medium' : ''}>
-                  {taxaEntrega === 0 ? 'Grátis' : `R$ ${taxaEntrega.toFixed(2)}`}
-                </span>
+                {temEnderecoParaFrete ? (
+                  <span className={taxaEntrega === 0 ? 'text-emerald-600 font-medium' : ''}>
+                    {taxaEntrega === 0 ? 'Grátis' : `R$ ${taxaEntrega.toFixed(2)}`}
+                  </span>
+                ) : (
+                  <span className="text-gray-400 text-xs">Informe o endereço</span>
+                )}
               </div>
               {desconto > 0 && (
                 <div className="flex justify-between text-sm text-emerald-600">

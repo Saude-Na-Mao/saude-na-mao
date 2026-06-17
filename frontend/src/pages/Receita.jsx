@@ -22,9 +22,11 @@ const ACTIVE_STATUSES = ['Pendente', 'Em Análise', 'Rejeitada']
 
 function prioridade(r) {
   const st = r.status
-  if (st === 'Pendente') return 0
-  if (st === 'Em Análise') return 1
-  if (st === 'Aprovada' && r.disponivel_para_novo_pedido !== false) return 2
+  // Aprovada e disponível vence: é a que libera o pagamento. Mesmo que exista
+  // uma receita antiga "Em Análise" para o mesmo item, mostramos a aprovada.
+  if (st === 'Aprovada' && r.disponivel_para_novo_pedido !== false) return 0
+  if (st === 'Pendente') return 1
+  if (st === 'Em Análise') return 2
   if (st === 'Aprovada') return 4
   if (st === 'Rejeitada') return 4
   if (st === 'Expirada') return 5
@@ -39,13 +41,22 @@ function prescricaoDoItem(candidatas, itemId, sessaoPresc) {
   })
   const ativas = matches
     .filter((r) => {
-      if (ACTIVE_STATUSES.includes(r.status)) return true
-      if (r.status !== 'Aprovada') return false
-      // Aprovada só conta se foi a receita enviada nesta sessão para o produto
-      if (!sessaoPresc?._id) return r.disponivel_para_novo_pedido !== false
-      return String(r._id) === String(sessaoPresc._id)
+      // Uma receita aprovada e disponível sempre conta (libera o pagamento),
+      // independentemente da sessão — evita ficar preso em "Em Análise".
+      if (r.status === 'Aprovada') return r.disponivel_para_novo_pedido !== false
+      return ACTIVE_STATUSES.includes(r.status)
     })
     .sort((a, b) => prioridade(a) - prioridade(b))
+  // Se a sessão aponta para uma receita específica, prioriza-a apenas quando
+  // ainda não há nenhuma aprovada disponível.
+  const aprovadaDisponivel = ativas.find(
+    (r) => r.status === 'Aprovada' && r.disponivel_para_novo_pedido !== false,
+  )
+  if (aprovadaDisponivel) return aprovadaDisponivel
+  if (sessaoPresc?._id) {
+    const daSessao = ativas.find((r) => String(r._id) === String(sessaoPresc._id))
+    if (daSessao) return daSessao
+  }
   return ativas[0] || null
 }
 
@@ -113,7 +124,7 @@ export default function Receita() {
     const carregar = async (silencioso = false) => {
       if (!silencioso) setLoading(true)
       try {
-        const res = await prescriptionService.getAll()
+        const res = await prescriptionService.getAll({ limit: 80 })
         const receitas = res.data?.data?.receitas || res.data?.data?.docs || []
         const candidatas = receitas.filter((r) => {
           const fid = r.id_farmacia?._id || r.id_farmacia

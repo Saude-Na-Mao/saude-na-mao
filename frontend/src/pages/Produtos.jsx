@@ -3,6 +3,7 @@ import { useSearchParams, Link, useNavigate } from 'react-router-dom'
 import { useCartStore, useUiStore } from '../stores/store'
 import LoadingSpinner from '../components/LoadingSpinner'
 import ProdutoDetalheModal from '../components/ProdutoDetalheModal'
+import useHasRegisteredAddress from '../hooks/useHasRegisteredAddress'
 import { productService, pharmacyService } from '../services/api'
 import { Search, Filter, ShoppingCart, Store, ArrowUpDown, AlertTriangle, FileText, MessageCircle, Package2, X } from 'lucide-react'
 import { resolveMediaUrl } from '../utils/mediaUrl'
@@ -32,6 +33,7 @@ function freteDaFarmacia(pharmacy) {
 }
 
 export default function Produtos() {
+  const temEndereco = useHasRegisteredAddress()
   const [searchParams, setSearchParams] = useSearchParams()
   const [products, setProducts] = useState([])
   const [pharmacies, setPharmacies] = useState({})
@@ -374,7 +376,7 @@ export default function Produtos() {
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-5">
               {groups.map((group) => (
-                <GroupOfferCard key={group.representante.nome} group={group} />
+                <GroupOfferCard key={group.representante.nome} group={group} temEndereco={temEndereco} />
               ))}
             </div>
           )}
@@ -384,7 +386,7 @@ export default function Produtos() {
   )
 }
 
-function GroupOfferCard({ group }) {
+function GroupOfferCard({ group, temEndereco }) {
   const [modalAberto, setModalAberto] = useState(false)
   const product = group.representante
   const precisaReceita = requiresPrescription(product)
@@ -456,7 +458,9 @@ function GroupOfferCard({ group }) {
           <p className="text-[11px] text-gray-400">A partir de</p>
           <div className="flex items-end gap-2 flex-wrap">
             <span className="text-2xl font-bold text-primary leading-none">R$ {group.menorPreco.toFixed(2)}</span>
-            <span className="text-[11px] text-gray-400 mb-0.5">+ frete a partir de R$ {group.menorFrete.toFixed(2)}</span>
+            {temEndereco && (
+              <span className="text-[11px] text-gray-400 mb-0.5">+ frete a partir de R$ {group.menorFrete.toFixed(2)}</span>
+            )}
           </div>
           <p className="text-[11px] text-gray-500 mt-1">
             {nFarmacias} {nFarmacias === 1 ? 'farmácia disponível' : 'farmácias disponíveis'}
@@ -597,8 +601,12 @@ function OffersModal({ group, isOpen, onClose }) {
                     </div>
                     <div className="text-right shrink-0">
                       <div className="text-lg font-bold text-primary leading-none">R$ {offer.preco.toFixed(2)}</div>
-                      <div className="text-xs text-gray-500 mt-1">+ frete R$ {offer.frete.toFixed(2)}</div>
-                      <div className="text-[11px] text-gray-400">Total c/ entrega R$ {offer.total.toFixed(2)}</div>
+                      {temEndereco && (
+                        <>
+                          <div className="text-xs text-gray-500 mt-1">+ frete R$ {offer.frete.toFixed(2)}</div>
+                          <div className="text-[11px] text-gray-400">Total c/ entrega R$ {offer.total.toFixed(2)}</div>
+                        </>
+                      )}
                     </div>
                   </div>
                   <button

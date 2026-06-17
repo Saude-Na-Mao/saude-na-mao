@@ -791,7 +791,9 @@ async function createOrder(userId, orderData) {
     metodo_pagamento: metodo_pagamento || "pix",
     status: initialStatus,
     status_pagamento: "pendente",
-    aprovado_farmaceutico: false,
+    // Se não há receita pendente de validação, as receitas vinculadas já foram
+    // aprovadas pelo farmacêutico (na tela de Receita) — libera o pagamento.
+    aprovado_farmaceutico: !hasPendingPrescriptionValidation,
     modo_demo: compliance.academicDemoMode,
     estoque_baixado: !hasPendingPrescriptionValidation,
     compliance_status: compliance.academicDemoMode
