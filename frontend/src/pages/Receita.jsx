@@ -10,7 +10,6 @@ import {
   CheckCircle,
   AlertTriangle,
   ArrowLeft,
-  ArrowRight,
   X,
   Shield,
   Clock,
@@ -654,32 +653,19 @@ export default function Receita() {
         </div>
       )}
 
-      {/* Continuar para pagamento (só após aprovação) */}
+      {/* Continuar para pagamento (habilita só após todas as receitas aprovadas) */}
       <button
         onClick={() => navigate('/checkout')}
         disabled={!todasAprovadas}
+        title={!todasAprovadas ? 'Disponível após a aprovação do farmacêutico' : undefined}
         className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
           todasAprovadas
             ? 'bg-primary text-white hover:bg-secondary'
             : 'bg-gray-200 text-gray-400 cursor-not-allowed'
         }`}
       >
-        {todasAprovadas ? (
-          <>
-            <ShoppingCart className="w-4 h-4" />
-            Continuar para pagamento
-          </>
-        ) : todasEnviadas ? (
-          <>
-            <Clock className="w-4 h-4" />
-            Aguardando aprovação do farmacêutico
-          </>
-        ) : (
-          <>
-            Envie a receita de todos os itens
-            <ArrowRight className="w-4 h-4" />
-          </>
-        )}
+        <ShoppingCart className="w-4 h-4" />
+        Continuar para pagamento
       </button>
     </div>
   )
