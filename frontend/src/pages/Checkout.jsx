@@ -137,6 +137,16 @@ export default function Checkout() {
   const temBloqueioRemoto = false // Bloqueio removido para checkout remoto de controlados no TCC
   const pharmacyIdCart = items[0]?.id_farmacia || null
 
+  // Pedido com receita não passa pelo Checkout: o envio para validação (sem
+  // endereço/pagamento) é feito na tela de Receita. O pagamento ocorre depois,
+  // em Meus Pedidos, após a aprovação do farmacêutico.
+  useEffect(() => {
+    if (!token) return
+    if (precisaReceitaNoPedido && !orderCreated && !orderDoneRef.current) {
+      navigate('/receita')
+    }
+  }, [token, precisaReceitaNoPedido, orderCreated, navigate])
+
   const receitaSig = items
     .filter((i) => itemExigeReceita(i))
     .map(
@@ -497,6 +507,16 @@ export default function Checkout() {
             </div>
           )}
         </div>
+      </div>
+    )
+  }
+
+  // Carrinho com receita é redirecionado para /receita (efeito acima).
+  // Evita exibir o checkout (endereço/pagamento) por um instante.
+  if (precisaReceitaNoPedido && !orderCreated) {
+    return (
+      <div className="mx-auto max-w-2xl px-4 py-20 text-center">
+        <div className="w-8 h-8 border-2 border-primary border-t-transparent rounded-full animate-spin mx-auto" />
       </div>
     )
   }
