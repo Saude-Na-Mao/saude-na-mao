@@ -11,34 +11,12 @@ class ValidationService {
 
   static validateCPF(cpf) {
     if (!cpf) return { valid: false, error: 'CPF é obrigatório' }
-    
+
+    // Projeto acadêmico (TCC): usamos CPFs fictícios, então validamos apenas o
+    // formato (11 dígitos) — sem checar dígitos verificadores reais.
     const cleanCPF = cpf.replace(/\D/g, '')
     if (cleanCPF.length !== 11) {
       return { valid: false, error: 'CPF deve ter 11 dígitos' }
-    }
-
-    if (/^(\d)\1{10}$/.test(cleanCPF)) {
-      return { valid: false, error: 'CPF inválido' }
-    }
-
-    let sum = 0
-    for (let i = 1; i <= 9; i++) {
-      sum += parseInt(cleanCPF.substring(i - 1, i)) * (11 - i)
-    }
-    let remainder = (sum * 10) % 11
-    if (remainder === 10 || remainder === 11) remainder = 0
-    if (remainder !== parseInt(cleanCPF.substring(9, 10))) {
-      return { valid: false, error: 'CPF inválido' }
-    }
-
-    sum = 0
-    for (let i = 1; i <= 10; i++) {
-      sum += parseInt(cleanCPF.substring(i - 1, i)) * (12 - i)
-    }
-    remainder = (sum * 10) % 11
-    if (remainder === 10 || remainder === 11) remainder = 0
-    if (remainder !== parseInt(cleanCPF.substring(10, 11))) {
-      return { valid: false, error: 'CPF inválido' }
     }
 
     return { valid: true }

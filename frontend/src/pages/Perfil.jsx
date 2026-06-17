@@ -61,6 +61,7 @@ export default function Perfil() {
   const [pharmacyInfo, setPharmacyInfo] = useState(null)
   const [photoFile, setPhotoFile] = useState(null)
   const [photoPreview, setPhotoPreview] = useState(null)
+  const [removePhoto, setRemovePhoto] = useState(false)
   const photoInputRef = useRef(null)
   const [formData, setFormData] = useState({
     nome: user?.nome || '',
@@ -130,8 +131,16 @@ export default function Perfil() {
   const handlePhotoSelect = (e) => {
     const file = e.target.files?.[0]
     if (!file) return
+    setRemovePhoto(false)
     setPhotoFile(file)
     setPhotoPreview(URL.createObjectURL(file))
+  }
+
+  const handleRemovePhoto = () => {
+    setPhotoFile(null)
+    setPhotoPreview(null)
+    setRemovePhoto(true)
+    if (photoInputRef.current) photoInputRef.current.value = ''
   }
 
   const handleDriverChange = (e) => {
@@ -202,6 +211,8 @@ export default function Perfil() {
         }
       }
 
+      if (removePhoto && !photoFile) payload.remover_foto = true
+
       let request = payload
       if (photoFile) {
         const fd = new FormData()
@@ -223,6 +234,7 @@ export default function Perfil() {
       setEditMode(false)
       setPhotoFile(null)
       setPhotoPreview(null)
+      setRemovePhoto(false)
       setTimeout(() => setMessage(null), 3000)
     } catch (err) {
       setError(err.response?.data?.message || err.response?.data?.mensagem || 'Erro ao atualizar perfil')
@@ -280,7 +292,9 @@ export default function Perfil() {
 
   const roleBadge = ROLE_BADGE[userRole] || ROLE_BADGE.cliente
 
-  const avatarSrc = photoPreview || resolveMediaUrl(user?.foto_perfil || user?.fotoPerfil)
+  const avatarSrc = removePhoto
+    ? null
+    : photoPreview || resolveMediaUrl(user?.foto_perfil || user?.fotoPerfil)
 
   const isClientOnly = !isPharmacyRole && !isDriver && !isAdmin
 
@@ -317,9 +331,19 @@ export default function Perfil() {
                 type="button"
                 onClick={() => photoInputRef.current?.click()}
                 className="absolute -bottom-1 -right-1 w-8 h-8 bg-white text-primary rounded-full shadow-md flex items-center justify-center hover:bg-gray-50 transition"
-                title="Alterar foto"
+                title={avatarSrc ? 'Trocar foto' : 'Adicionar foto'}
               >
                 <Camera className="w-4 h-4" />
+              </button>
+            )}
+            {editMode && avatarSrc && (
+              <button
+                type="button"
+                onClick={handleRemovePhoto}
+                className="absolute -top-1 -right-1 w-7 h-7 bg-white text-red-500 rounded-full shadow-md flex items-center justify-center hover:bg-red-50 transition"
+                title="Remover foto"
+              >
+                <X className="w-4 h-4" />
               </button>
             )}
             <input

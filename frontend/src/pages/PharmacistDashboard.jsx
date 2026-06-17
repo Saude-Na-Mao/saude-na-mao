@@ -95,14 +95,25 @@ function linkedOrderFromPrescription(receita, orders = []) {
 }
 
 function controlledItemForPrescription(receita, order) {
-  if (!order) return null;
   const prescriptionId = objectIdValue(receita);
   const items = order?.itens || [];
-  return (
+  const fromOrder =
     items.find((item) => objectIdValue(item?.id_receita) === prescriptionId && isControlledOrderItem(item)) ||
-    items.find(isControlledOrderItem) ||
-    null
-  );
+    items.find(isControlledOrderItem);
+  if (fromOrder) return fromOrder;
+  // Receita enviada antes do pedido (fluxo novo): usa o produto vinculado à
+  // receita (já populado com batches) para exibir info do medicamento e lotes.
+  const prod = productFromPrescription(receita);
+  if (prod && prod._id) {
+    return {
+      id_produto: prod,
+      nome_produto: prod.nome,
+      controlado: prod.controlado,
+      receita_obrigatoria: prod.receita_obrigatoria,
+      classificacao_receita: prod.classificacao_receita,
+    };
+  }
+  return null;
 }
 
 function productFromPrescription(receita) {
@@ -1216,11 +1227,14 @@ export function PharmacistDashboard() {
     const hasRegisteredSngpc =
       Boolean(linkedOrder?.sngpcData?.validatedAt) ||
       Boolean(receita?._id && sngpcReadyByPrescription[receita._id]);
+    // Só auto-rejeita quando NÃO há lote disponível de verdade (produto sem
+    // estoque). Receita enviada antes do pedido (sem pedido vinculado) NÃO é
+    // motivo de rejeição: validamos pelo produto da receita.
     const shouldAutoReject =
       ['Pendente', 'Em Análise'].includes(receita?.status) &&
       requiresControlledFlow &&
       !hasRegisteredSngpc &&
-      (!linkedOrder || !controlledItem || batches.length === 0);
+      batches.length === 0;
 
     setSelectedReceita(receita);
     setObservacoes(shouldAutoReject ? NO_CONTROLLED_BATCH_CLIENT_REASON : receita?.observacoes || '');
@@ -1428,6 +1442,10 @@ export function PharmacistDashboard() {
     selectedLinkedOrder?.sngpcData?.validatedAt ||
       (selectedReceita?._id && sngpcReadyByPrescription[selectedReceita._id]),
   );
+  // Receita avulsa (enviada antes do pedido): não exige registro SNGPC contra
+  // pedido para aprovar — o lote é debitado quando o pedido é criado. Mostra a
+  // info do medicamento e lotes só para conferência.
+  const selectedIsStandalone = Boolean(selectedReceita && !selectedLinkedOrder);
   const selectedNeedsSngpc = Boolean(
     selectedRequiresControlledFlow &&
       selectedLinkedOrder &&
@@ -1438,10 +1456,12 @@ export function PharmacistDashboard() {
     selectedReceita &&
       selectedRequiresControlledFlow &&
       !selectedHasSngpcRegistered &&
+      !selectedIsStandalone &&
       !selectedNeedsSngpc,
   );
   const selectedSngpcReady =
     !selectedRequiresControlledFlow ||
+    selectedIsStandalone ||
     (selectedNeedsSngpc && selectedHasSngpcRegistered);
   const selectedPrescriptionFileUrl = normalizeFileUrl(
     selectedReceita?.url_imagem_publica || selectedReceita?.url_arquivo,
@@ -2424,6 +2444,50 @@ export function PharmacistDashboard() {
                           : 'Confirmar Dispensação e Rastreabilidade'}
                     </button>
                   </>
+                ) : selectedIsStandalone && selectedRequiresControlledFlow && selectedBatches.length > 0 ? (
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Comprador</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField label="Nome completo" value={selectedReceita.id_usuario?.nome || '—'} />
+                        <ReadonlySngpcField label="CPF" value={selectedReceita.id_usuario?.cpf || '—'} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor (OCR)</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField label="Nome do médico" value={selectedReceita.dados_ocr?.nome_medico || '—'} />
+                        <ReadonlySngpcField label="CRM / UF" value={`${selectedReceita.dados_ocr?.crm || '—'}${selectedReceita.dados_ocr?.uf_crm ? ' / ' + selectedReceita.dados_ocr.uf_crm : ''}`} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Medicamento e lotes disponíveis</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField
+                          label="Medicamento"
+                          value={
+                            productFromOrderItem(selectedControlledItem)?.nome ||
+                            selectedControlledItem?.nome_produto ||
+                            '—'
+                          }
+                        />
+                        <ReadonlySngpcField
+                          label="Princípio ativo (receita)"
+                          value={selectedReceita.dados_ocr?.principio_ativo || '—'}
+                        />
+                      </div>
+                      <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 space-y-1">
+                        {selectableBatches.map((batch) => (
+                          <div key={batch.batchNumber}>
+                            Lote {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
+                          </div>
+                        ))}
+                      </div>
+                      <p className="text-[11px] text-gray-500 mt-2">
+                        Confira se o medicamento da receita coincide. O lote (FEFO) é debitado e registrado no SNGPC automaticamente quando o cliente fechar o pedido após a aprovação.
+                      </p>
+                    </div>
+                  </div>
                 ) : selectedRequiresControlledFlow ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 space-y-2">
                     <p>{NO_CONTROLLED_BATCH_PHARMACY_REASON}</p>
@@ -2436,8 +2500,37 @@ export function PharmacistDashboard() {
                     )}
                   </div>
                 ) : (
-                  <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600">
-                    Esta receita não exige registro ANVISA/SNGPC.
+                  <div className="space-y-3">
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Comprador</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField label="Nome completo" value={selectedReceita.id_usuario?.nome || '—'} />
+                        <ReadonlySngpcField label="CPF" value={selectedReceita.id_usuario?.cpf || '—'} />
+                      </div>
+                    </div>
+                    <div>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Medicamento da receita</p>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        <ReadonlySngpcField
+                          label="Medicamento"
+                          value={
+                            productFromOrderItem(selectedControlledItem)?.nome ||
+                            selectedControlledItem?.nome_produto ||
+                            productFromPrescription(selectedReceita)?.nome ||
+                            '—'
+                          }
+                        />
+                        <ReadonlySngpcField
+                          label="Princípio ativo (receita)"
+                          value={selectedReceita.dados_ocr?.principio_ativo || '—'}
+                        />
+                        <ReadonlySngpcField label="Médico (OCR)" value={selectedReceita.dados_ocr?.nome_medico || '—'} />
+                        <ReadonlySngpcField label="CRM / UF" value={`${selectedReceita.dados_ocr?.crm || '—'}${selectedReceita.dados_ocr?.uf_crm ? ' / ' + selectedReceita.dados_ocr.uf_crm : ''}`} />
+                      </div>
+                    </div>
+                    <p className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 text-xs text-gray-600">
+                      Confira se o medicamento da receita coincide. Esta receita não exige registro ANVISA/SNGPC.
+                    </p>
                   </div>
                 )}
               </div>

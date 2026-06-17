@@ -55,6 +55,8 @@ async function updateProfile(req, res, next) {
     }
     if (req.file) {
       updateData.foto_perfil = `/${String(req.file.path).replace(/\\/g, "/")}`;
+    } else if (req.body.remover_foto === "true" || req.body.remover_foto === true) {
+      updateData.foto_perfil = null;
     }
     const user = await userService.updateProfile(req.user.id, updateData);
     res.json({ success: true, message: "Perfil atualizado", data: { user: normalizeUser(user) } });
