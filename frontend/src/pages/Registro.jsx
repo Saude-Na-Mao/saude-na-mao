@@ -291,9 +291,7 @@ export default function Registro() {
         <div className="w-full max-w-2xl">
           <div className="lg:hidden text-center mb-6">
             <div className="inline-flex items-center gap-2.5 mb-2">
-              <div className="w-10 h-10 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-sm">
-                <span className="text-white text-xl font-bold">S</span>
-              </div>
+              <img src="/imagens/logo-icon.png" alt="Saúde na Mão" className="w-10 h-10 object-contain" />
               <span className="font-bold text-xl text-gray-900">Saúde na Mão</span>
             </div>
           </div>

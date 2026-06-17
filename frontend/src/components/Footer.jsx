@@ -10,9 +10,7 @@ export default function Footer() {
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-10 mb-10">
           <div>
             <div className="flex items-center gap-2.5 mb-4">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                <span className="text-white font-bold text-sm">S</span>
-              </div>
+              <img src="/imagens/logo-icon.png" alt="Saúde na Mão" className="w-9 h-9 object-contain" />
               <span className="font-bold text-white text-lg">Saúde na Mão</span>
             </div>
             <p className="text-sm leading-relaxed">

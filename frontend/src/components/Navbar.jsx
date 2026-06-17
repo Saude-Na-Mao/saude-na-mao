@@ -67,9 +67,11 @@ export default function Navbar() {
             className="flex items-center gap-2.5 group"
             onClick={() => closeMobileMenu()}
           >
-            <div className="w-9 h-9 bg-gradient-to-br from-primary to-secondary rounded-xl flex items-center justify-center shadow-sm group-hover:shadow-md transition-shadow">
-              <span className="text-white text-lg font-bold">S</span>
-            </div>
+            <img
+              src="/imagens/logo-icon.png"
+              alt="Saúde na Mão"
+              className="w-9 h-9 object-contain transition-transform group-hover:scale-105"
+            />
             <div className="hidden sm:block">
               <span className="font-bold text-lg text-gray-900 tracking-tight">Saúde</span>
               <span className="font-bold text-lg text-primary tracking-tight"> na Mão</span>
