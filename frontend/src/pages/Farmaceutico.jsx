@@ -580,58 +580,6 @@ function AvaliacoesRespostasPanel({ pharmacyId, resolvingPharmacy = false }) {
           )}
         </div>
       )}
-
-      {rejectingOrder && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4">
-          <div className="w-full max-w-md rounded-xl bg-white shadow-xl border border-gray-100">
-            <div className="flex items-center justify-between p-5 border-b border-gray-100">
-              <div>
-                <h3 className="font-bold text-gray-900">Rejeitar Notificação</h3>
-                <p className="text-xs text-gray-500 mt-1">
-                  Pedido #{String(rejectingOrder._id || '').slice(-8).toUpperCase()}
-                </p>
-              </div>
-              <button
-                type="button"
-                onClick={() => setRejectingOrder(null)}
-                className="p-2 rounded-lg text-gray-500 hover:bg-gray-100"
-                aria-label="Fechar"
-              >
-                <X className="w-5 h-5" />
-              </button>
-            </div>
-            <div className="p-5 space-y-4">
-              <div>
-                <label className="text-xs text-gray-500">Motivo</label>
-                <textarea
-                  value={rejectReason}
-                  onChange={(e) => setRejectReason(e.target.value)}
-                  rows={4}
-                  className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-primary/20 focus:border-primary"
-                  placeholder="Descreva o motivo regulatório ou operacional"
-                />
-              </div>
-              <div className="flex justify-end gap-2">
-                <button
-                  type="button"
-                  onClick={() => setRejectingOrder(null)}
-                  className="px-4 py-2 rounded-lg border border-gray-200 text-sm font-semibold text-gray-700 hover:bg-gray-50"
-                >
-                  Cancelar
-                </button>
-                <button
-                  type="button"
-                  onClick={confirmarRejeicao}
-                  disabled={rejectSaving}
-                  className="px-4 py-2 rounded-lg bg-red-600 text-sm font-semibold text-white hover:bg-red-700 disabled:opacity-50"
-                >
-                  {rejectSaving ? 'Salvando...' : 'Confirmar rejeição'}
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   )
 }
