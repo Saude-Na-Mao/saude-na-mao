@@ -1,7 +1,7 @@
 import { useState, useRef, useEffect } from 'react'
 import { useNavigate, Link, useLocation } from 'react-router-dom'
 import { useAuthStore, useCartStore, usePrescriptionStore } from '../stores/store'
-import { prescriptionService } from '../services/api'
+import { orderService, prescriptionService } from '../services/api'
 import PrescriptionChat from '../components/PrescriptionChat'
 import { itemExigeReceita } from '../utils/receitaCart'
 import {
@@ -33,6 +33,23 @@ function prioridade(r) {
   return 9
 }
 
+function objectIdValue(value) {
+  const raw = value?._id || value?.id || value
+  return raw ? String(raw) : ''
+}
+
+function pedidoIdDaReceita(receita) {
+  const direto =
+    objectIdValue(receita?.id_pedido_utilizado) ||
+    objectIdValue(receita?.id_pedido_vinculado)
+  if (direto) return direto
+
+  const vinculos = Array.isArray(receita?.pedidos_vinculados)
+    ? receita.pedidos_vinculados
+    : []
+  return objectIdValue(vinculos[vinculos.length - 1]?.id_pedido)
+}
+
 /** Receita ativa vinculada a um produto específico do carrinho. */
 function prescricaoDoItem(candidatas, itemId, sessaoPresc) {
   const matches = candidatas.filter((r) => {
@@ -47,16 +64,25 @@ function prescricaoDoItem(candidatas, itemId, sessaoPresc) {
       return ACTIVE_STATUSES.includes(r.status)
     })
     .sort((a, b) => prioridade(a) - prioridade(b))
-  // Se a sessão aponta para uma receita específica, prioriza-a apenas quando
-  // ainda não há nenhuma aprovada disponível.
-  const aprovadaDisponivel = ativas.find(
-    (r) => r.status === 'Aprovada' && r.disponivel_para_novo_pedido !== false,
-  )
-  if (aprovadaDisponivel) return aprovadaDisponivel
+
   if (sessaoPresc?._id) {
     const daSessao = ativas.find((r) => String(r._id) === String(sessaoPresc._id))
     if (daSessao) return daSessao
   }
+
+  const maisRecenteNaoAprovada = [...ativas]
+    .filter((r) => ACTIVE_STATUSES.includes(r.status))
+    .sort(
+      (a, b) =>
+        new Date(b.updatedAt || b.validado_em || b.createdAt || 0) -
+        new Date(a.updatedAt || a.validado_em || a.createdAt || 0),
+    )[0]
+  if (maisRecenteNaoAprovada) return maisRecenteNaoAprovada
+
+  const aprovadaDisponivel = ativas.find(
+    (r) => r.status === 'Aprovada' && r.disponivel_para_novo_pedido !== false,
+  )
+  if (aprovadaDisponivel) return aprovadaDisponivel
   return ativas[0] || null
 }
 
@@ -65,7 +91,7 @@ export default function Receita() {
   const location = useLocation()
   const forcarNovoUpload = location.state?.forcarNovoUpload === true
   const { token } = useAuthStore()
-  const { items } = useCartStore()
+  const { items, clearCart } = useCartStore()
   const setPrescricao = usePrescriptionStore((s) => s.setPrescricao)
   const prescricoesPendentes = usePrescriptionStore((s) => s.prescricoesPendentes)
 
@@ -78,6 +104,9 @@ export default function Receita() {
   const [fileByItem, setFileByItem] = useState({})
   const [uploadingItem, setUploadingItem] = useState(null)
   const [reenviandoItem, setReenviandoItem] = useState(null)
+  const [cancelandoPedido, setCancelandoPedido] = useState(false)
+  const [prescricoesIgnoradas, setPrescricoesIgnoradas] = useState({})
+  const [reenvioObrigatorioPorItem, setReenvioObrigatorioPorItem] = useState({})
   // Modalidade por item: 'mim' (receita própria) | 'terceiro' (receita de outra pessoa)
   const [modoReceitaPorItem, setModoReceitaPorItem] = useState({})
   const [pacientePorItem, setPacientePorItem] = useState({})
@@ -128,11 +157,14 @@ export default function Receita() {
         const receitas = res.data?.data?.receitas || res.data?.data?.docs || []
         const candidatas = receitas.filter((r) => {
           const fid = r.id_farmacia?._id || r.id_farmacia
-          return !fid || String(fid) === String(pharmacyId)
+          return (!fid || String(fid) === String(pharmacyId)) && !prescricoesIgnoradas[r._id]
         })
 
         const next = {}
         for (const item of itensReceitaPedido) {
+          if (reenvioObrigatorioPorItem[item.id] && !prescByItem[item.id]) {
+            continue
+          }
           if (forcarNovoUpload && !prescByItem[item.id]) {
             // Em modo "reenviar", começa vazio até o usuário enviar de novo
             continue
@@ -170,7 +202,7 @@ export default function Receita() {
       clearInterval(interval)
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [token, pharmacyId, forcarNovoUpload, contextoCarrinhoOk, receitaSig])
+  }, [token, pharmacyId, forcarNovoUpload, contextoCarrinhoOk, receitaSig, prescricoesIgnoradas, reenvioObrigatorioPorItem])
 
   const handleFileChange = (itemId, e) => {
     const selected = e.target.files?.[0]
@@ -240,6 +272,11 @@ export default function Receita() {
         id_produto: itemId,
         id_farmacia: pharmacyId,
       })
+      setReenvioObrigatorioPorItem((prev) => {
+        const next = { ...prev }
+        delete next[itemId]
+        return next
+      })
       removeFile(itemId)
     } catch (err) {
       const apiMsg = err.response?.data?.message
@@ -256,6 +293,37 @@ export default function Receita() {
       return next
     })
     removeFile(itemId)
+  }
+
+  const reenviarReceitaRejeitada = (itemId, prescId) => {
+    if (prescId) {
+      setPrescricoesIgnoradas((prev) => ({ ...prev, [prescId]: true }))
+    }
+    setPrescricao?.(itemId, null)
+    setReenvioObrigatorioPorItem((prev) => ({ ...prev, [itemId]: true }))
+    resetItem(itemId)
+    setError('')
+  }
+
+  const cancelarPedidoRejeitado = async (receita) => {
+    const pedidoId = pedidoIdDaReceita(receita)
+    try {
+      setCancelandoPedido(true)
+      setError('')
+      if (pedidoId) {
+        await orderService.cancel(pedidoId)
+      }
+      clearCart()
+      navigate(pedidoId ? '/pedidos' : '/carrinho')
+    } catch (err) {
+      setError(
+        err.response?.data?.message ||
+          err.message ||
+          'Não foi possível cancelar o pedido. Tente novamente.',
+      )
+    } finally {
+      setCancelandoPedido(false)
+    }
   }
 
   /** Cancela a receita enviada (Pendente/Em Análise) e volta ao envio para reenviar outro arquivo. */
@@ -449,12 +517,25 @@ export default function Receita() {
                       Envie uma nova receita válida para este medicamento.
                     </span>
                   </div>
-                  <button
-                    onClick={() => resetItem(item.id)}
-                    className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-medium hover:bg-red-200 transition"
-                  >
-                    Enviar nova receita
-                  </button>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <button
+                      type="button"
+                      onClick={() => reenviarReceitaRejeitada(item.id, data?._id)}
+                      className="px-4 py-2 bg-primary text-white rounded-lg text-sm font-semibold hover:bg-secondary transition flex items-center justify-center gap-2"
+                    >
+                      <Upload className="w-4 h-4" />
+                      Fazer mesmo pedido e enviar outra receita
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => cancelarPedidoRejeitado(data)}
+                      disabled={cancelandoPedido}
+                      className="px-4 py-2 bg-red-100 text-red-700 rounded-lg text-sm font-semibold hover:bg-red-200 transition flex items-center justify-center gap-2 disabled:opacity-50"
+                    >
+                      <X className="w-4 h-4" />
+                      {cancelandoPedido ? 'Cancelando...' : 'Cancelar pedido'}
+                    </button>
+                  </div>
                 </div>
               ) : status === 'Pendente' || status === 'Em Análise' ? (
                 <div className="space-y-3">
@@ -664,20 +745,21 @@ export default function Receita() {
         </div>
       )}
 
-      {/* Continuar para pagamento (habilita só após todas as receitas aprovadas) */}
-      <button
-        onClick={() => navigate('/checkout')}
-        disabled={!todasAprovadas}
-        title={!todasAprovadas ? 'Disponível após a aprovação do farmacêutico' : undefined}
-        className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
-          todasAprovadas
-            ? 'bg-primary text-white hover:bg-secondary'
-            : 'bg-gray-200 text-gray-400 cursor-not-allowed'
-        }`}
-      >
-        <ShoppingCart className="w-4 h-4" />
-        Continuar para pagamento
-      </button>
+      {!Object.values(prescByItem).some((p) => p?.status === 'Rejeitada') && (
+        <button
+          onClick={() => navigate('/checkout')}
+          disabled={!todasAprovadas}
+          title={!todasAprovadas ? 'Disponível após a aprovação do farmacêutico' : undefined}
+          className={`w-full py-3.5 rounded-xl font-semibold flex items-center justify-center gap-2 transition ${
+            todasAprovadas
+              ? 'bg-primary text-white hover:bg-secondary'
+              : 'bg-gray-200 text-gray-400 cursor-not-allowed'
+          }`}
+        >
+          <ShoppingCart className="w-4 h-4" />
+          Continuar para pagamento
+        </button>
+      )}
     </div>
   )
 }
