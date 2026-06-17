@@ -182,6 +182,15 @@ function formatBatchDate(value) {
   return date.toLocaleDateString('pt-BR');
 }
 
+function getSngpcIssueYear(value) {
+  const raw = String(value || '').trim();
+  if (!raw) return null;
+  const isoYear = raw.match(/^(\d{4})/)?.[1];
+  const brYear = raw.match(/(\d{2})\/(\d{2})\/(\d{4})/)?.[3];
+  const parsed = new Date(raw);
+  return Number(isoYear || brYear) || (Number.isNaN(parsed.getTime()) ? null : parsed.getUTCFullYear());
+}
+
 function OrderProgressMini({ order }) {
   if (['cancelado', 'rejeitado'].includes(String(order?.status || '').trim())) return null
   return (
@@ -431,6 +440,7 @@ export function PharmacistDashboard() {
   });
   const [sngpcSaving, setSngpcSaving] = useState(false);
   const [sngpcReadyByPrescription, setSngpcReadyByPrescription] = useState({});
+  const [sngpcInvalidByPrescription, setSngpcInvalidByPrescription] = useState({});
   const [rejectingPrescription, setRejectingPrescription] = useState(false);
   const [prescriptionRejectReason, setPrescriptionRejectReason] = useState('');
   const [autoRejectingPrescriptionId, setAutoRejectingPrescriptionId] = useState(null);
@@ -1305,11 +1315,79 @@ export function PharmacistDashboard() {
     } catch (err) {
       const apiMsg = err.response?.data?.message || err.message;
       setError(apiMsg || 'Erro ao registrar dispensação');
+      if (apiMsg && selectedReceita?._id) {
+        setSngpcInvalidByPrescription((prev) => ({
+          ...prev,
+          [selectedReceita._id]: apiMsg,
+        }));
+        setObservacoes(apiMsg);
+      }
       useUiStore.getState().addNotification({
         type: 'error',
         title: 'Falha ao registrar no SNGPC',
         message: apiMsg || 'Não foi possível registrar a rastreabilidade. Verifique o lote e tente novamente.',
         duration: 9000,
+      });
+    } finally {
+      setSngpcSaving(false);
+    }
+  };
+
+  const confirmStandaloneSngpcForSelectedPrescription = async () => {
+    if (!selectedReceita || sngpcSaving) return;
+
+    const issueYear = getSngpcIssueYear(sngpcForm.issueDate);
+    if (
+      !sngpcForm.doctorName ||
+      !sngpcForm.doctorCrm ||
+      !sngpcForm.doctorUf ||
+      !sngpcForm.selectedBatchNumber ||
+      !sngpcForm.issueDate
+    ) {
+      setError('Preencha nome do médico, CRM, UF, lote e data de emissão.');
+      return;
+    }
+
+    setSngpcSaving(true);
+    setError(null);
+    try {
+      await new Promise((resolve) => setTimeout(resolve, 250));
+      if (issueYear !== 2026) {
+        const message = 'Receita vencida: a data de emissão não pertence a 2026. Não é possível registrar a dispensação no SNGPC.';
+        setSngpcInvalidByPrescription((prev) => ({
+          ...prev,
+          [selectedReceita._id]: message,
+        }));
+        setSngpcReadyByPrescription((prev) => {
+          const next = { ...prev };
+          delete next[selectedReceita._id];
+          return next;
+        });
+        setObservacoes(message);
+        setError(message);
+        useUiStore.getState().addNotification({
+          type: 'error',
+          title: 'SNGPC recusou a receita',
+          message,
+          duration: 9000,
+        });
+        return;
+      }
+
+      setSngpcReadyByPrescription((prev) => ({
+        ...prev,
+        [selectedReceita._id]: true,
+      }));
+      setSngpcInvalidByPrescription((prev) => {
+        const next = { ...prev };
+        delete next[selectedReceita._id];
+        return next;
+      });
+      useUiStore.getState().addNotification({
+        type: 'success',
+        title: 'SNGPC validou a receita',
+        message: 'Dados conferidos. Já pode aprovar a solicitação.',
+        duration: 7000,
       });
     } finally {
       setSngpcSaving(false);
@@ -1441,6 +1519,11 @@ export function PharmacistDashboard() {
   // pedido para aprovar — o lote é debitado quando o pedido é criado. Mostra a
   // info do medicamento e lotes só para conferência.
   const selectedIsStandalone = Boolean(selectedReceita && !selectedLinkedOrder);
+  const selectedStandaloneNeedsSngpc = Boolean(
+    selectedIsStandalone &&
+      selectedRequiresControlledFlow &&
+      selectedBatches.length > 0,
+  );
   const selectedNeedsSngpc = Boolean(
     selectedRequiresControlledFlow &&
       selectedLinkedOrder &&
@@ -1456,8 +1539,11 @@ export function PharmacistDashboard() {
   );
   const selectedSngpcReady =
     !selectedRequiresControlledFlow ||
-    selectedIsStandalone ||
+    (selectedIsStandalone && Boolean(selectedReceita?._id && sngpcReadyByPrescription[selectedReceita._id])) ||
     (selectedNeedsSngpc && selectedHasSngpcRegistered);
+  const selectedSngpcInvalid = Boolean(
+    selectedReceita?._id && sngpcInvalidByPrescription[selectedReceita._id],
+  );
   const selectedPrescriptionFileUrl = normalizeFileUrl(
     selectedReceita?.url_imagem_publica || selectedReceita?.url_arquivo,
   );
@@ -2444,7 +2530,7 @@ export function PharmacistDashboard() {
                           : 'Confirmar Dispensação e Rastreabilidade'}
                     </button>
                   </>
-                ) : selectedIsStandalone && selectedRequiresControlledFlow && selectedBatches.length > 0 ? (
+                ) : selectedStandaloneNeedsSngpc ? (
                   <div className="space-y-3">
                     <div>
                       <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Comprador</p>
@@ -2454,14 +2540,44 @@ export function PharmacistDashboard() {
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor (OCR)</p>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                        <ReadonlySngpcField label="Nome do médico" value={selectedReceita.dados_ocr?.nome_medico || '—'} />
-                        <ReadonlySngpcField label="CRM / UF" value={`${selectedReceita.dados_ocr?.crm || '—'}${selectedReceita.dados_ocr?.uf_crm ? ' / ' + selectedReceita.dados_ocr.uf_crm : ''}`} />
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Prescritor</p>
+                      <div className="space-y-2">
+                        <SngpcInput
+                          label="Nome do médico"
+                          value={sngpcForm.doctorName}
+                          placeholder={selectedReceita.dados_ocr?.nome_medico || 'Dr. Marcelo Andrade'}
+                          onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorName: value }))}
+                        />
+                        <div className="grid grid-cols-2 gap-2">
+                          <SngpcInput
+                            label="CRM"
+                            value={sngpcForm.doctorCrm}
+                            placeholder={selectedReceita.dados_ocr?.crm || '18452'}
+                            onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorCrm: value }))}
+                          />
+                          <SngpcInput
+                            label="UF"
+                            value={sngpcForm.doctorUf}
+                            placeholder={selectedReceita.dados_ocr?.uf_crm || 'GO'}
+                            onChange={(value) => setSngpcForm((prev) => ({ ...prev, doctorUf: value }))}
+                          />
+                        </div>
+                        <div>
+                          <label className="text-xs text-gray-500">Data de emissão da receita</label>
+                          <input
+                            type="date"
+                            value={sngpcForm.issueDate}
+                            onChange={(e) => setSngpcForm((prev) => ({ ...prev, issueDate: e.target.value }))}
+                            className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                          />
+                          <p className="text-[11px] text-gray-500 mt-1">
+                            Para esta validação SNGPC, somente receitas emitidas em 2026 são aceitas.
+                          </p>
+                        </div>
                       </div>
                     </div>
                     <div>
-                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Medicamento e lotes disponíveis</p>
+                      <p className="text-xs font-bold uppercase tracking-wide text-gray-400 mb-2">Medicamento e lote</p>
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
                         <ReadonlySngpcField
                           label="Medicamento"
@@ -2472,17 +2588,51 @@ export function PharmacistDashboard() {
                           }
                         />
                       </div>
-                      <div className="mt-2 rounded-lg border border-emerald-100 bg-emerald-50 px-3 py-2 text-[11px] text-emerald-800 space-y-1">
+                      <label className="block text-xs text-gray-500 mt-2">Número do lote selecionado</label>
+                      <select
+                        value={sngpcForm.selectedBatchNumber}
+                        onChange={(e) => setSngpcForm((prev) => ({ ...prev, selectedBatchNumber: e.target.value }))}
+                        className="mt-1 w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:ring-2 focus:ring-emerald-500/20 focus:border-emerald-600"
+                      >
+                        <option value="">Selecione um lote</option>
                         {selectableBatches.map((batch) => (
-                          <div key={batch.batchNumber}>
-                            Lote {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
-                          </div>
+                          <option key={batch.batchNumber} value={batch.batchNumber}>
+                            {batch.batchNumber} · validade {formatBatchDate(batch.expirationDate)} · {batch.quantity} un.
+                          </option>
                         ))}
-                      </div>
-                      <p className="text-[11px] text-gray-500 mt-2">
-                        Confira se o medicamento da receita coincide. O lote (FEFO) é debitado e registrado no SNGPC automaticamente quando o cliente fechar o pedido após a aprovação.
-                      </p>
+                      </select>
                     </div>
+                    {selectedSngpcInvalid && (
+                      <p className="text-xs text-red-700 bg-red-50 border border-red-200 rounded-lg px-3 py-2">
+                        {sngpcInvalidByPrescription[selectedReceita._id]}
+                      </p>
+                    )}
+                    {selectedSngpcReady && (
+                      <p className="text-xs text-emerald-700 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-2">
+                        SNGPC validou a receita. Já pode aprovar a solicitação.
+                      </p>
+                    )}
+                    <button
+                      type="button"
+                      onClick={confirmStandaloneSngpcForSelectedPrescription}
+                      disabled={
+                        sngpcSaving ||
+                        selectedSngpcReady ||
+                        !sngpcForm.doctorName ||
+                        !sngpcForm.doctorCrm ||
+                        !sngpcForm.doctorUf ||
+                        !sngpcForm.selectedBatchNumber ||
+                        !sngpcForm.issueDate
+                      }
+                      className="w-full inline-flex items-center justify-center gap-2 px-4 py-3 rounded-lg bg-emerald-600 text-white text-sm font-semibold hover:bg-emerald-700 disabled:opacity-50"
+                    >
+                      <ClipboardList className="w-4 h-4" />
+                      {selectedSngpcReady
+                        ? 'SNGPC validado'
+                        : sngpcSaving
+                          ? 'Validando...'
+                          : 'Enviar para SNGPC'}
+                    </button>
                   </div>
                 ) : selectedRequiresControlledFlow ? (
                   <div className="rounded-lg border border-gray-200 bg-gray-50 p-4 text-sm text-gray-600 space-y-2">
@@ -2554,9 +2704,9 @@ export function PharmacistDashboard() {
             {/* Botões de ação — variam conforme status atual e intenção */}
             {['Pendente', 'Em Análise'].includes(selectedReceita.status) ? (
               <div className="space-y-3">
-                {selectedNeedsSngpc && !selectedSngpcReady && (
+                {(selectedNeedsSngpc || selectedStandaloneNeedsSngpc) && !selectedSngpcReady && !selectedSngpcInvalid && (
                   <p className="text-xs text-amber-800 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
-                    Registre a dispensação e o lote antes de aprovar ou rejeitar a receita.
+                    Envie os dados ao SNGPC antes de aprovar ou rejeitar a receita.
                   </p>
                 )}
                 {selectedMissingControlledBatch && (
@@ -2581,7 +2731,9 @@ export function PharmacistDashboard() {
                     }}
                     className="px-4 py-2 bg-red-600 text-white rounded-lg text-sm hover:bg-red-700 disabled:opacity-50 inline-flex items-center gap-2"
                     disabled={
-                      validatingId === selectedReceita._id || !selectedSngpcReady || selectedMissingControlledBatch
+                      validatingId === selectedReceita._id ||
+                      (!selectedSngpcReady && !selectedSngpcInvalid) ||
+                      selectedMissingControlledBatch
                     }
                   >
                     <XCircle className="w-4 h-4" />
