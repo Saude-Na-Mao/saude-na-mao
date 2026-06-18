@@ -17,7 +17,7 @@ async function createPharmacist() {
       process.exit(0);
     }
 
-    // Pick the first active pharmacy
+    // Seleciona a primeira farmácia ativa
     const pharmacy = await Pharmacy.findOne({ ativa: true }).sort({ createdAt: 1 });
     if (!pharmacy) {
       console.error("Nenhuma farmácia encontrada. Execute o seed primeiro.");

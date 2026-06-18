@@ -22,7 +22,7 @@ async function fix() {
   });
   console.log("Cleaned test pharmacies:", result2.deletedCount);
 
-  // Drop old 2dsphere indexes if needed and sync
+  // Remove índices 2dsphere antigos, se necessário, e sincroniza
   for (const col of ["users", "pharmacies"]) {
     try {
       const indexes = await db.collection(col).indexes();
@@ -36,7 +36,7 @@ async function fix() {
     }
   }
 
-  // Sync indexes (recreates with partial filter)
+  // Sincroniza os índices (recria com filtro parcial)
   const User = require("../models/User");
   const Pharmacy = require("../models/Pharmacy");
   await User.syncIndexes();

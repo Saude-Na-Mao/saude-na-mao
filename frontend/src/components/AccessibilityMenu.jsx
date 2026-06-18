@@ -51,7 +51,6 @@ export default function AccessibilityMenu() {
             Acessibilidade
           </h3>
 
-          {/* High Contrast Toggle */}
           <div>
             <button
               role="menuitem"
@@ -74,7 +73,6 @@ export default function AccessibilityMenu() {
             </button>
           </div>
 
-          {/* Font Size */}
           <div>
             <p className="text-xs font-semibold text-gray-500 mb-2 flex items-center gap-1">
               <Type className="w-3 h-3" /> Tamanho da Fonte

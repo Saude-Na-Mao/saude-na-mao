@@ -98,7 +98,6 @@ const VerificacaoPropriedade = () => {
           <p>Para usar todas as funcionalidades de gerenciamento, você precisa comprovar sua propriedade da farmácia.</p>
         </div>
 
-        {/* Status Badge */}
         <div className={`status-badge status-${status}`}>
           {status === 'not_submitted' && '⏳ Não Enviado'}
           {status === 'pending' && '⏳ Aguardando Análise'}
@@ -106,11 +105,9 @@ const VerificacaoPropriedade = () => {
           {status === 'rejected' && '❌ Rejeitado'}
         </div>
 
-        {/* Status Messages */}
         {message && <div className="alert alert-success">{message}</div>}
         {error && <div className="alert alert-error">{error}</div>}
 
-        {/* Verification Form */}
         {status === 'not_submitted' || status === 'rejected' ? (
           <form onSubmit={handleSubmit} className="verification-form">
             <div className="form-group">
@@ -198,7 +195,6 @@ const VerificacaoPropriedade = () => {
           </div>
         ) : null}
 
-        {/* Help Section */}
         <div className="help-section">
           <h3>Documentos Aceitos</h3>
           <ul>

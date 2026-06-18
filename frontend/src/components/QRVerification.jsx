@@ -129,7 +129,6 @@ const QRVerification = () => {
               </button>
             </div>
 
-            {/* Input Manual */}
             <div className="manual-input-section">
               <h3 className="input-title">Ou insira manualmente</h3>
               <form onSubmit={handleManualInput}>
@@ -158,7 +157,6 @@ const QRVerification = () => {
           </>
         )}
 
-        {/* Video Scanner */}
         {scanning && (
           <div className="camera-container">
             <video

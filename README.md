@@ -1,6 +1,34 @@
 # Saúde na Mão
 
-PWA de delivery de medicamentos com conformidade ANVISA/LGPD. Projeto de TCC acadêmico com fluxo completo para medicamentos de venda livre e controlados (SNGPC simulado).
+PWA de **delivery de medicamentos** com conformidade ANVISA/LGPD. Projeto de TCC acadêmico
+com fluxo completo para medicamentos de venda livre e controlados (SNGPC simulado): catálogo
+por farmácia, carrinho, validação de receita pelo farmacêutico, pagamento, entrega com dupla
+confirmação por código e rastreamento em tempo real.
+
+> **Modo TCC / acadêmico.** O sistema roda em `TCC_DEMO_MODE`, sem cobrança real e sem venda
+> remota de controlados habilitada. É um protótipo para a banca, não um produto em operação.
+
+---
+
+## Índice
+
+1. [Stack](#stack)
+2. [Arquitetura e Deploy](#arquitetura-e-deploy)
+3. [Estrutura do Projeto](#estrutura-do-projeto)
+4. [Setup Local](#setup-local)
+5. [Variáveis de Ambiente](#variáveis-de-ambiente)
+6. [Usuários e Credenciais Demo](#usuários-e-credenciais-demo)
+7. [Perfis (Roles)](#perfis-roles)
+8. [API — Rotas Principais](#api--rotas-principais)
+9. [Modelos de Dados Críticos](#modelos-de-dados-críticos)
+10. [Fluxos de Negócio (TCC)](#fluxos-de-negócio-tcc)
+11. [Componentes Frontend Chave](#componentes-frontend-chave)
+12. [Sockets (tempo real)](#sockets-tempo-real)
+13. [Serviços Backend Relevantes](#serviços-backend-relevantes)
+14. [Scripts de Seed](#scripts-de-seed)
+15. [Testes](#testes)
+16. [Conformidade Regulatória](#conformidade-regulatória-escopo-tcc)
+17. [Documentação Acadêmica](#documentação-acadêmica)
 
 ---
 
@@ -8,12 +36,37 @@ PWA de delivery de medicamentos com conformidade ANVISA/LGPD. Projeto de TCC aca
 
 | Camada | Tecnologia |
 |---|---|
-| Backend | Node.js + Express 5, MongoDB + Mongoose, Socket.io 4 |
+| Backend | Node.js 18+ + Express 5, MongoDB + Mongoose, Socket.io 4 |
 | Frontend | React 18 + Vite, Tailwind CSS, Zustand, React Router 6 (PWA) |
-| Auth | JWT (access + refresh via cookie), Google OAuth 2.0, Firebase Admin |
+| Auth | JWT (access + refresh via cookie), Google OAuth 2.0, login por código via e-mail |
 | OCR | Tesseract.js + pdf-parse (leitura de receitas) |
 | Mapas | Leaflet + React-Leaflet, Google Maps Services (backend) |
+| Armazenamento de arquivos | Cloudflare R2 em produção; disco local em dev |
 | Testes | Jest + Supertest + mongodb-memory-server (backend); Vitest + Testing Library (frontend) |
+
+---
+
+## Arquitetura e Deploy
+
+Três serviços independentes em produção:
+
+```
+┌──────────────┐      HTTPS       ┌──────────────┐     mongodb+srv     ┌──────────────┐
+│  Frontend     │ ───────────────▶ │  Backend      │ ──────────────────▶ │  MongoDB      │
+│  (Vercel)     │   REST + Socket  │  (Render)     │                     │  Atlas        │
+│  React/Vite   │ ◀─────────────── │  Express/IO   │ ◀────────────────── │  (cluster)    │
+└──────────────┘                  └──────────────┘                     └──────────────┘
+```
+
+- **Frontend (Vercel):** build estático do Vite. As URLs do backend vêm das variáveis
+  `VITE_*` configuradas no painel da Vercel — **não** ficam hardcoded no código.
+- **Backend (Render):** Express + Socket.io. CORS, `FRONTEND_URL(S)` e `MONGO_URI` vêm
+  das variáveis de ambiente do Render.
+- **Banco (MongoDB Atlas):** a `MONGO_URI` de produção fica em `backend/.env` (nunca versionado).
+
+> **Importante:** `git push` atualiza apenas **código** (deploy automático em Vercel/Render).
+> Os **dados** (farmácias, produtos, lotes, usuários, fotos) só mudam ao rodar os scripts de
+> seed apontando para o Atlas — nunca mudam sozinhos com um commit.
 
 ---
 
@@ -25,44 +78,49 @@ saude-na-mao/
 │   ├── src/
 │   │   ├── app.js                  # Express app, rotas, middlewares
 │   │   ├── server.js               # Ponto de entrada, Socket.io
-│   │   ├── config/                 # database, cors, jwt, socket, envBootstrap
+│   │   ├── config/                 # database, cors, jwt, r2, socket, envBootstrap, compliance
+│   │   ├── constants/              # roles
 │   │   ├── controllers/            # Camada HTTP (thin, chama services)
 │   │   ├── services/               # Lógica de negócio principal
 │   │   ├── models/                 # Schemas Mongoose
 │   │   ├── routes/                 # Definições de rotas
-│   │   ├── middlewares/            # auth, auditLog, uploadPrescription, uploadProductImage, errorHandler
-│   │   ├── sockets/                # chatSocket, orderSocket, prescriptionSocket, stockSocket
-│   │   └── utils/                  # batchAvailability, haversine, drugInteractions, emailTemplates
-│   ├── uploads/
-│   │   ├── receitas/               # PDFs/imagens de receitas enviadas pelos clientes
-│   │   └── comprovantes/           # Comprovantes de pagamento
-│   └── scripts/                    # seedDemoFlows.js, seedMedicines.js, etc.
+│   │   ├── middlewares/            # auth, auditMiddleware, uploads, errorHandler
+│   │   ├── sockets/                # chat, order, prescription, stock, delivery
+│   │   ├── utils/                  # batchAvailability, haversine, drugInteractions, email, logger
+│   │   ├── scripts/                # seeds e migrações (ver seção Scripts de Seed)
+│   │   └── tests/                  # integração + fraude (Jest)
+│   ├── seed.js / seed-all.js       # entrypoints de seed (npm run seed / seed:all)
+│   ├── por.traineddata             # modelo de OCR (português) do Tesseract
+│   └── uploads/                    # receitas e comprovantes (efêmero; em prod usa R2)
 └── frontend/                       # PWA React (porta 3000)
     ├── src/
-    │   ├── pages/                  # Uma página por rota (ver seção Páginas)
+    │   ├── pages/                  # Uma página por rota
     │   ├── components/             # Componentes reutilizáveis
+    │   ├── config/env.js           # Resolve API/Socket URL a partir das VITE_*
     │   ├── services/api.js         # Axios instance + todos os endpoints
-    │   ├── stores/                 # Zustand stores (auth, cart, etc.)
-    │   └── hooks/                  # useSupportChatRealtime, useSupportTicketRoom
-    └── public/imagens/             # Fotos de produtos (estáticas)
+    │   ├── stores/                 # Zustand (auth, carrinho, etc.)
+    │   ├── hooks/                  # realtime de chat/suporte
+    │   └── utils/                  # máscaras, validação, helpers, logger
+    ├── public/                     # ícones PWA, favicon, imagens estáticas
+    └── vercel.json                 # rewrites SPA
 ```
 
 ---
 
-## Setup
+## Setup Local
 
 ### Pré-requisitos
-- Node.js 18+ 
-- MongoDB Atlas ou local (`docker compose up -d` na pasta `backend`)
+- Node.js 18+
+- MongoDB Atlas (recomendado) **ou** MongoDB local (`docker compose up -d` na pasta `backend`)
 
 ### Backend
 
 ```bash
 cd backend
 npm install
-cp .env.example .env      # preencher MONGO_URI e JWT_SECRET
-npm run seed:demo-flows   # popula dados de demonstração (inclui lotes de controlados)
-npm run dev               # nodemon → http://localhost:5000
+cp .env.example .env       # preencher MONGO_URI, JWT_SECRET e JWT_REFRESH_SECRET
+npm run seed:demo-flows    # popula dados de demonstração (inclui lotes de controlados)
+npm run dev                # nodemon → http://localhost:5000
 ```
 
 ### Frontend
@@ -70,27 +128,69 @@ npm run dev               # nodemon → http://localhost:5000
 ```bash
 cd frontend
 npm install
-cp .env.example .env      # preencher VITE_API_URL=http://localhost:5000
-npm run dev               # Vite → http://localhost:3000
+cp .env.example .env       # VITE_API_URL=http://localhost:5000
+npm run dev                # Vite → http://localhost:3000
+```
+
+### Build de produção (frontend)
+
+```bash
+cd frontend
+npm run build              # gera dist/ (publicado pela Vercel)
+npm run preview            # serve o build localmente para conferência
 ```
 
 ---
 
-## Variáveis de Ambiente Críticas (backend/.env)
+## Variáveis de Ambiente
 
-```env
-MONGO_URI=mongodb://...
-PORT=5000
-JWT_SECRET=...
-JWT_REFRESH_SECRET=...
-FRONTEND_URL=http://localhost:3000
-GOOGLE_CLIENT_ID=...
+### Backend (`backend/.env`)
 
-# Modo TCC — nunca alterar para produção real
-TCC_DEMO_MODE=true
-ALLOW_CONTROLLED_REMOTE_SALE=false
-REQUIRE_PHARMACY_COMPLIANCE_DOCS=false
-```
+| Variável | Descrição |
+|---|---|
+| `MONGO_URI` | String de conexão do MongoDB (Atlas em produção) |
+| `PORT` | Porta do servidor (padrão `5000`) |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | Segredos do access e refresh token |
+| `FRONTEND_URL` | Origem do frontend para CORS/cookies |
+| `FRONTEND_URLS` | Várias origens separadas por vírgula (opcional) |
+| `GOOGLE_CLIENT_ID` | OAuth do Google |
+| `NODE_ENV` | `development` ou `production` (libera fallbacks de dev quando ≠ production) |
+| `EMAIL_HOST` / `EMAIL_PORT` / `EMAIL_USER` / `EMAIL_PASS` | SMTP para recuperação de senha e login por código |
+| `PUBLIC_BASE_URL` | Base pública para montar URLs de uploads |
+| `R2_*` | Credenciais do Cloudflare R2 (uploads em produção) |
+| `TCC_DEMO_MODE` | `true` marca como protótipo acadêmico e registra pedidos como demo |
+| `ALLOW_CONTROLLED_REMOTE_SALE` | `false` bloqueia checkout remoto de controlados |
+| `REQUIRE_PHARMACY_COMPLIANCE_DOCS` | `true` exige alvará/AFE/RT antes de aceitar pedido real |
+
+### Frontend (`frontend/.env`)
+
+| Variável | Descrição |
+|---|---|
+| `VITE_API_BASE_URL` | Base da API REST. Em dev usa o proxy `/api`; em prod, `https://SEU-BACKEND/api/v1` |
+| `VITE_API_URL` | URL direta do backend (Socket.io e fallback de base) |
+| `VITE_SOCKET_URL` | URL do Socket.io (opcional; cai em `VITE_API_URL`) |
+| `VITE_GOOGLE_CLIENT_ID` | OAuth do Google |
+| `VITE_APP_NAME` | Nome exibido no app |
+| `VITE_LOG_LEVEL` | Nível de log no console |
+
+> As referências a `localhost` no código são **apenas fallbacks de desenvolvimento**, ativadas
+> quando `NODE_ENV` ≠ `production` ou quando as `VITE_*` não estão definidas. Em produção o app
+> usa exclusivamente as URLs configuradas nas variáveis de ambiente da Vercel/Render.
+
+---
+
+## Usuários e Credenciais Demo
+
+Criados pelos scripts de seed. Cada `dono_farmacia`/`farmaceutico` só enxerga a própria farmácia.
+A lista completa e atualizada fica em [`usuarios.txt`](./usuarios.txt). Resumo:
+
+| Perfil | Exemplo de login | Senha |
+|---|---|---|
+| Cliente | `teste@teste.com` | `Teste@123` |
+| Dono (genérico) | `dono@farmacia.com` | `Dono@123` |
+| Farmacêutico (genérico) | `farmaceutico@saudenamao.com` | `Farm@123` |
+| Entregador | `entregador.diego@saudenamao.com` | `Entrega@123` |
+| Admin | `admin@saudenamao.com` | `Admin@123` |
 
 ---
 
@@ -108,9 +208,8 @@ REQUIRE_PHARMACY_COMPLIANCE_DOCS=false
 
 ## API — Rotas Principais
 
-Base: `http://localhost:5000/api/v1/`
-
-Todos os aliases PT/EN são funcionais (ex: `/farmacias` = `/pharmacies`).
+Base: `http://localhost:5000/api/v1/` (dev). Todos os aliases PT/EN são funcionais
+(ex.: `/farmacias` = `/pharmacies`).
 
 | Prefixo | Controller/Service |
 |---|---|
@@ -200,7 +299,7 @@ avaliacao_entregador: { nota, comentario }
 ```
 status: "Pendente" | "Em Análise" | "Aprovada" | "Rejeitada" | "Expirada" | "Cancelada"
 tipo_receita: "simples" | "especial_c1" | "especial_b" | "antimicrobiano"
-url_arquivo, nome_arquivo, tipo_arquivo (PDF/JPG/PNG aceitos; regra de negócio exige PDF para controlados)
+url_arquivo, nome_arquivo, tipo_arquivo (PDF/JPG/PNG aceitos; regra exige PDF para controlados)
 dados_ocr: { nome_medico, crm, uf_crm, data_emissao, principio_ativo, raw_text }
 validade: Date (máx 30 dias da emissão; 10 dias para antimicrobianos)
 disponivel_para_novo_pedido: Boolean  ← false após dispensação; true se pedido cancelado antes da entrega
@@ -222,8 +321,6 @@ Implementado em `backend/src/utils/batchAvailability.js`.
 - **Medicamentos SNGPC** (`tarja_preta`, `controlado_a`, `antimicrobiano`): verifica `batches[]`. Se nenhum lote tiver `active: true`, `quantity > 0` e `expirationDate` futura → botão desativado. Mensagem: *"Produto Indisponível (Sem lotes válidos em estoque)"*.
 - Funções: `isControlledProduct()`, `isSngpcProduct()`, `activeAvailableBatches()`, `hasAvailableBatchForQuantity()`.
 
----
-
 ### Fluxo 1 — Venda Livre / Tarja Vermelha (sem retenção)
 
 ```
@@ -234,8 +331,6 @@ Cliente adiciona ao carrinho
   → Comprovante mostra "Pagamento Confirmado"
   → Fluxo de Entrega comum (ver abaixo)
 ```
-
----
 
 ### Fluxo 2 — Medicamentos com Retenção de Receita (Tarja Preta, Controlado A, Antimicrobiano)
 
@@ -282,8 +377,6 @@ Cliente recebe alerta com motivo da rejeição (texto do farmacêutico)
               → Farmacêutico recebe alerta → reinicia Parte B
 ```
 
----
-
 ### Fluxo de Entrega (comum aos Fluxos 1 e 2, após `em_processamento`)
 
 Simulação sem geolocalização: o trajeto é exibido como passos de texto (`rota_simulada`) e a
@@ -325,13 +418,12 @@ confirmação é feita por **dois códigos de 8 dígitos**.
 | Arquivo | Responsabilidade |
 |---|---|
 | `pages/Checkout.jsx` | Verifica receita aprovada por produto antes de liberar o pagamento; redireciona a `/receita` |
-| `pages/Farmaceutico.jsx` | Split screen SNGPC — maior arquivo (139KB) |
-| `pages/PharmacistDashboard.jsx` | Dashboard alternativo do farmacêutico (112KB) |
+| `pages/Farmaceutico.jsx` | Split screen SNGPC (maior arquivo do frontend) |
+| `pages/PharmacistDashboard.jsx` | Dashboard alternativo do farmacêutico |
 | `pages/Pedidos.jsx` | Histórico de pedidos do cliente + ação de reenviar receita |
-| `pages/Receita.jsx` | Upload **uma receita por medicamento controlado** (um bloco/PDF por item); libera o pagamento só quando todas aprovadas |
-| `pages/EntregadorDashboard.jsx` | Mostra `codigo_coleta`, rota simulada, botão "Cheguei" e confirmação com código do cliente |
+| `pages/Receita.jsx` | Upload **uma receita por medicamento controlado**; libera o pagamento só quando todas aprovadas |
+| `pages/EntregadorDashboard.jsx` / `pages/Entregas.jsx` | Fila/aceite de corridas, `codigo_coleta`, rota simulada, "Cheguei" e confirmação com código do cliente |
 | `pages/Comprovante.jsx` | Reflete "Pagamento Confirmado" quando o pagamento é aprovado |
-| `pages/EntregadorDashboard.jsx` | Fila e aceite de corridas |
 | `pages/Rastreamento.jsx` | Rastreamento em tempo real com mapa |
 | `components/UploadReceitaModal.jsx` | Modal de upload de receita (reenvio pós-rejeição) |
 | `components/ManageReceitasTab.jsx` | Aba de gestão de receitas no painel do farmacêutico |
@@ -341,14 +433,58 @@ confirmação é feita por **dois códigos de 8 dígitos**.
 
 ---
 
-## Sockets (Socket.io)
+## Sockets (tempo real)
 
 | Arquivo | Canal / Eventos |
 |---|---|
 | `orderSocket.js` | Atualizações de status do pedido em tempo real |
 | `prescriptionSocket.js` | Notificação de aprovação/rejeição de receita |
+| `deliverySocket.js` | Atualizações da entrega/rastreamento |
 | `chatSocket.js` | Chat cliente ↔ farmacêutico / suporte |
 | `stockSocket.js` | Alertas de estoque baixo para o painel do dono |
+
+---
+
+## Serviços Backend Relevantes
+
+| Arquivo | Função |
+|---|---|
+| `prescriptionService.js` | Toda a lógica de receita: OCR, validação CRM, aprovação/rejeição, log SNGPC |
+| `orderService.js` | Ciclo de vida do pedido, débito de lote, FEFO, fraude |
+| `deliveryService.js` | Lógica de entrega, aceite de corrida, rastreamento |
+| `cartService.js` | Validação de estoque/lote no carrinho |
+| `ocrService.js` | Extração de dados da receita via Tesseract.js |
+| `lgpdEncryptionService.js` | Criptografia de dados pessoais sensíveis |
+| `blockchainAuditService.js` | Log imutável simulado para auditoria regulatória |
+| `medicineTrackingService.js` | Rastreabilidade de medicamento (MedicineTracking model) |
+| `drugInteractionService.js` | Verificação de interações medicamentosas |
+
+---
+
+## Scripts de Seed
+
+> Rodar na pasta `backend`, com a `MONGO_URI` apontando para o banco desejado (`.env`).
+
+```bash
+npm run seed:demo-flows   # Fluxo 1 e Fluxo 2 completos (recomendado para apresentação TCC)
+npm run seed              # Seed básico (produtos, farmácias, usuários)
+npm run seed:all          # Seed completo
+npm run seed:gyn          # Donos/farmacêuticos das farmácias de Goiânia
+npm run seed:reviews      # Avaliações de exemplo
+```
+
+Scripts auxiliares (`node src/scripts/<arquivo>.js`):
+
+```bash
+node src/scripts/seedControlledBatches.js  # Gera lotes (qtd/validade) p/ todos os controlados
+node src/scripts/seedPharmacyStaff.js      # Cria 1 dono + 1 farmacêutico por farmácia
+node src/scripts/seedDemoUsers.js          # Cria 3 clientes + 3 entregadores demo
+```
+
+> Cada `dono_farmacia`/`farmaceutico` é vinculado a uma farmácia via
+> `dados_dono_farmacia.id_farmacia` / `dados_farmaceutico.id_farmacia` e só enxerga os
+> pedidos/receitas da própria farmácia (filtro por `id_farmacia` no service). Credenciais
+> demo em [`usuarios.txt`](./usuarios.txt).
 
 ---
 
@@ -360,13 +496,15 @@ cd backend
 npm test                        # todos os testes
 npm run test:integration        # integration.customer/owner/pharmacist
 npm run test:fraud              # 5 cenários de fraude
+npm run test:coverage           # com cobertura
 
 # Frontend
 cd frontend
 npm test                        # Vitest
+npm run test:coverage           # com cobertura
 ```
 
-### Suites de teste backend
+### Suítes de teste backend
 
 | Arquivo | Cobertura |
 |---|---|
@@ -382,47 +520,6 @@ npm test                        # Vitest
 
 ---
 
-## Scripts de Seed
-
-```bash
-npm run seed:demo-flows   # Fluxo 1 e Fluxo 2 completos com dados pré-configurados (recomendado para apresentação TCC)
-npm run seed              # Seed básico (produtos, farmácias, usuários)
-npm run seed:all          # Seed completo
-npm run seed:gyn          # Farmácias de Goiânia
-npm run seed:reviews      # Avaliações de exemplo
-```
-
-Scripts auxiliares (executar com `node src/scripts/<arquivo>.js` na pasta `backend`):
-
-```bash
-node src/scripts/seedControlledBatches.js  # Gera lotes (quantidade/validade aleatórias) p/ todos os controlados
-node src/scripts/seedPharmacyStaff.js      # Cria 1 dono + 1 farmacêutico por farmácia (escopo restrito)
-node src/scripts/seedDemoUsers.js          # Cria 3 clientes + 3 entregadores demo
-```
-
-> Cada `dono_farmacia`/`farmaceutico` é vinculado a uma farmácia via
-> `dados_dono_farmacia.id_farmacia` / `dados_farmaceutico.id_farmacia` e só enxerga os
-> pedidos/receitas da própria farmácia (filtro por `id_farmacia` no service). Credenciais
-> demo em `usuarios.txt`.
-
----
-
-## Serviços Backend Relevantes
-
-| Arquivo | Função |
-|---|---|
-| `prescriptionService.js` (46KB) | Toda a lógica de receita: OCR, validação CRM, aprovação/rejeição, log SNGPC |
-| `orderService.js` (49KB) | Ciclo de vida do pedido, débito de lote, FEFO, fraude |
-| `deliveryService.js` (34KB) | Lógica de entrega, aceite de corrida, rastreamento |
-| `cartService.js` (18KB) | Validação de estoque/lote no carrinho |
-| `ocrService.js` | Extração de dados da receita via Tesseract.js |
-| `lgpdEncryptionService.js` | Criptografia de dados pessoais sensíveis |
-| `blockchainAuditService.js` | Log imutável simulado para auditoria regulatória |
-| `medicineTrackingService.js` | Rastreabilidade de medicamento (MedicineTracking model) |
-| `drugInteractionService.js` | Verificação de interações medicamentosas |
-
----
-
 ## Conformidade Regulatória (Escopo TCC)
 
 - **SNCR (Sistema Nacional de Controle de Receituários)**: o app é desenvolvido em conformidade com o SNCR para escrituração/controle de receituários de medicamentos sujeitos a controle especial.
@@ -432,3 +529,10 @@ node src/scripts/seedDemoUsers.js          # Cria 3 clientes + 3 entregadores de
 - **ANVISA RDC 344/98 / Portaria 344**: retenção de receita obrigatória para tarja preta e controlados A; prazo de validade de receita (30 dias / 10 dias antimicrobianos) validado no model `Prescription`.
 - **SNGPC simulado**: preenchimento do formulário pelo farmacêutico, débito de lote por FEFO, geração de log XML de dispensação em `prescriptionService.js`.
 - **LGPD**: consentimento capturado nos Termos de Uso no cadastro; dados sensíveis (CPF, RG) criptografados via `lgpdEncryptionService`; vinculação ao pedido apenas com base no consentimento existente.
+
+---
+
+## Documentação Acadêmica
+
+Os artefatos do TCC (TAP, ERS, casos de uso, DER, diagramas de classes/sequência, arquitetura,
+documentação da API, plano de testes e monografia) estão na pasta [`documentos/`](./documentos).

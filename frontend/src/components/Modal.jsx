@@ -14,7 +14,7 @@ export default function Modal({ isOpen, onClose, title, children, size = 'md' })
     if (isOpen) {
       document.addEventListener('keydown', handleEscape)
       document.body.style.overflow = 'hidden'
-      // Focus only when modal transitions from closed -> open
+      // Foca apenas quando o modal passa de fechado para aberto
       if (!wasOpenRef.current) {
         setTimeout(() => closeRef.current?.focus(), 50)
       }

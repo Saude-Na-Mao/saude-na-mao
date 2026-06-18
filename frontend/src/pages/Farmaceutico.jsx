@@ -3323,7 +3323,6 @@ function ReceitasHistoryPanel() {
                     )
                   })()}
 
-                  {/* OCR Data */}
                   {rx.dados_ocr && (
                     <div className="bg-blue-50 rounded-xl p-4 text-sm">
                       <p className="font-semibold text-blue-700 mb-2">Dados extraídos (OCR):</p>
@@ -3340,7 +3339,6 @@ function ReceitasHistoryPanel() {
                     </div>
                   )}
 
-                  {/* CRM Validation */}
                   {rx.validacao_crm && (
                     <div className={`rounded-xl p-3 text-sm ${rx.validacao_crm.valido ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'}`}>
                       <span className="font-semibold">CRM: </span>

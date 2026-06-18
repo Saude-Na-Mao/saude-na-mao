@@ -81,7 +81,6 @@ export default function Farmacias() {
         />
       </div>
 
-      {/* Sort options */}
       <div className="flex flex-col sm:flex-row sm:items-center gap-3 mb-6">
         <SlidersHorizontal className="w-4 h-4 text-gray-400" />
         <span className="text-sm text-gray-500">Ordenar por:</span>

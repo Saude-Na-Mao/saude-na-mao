@@ -72,7 +72,7 @@ export default function Rastreamento() {
     loadOrder()
   }, [id, token, navigate])
 
-  // Real-time socket for driver location
+  // Socket em tempo real para a localização do entregador
   useEffect(() => {
     if (!order || !id) return
     if (['cancelado', 'entregue'].includes(order.status)) return

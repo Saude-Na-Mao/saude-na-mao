@@ -108,7 +108,7 @@ export default function Perfil() {
         receitas: prescRes.status === 'fulfilled' ? (prescRes.value?.data?.data?.docs?.length || prescRes.value?.data?.data?.total || 0) : 0,
       })
 
-      // Load pharmacy info for pharmacy roles
+      // Carrega os dados da farmácia para os perfis de farmácia
       const role = user?.tipo_usuario || user?.role
       const pharmacyId = user?.dados_dono_farmacia?.id_farmacia || user?.dados_farmaceutico?.id_farmacia
       if (['dono_farmacia', 'farmaceutico'].includes(role) && pharmacyId) {
@@ -315,7 +315,6 @@ export default function Perfil() {
 
   return (
     <div className="max-w-5xl mx-auto px-4 py-8">
-      {/* Profile Header */}
       <div className="bg-gradient-to-br from-primary to-secondary rounded-2xl p-6 mb-8 text-white">
         <div className="flex items-center gap-5">
           <div className="relative w-20 h-20 flex-shrink-0">
@@ -433,7 +432,6 @@ export default function Perfil() {
           </div>
         </aside>
 
-        {/* Main Content */}
         <main className="lg:col-span-2">
           {activeTab === 'dados' && (
             <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
@@ -570,7 +568,6 @@ export default function Perfil() {
                 )}
               </form>
 
-              {/* Password Change */}
               <div className="mt-6 pt-6 border-t border-gray-100">
                 <button
                   onClick={() => setShowPasswordForm(!showPasswordForm)}
@@ -650,7 +647,6 @@ export default function Perfil() {
                 )}
               </div>
 
-              {/* Role-Specific Info */}
               {isDriver && editMode && (
                 <div className="mt-6 pt-6 border-t border-gray-100">
                   <h3 className="text-sm font-bold text-gray-700 mb-3 flex items-center gap-2">
@@ -1529,7 +1525,6 @@ export function ChatsTab({ initialOpenTicketId, onConsumedOpenTicket }) {
                       <div ref={messagesEndRef} />
                     </div>
 
-                    {/* Reply input */}
                     {isOpen && (
                       <div className="p-3 border-t border-gray-100 bg-white">
                         <div className="flex gap-2">

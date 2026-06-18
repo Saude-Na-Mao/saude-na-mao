@@ -78,7 +78,6 @@ export default function Navbar() {
             </div>
           </Link>
 
-          {/* Desktop nav links */}
           <div className="hidden md:flex items-center gap-1">
             {isPharmacist ? (
               <>
@@ -131,7 +130,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Desktop right side */}
           <div className="hidden md:flex items-center gap-3">
             <AccessibilityMenu />
             <DarkModeToggle />
@@ -235,7 +233,6 @@ export default function Navbar() {
             )}
           </div>
 
-          {/* Mobile right side */}
           <div className="flex md:hidden items-center gap-2">
             {isClient && (
               <Link 
@@ -276,7 +273,6 @@ export default function Navbar() {
           </div>
         </div>
 
-        {/* Mobile menu */}
         {isMobileMenuOpen && (
           <div id="mobile-menu" className="md:hidden border-t border-gray-100 py-3 space-y-1 animate-slide-down" role="menu">
             {isPharmacist ? (

@@ -63,7 +63,7 @@ export default function Carrinho() {
   // Frete da farmácia do carrinho (definido por farmácia); fallback R$ 8
   const freteMoto = Number(items[0]?.taxa_entrega) > 0 ? Number(items[0].taxa_entrega) : 8.00
 
-  // Update delivery fee when delivery type changes
+  // Atualiza o frete quando o tipo de entrega muda
   useEffect(() => {
     const fees = { moto: freteMoto, retirada: 0, emergencia: 20.00 }
     let taxa = fees[deliveryType] ?? freteMoto
@@ -73,7 +73,7 @@ export default function Carrinho() {
     setTaxaEntrega(taxa)
   }, [deliveryType, couponData, items, freteMoto])
 
-  // Reorder: load items from localStorage if present
+  // Refazer pedido: carrega os itens do localStorage, se houver
   useEffect(() => {
     const reorderRaw = localStorage.getItem('reorder_items')
     if (reorderRaw) {
@@ -88,7 +88,7 @@ export default function Carrinho() {
     }
   }, [])
 
-  // Check drug interactions when items change
+  // Verifica interações medicamentosas quando os itens mudam
   useEffect(() => {
     if (items.length < 2) {
       setInteractions([])
@@ -426,7 +426,6 @@ export default function Carrinho() {
             </button>
           </div>
 
-          {/* Drug Interaction Alert */}
           {interactions.length > 0 && (
             <div className="bg-red-50 border border-red-200 rounded-xl p-4">
               <div className="flex items-start gap-3">

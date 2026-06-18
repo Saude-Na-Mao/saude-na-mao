@@ -254,7 +254,6 @@ export default function Entregas() {
       {error && <Alert type="error" message={error} onClose={() => setError(null)} />}
       {success && <Alert type="success" message={success} onClose={() => setSuccess(null)} />}
 
-      {/* Stats Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4 mb-8">
         <div className="bg-blue-50 rounded-lg p-4 text-center">
           <p className="text-2xl font-bold text-blue-700">{deliveries.length}</p>
@@ -382,7 +381,6 @@ export default function Entregas() {
       {/* Tab: My Deliveries */}
       {tab === 'my' && (
         <>
-          {/* Status Filter */}
           <div className="mb-4 flex flex-wrap gap-2">
             {['todos', 'aceita', 'coletando', 'coletada', 'em_transito', 'entregue', 'cancelada'].map((s) => (
               <button
@@ -465,7 +463,6 @@ export default function Entregas() {
                         </div>
                       </div>
 
-                      {/* Info row */}
                       <div className="flex flex-wrap gap-4 text-sm text-gray-600">
                         {delivery.distancia_km > 0 && (
                           <span className="flex items-center gap-1">
@@ -597,13 +594,11 @@ export default function Entregas() {
         </>
       )}
 
-      {/* Confirm Delivery Modal */}
       <Modal isOpen={!!confirmModal} onClose={() => { setConfirmModal(null); setConfirmCode(''); setQrToken(''); }} title="Confirmar Entrega" size="sm">
         <p className="text-gray-600 text-sm mb-4">
           Escolha uma das opções para confirmar a entrega:
         </p>
 
-        {/* Option 1: Confirmation Code */}
         <div className="mb-4 p-4 bg-gray-50 rounded-lg">
           <p className="text-sm font-medium text-gray-700 mb-2">Código de 6 dígitos</p>
           <input

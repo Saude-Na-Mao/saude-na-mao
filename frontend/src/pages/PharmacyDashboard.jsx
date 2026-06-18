@@ -106,7 +106,6 @@ export function PharmacyDashboard() {
       </div>
 
       <div className="dashboard-content">
-        {/* Top Medicines */}
         <section className="top-medicines">
           <h2>💊 Top Medicamentos</h2>
           <div className="medicines-list">
@@ -136,7 +135,6 @@ export function PharmacyDashboard() {
           </div>
         </section>
 
-        {/* Sales Chart */}
         <section className="sales-chart">
           <h2>📈 Vendas por Período</h2>
           <div className="chart-placeholder">
@@ -148,7 +146,6 @@ export function PharmacyDashboard() {
           </div>
         </section>
 
-        {/* Risk Alerts */}
         <section className="risk-alerts full-width">
           <h2>🚨 Alertas de Risco & Fraude</h2>
           {riskAlerts.length === 0 ? (

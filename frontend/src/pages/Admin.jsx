@@ -348,7 +348,6 @@ export default function Admin() {
         {activeTab === 'dashboard' && (
           loading ? <LoadingSpinner /> : stats && (
             <div className="space-y-6">
-              {/* Stat Cards */}
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-4">
                 {[
                   { label: 'Usuários Ativos', value: stats.total_usuarios_ativos, icon: Users, bg: 'bg-blue-50', text: 'text-blue-700' },
@@ -367,7 +366,6 @@ export default function Admin() {
                 ))}
               </div>
 
-              {/* Orders by Status - Bar Chart */}
               {stats.pedidos_por_status && Object.keys(stats.pedidos_por_status).length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
@@ -407,7 +405,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* Recent Orders */}
               {stats.ultimos_pedidos?.length > 0 && (
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
@@ -447,7 +444,6 @@ export default function Admin() {
                 </div>
               )}
 
-              {/* Quick Stats Row */}
               <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="font-semibold mb-2">Receitas Pendentes</h3>
@@ -470,7 +466,6 @@ export default function Admin() {
                 </div>
               </div>
 
-              {/* Conversion Funnel */}
               {stats.pedidos_por_status && (
                 <div className="bg-white rounded-xl shadow-sm p-6">
                   <h3 className="font-semibold text-lg mb-4 flex items-center gap-2">
@@ -843,7 +838,7 @@ export default function Admin() {
           </>
         )}
 
-        {/* ═══ AUDIT LOGS ═══ */}
+        {/* Logs de auditoria */}
         {activeTab === 'audit' && (
           <div className="bg-white rounded-xl shadow-sm">
             <div className="p-6 border-b">
@@ -912,7 +907,6 @@ export default function Admin() {
         )}
       </div>
 
-      {/* User Detail Modal */}
       <Modal isOpen={!!selectedUser} onClose={() => setSelectedUser(null)} title="Detalhes do Usuário" size="lg">
         {selectedUser && (
           <div className="space-y-3 text-sm">

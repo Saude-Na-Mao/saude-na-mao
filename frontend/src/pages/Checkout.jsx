@@ -368,7 +368,7 @@ export default function Checkout() {
         })),
       }
 
-      // Save new address to profile if user typed one manually
+      // Salva o novo endereço no perfil quando digitado manualmente
       if (needsAddress && addressMode === 'new' && address.logradouro) {
         userService.addAddress({
           apelido: savedAddresses.length === 0 ? 'Casa' : 'Checkout',
@@ -564,7 +564,6 @@ export default function Checkout() {
                 <MapPin className="w-5 h-5 text-primary" /> Endereço de Entrega
               </h2>
 
-              {/* Saved addresses selector */}
               {savedAddresses.length > 0 && (
                 <div className="mb-4 space-y-2">
                   {savedAddresses.map((addr) => {
@@ -605,7 +604,6 @@ export default function Checkout() {
                     )
                   })}
 
-                  {/* New address option */}
                   <label
                     onClick={handleSwitchToNew}
                     className={`flex items-center gap-3 p-3 rounded-xl border-2 cursor-pointer transition ${
@@ -629,7 +627,6 @@ export default function Checkout() {
                 </div>
               )}
 
-              {/* Address form (shown when 'new' or when no saved addresses) */}
               {(addressMode === 'new' || savedAddresses.length === 0) && addressMode !== 'loading' && (
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <div className="sm:col-span-2">

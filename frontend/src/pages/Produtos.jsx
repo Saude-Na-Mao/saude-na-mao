@@ -100,7 +100,7 @@ export default function Produtos() {
       const prodsData = Array.isArray(prodsPayload) ? prodsPayload : prodsPayload?.docs ?? []
       setProducts(prodsData)
 
-      // Build pharmacy map from populated id_farmacia in products + pharmacy API
+      // Monta o mapa de farmácias a partir do id_farmacia dos produtos e da API de farmácias
       const pharmsPayload = pharmsRes.data?.data
       const pharmsData = Array.isArray(pharmsPayload)
         ? pharmsPayload
@@ -109,7 +109,7 @@ export default function Produtos() {
       pharmsData.forEach((p) => {
         pharmsMap[p._id] = p
       })
-      // Also extract populated pharmacy data from products
+      // Também extrai os dados de farmácia já populados nos produtos
       prodsData.forEach((p) => {
         if (p.id_farmacia && typeof p.id_farmacia === 'object' && p.id_farmacia._id) {
           pharmsMap[p.id_farmacia._id] = p.id_farmacia
@@ -149,7 +149,7 @@ export default function Produtos() {
     }
   }
 
-  // Helper to get pharmacy ID string from a product
+  // Obtém o ID da farmácia a partir de um produto
   const getPharmacyId = (p) => {
     if (typeof p.id_farmacia === 'object' && p.id_farmacia?._id) return String(p.id_farmacia._id)
     return p.id_farmacia ? String(p.id_farmacia) : ''
@@ -201,7 +201,6 @@ export default function Produtos() {
 
   return (
     <div className="page-shell py-6 sm:py-8">
-      {/* Search Bar */}
       <div className="mb-8">
         <h1 className="section-title mb-2">
           {query ? `Resultados para "${query}"` : 'Todos os Medicamentos'}
@@ -258,7 +257,6 @@ export default function Produtos() {
       </div>
 
       <div className="flex flex-col lg:flex-row gap-8">
-        {/* Sidebar Filters */}
         <aside className="lg:w-64 flex-shrink-0">
           <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-5 lg:sticky lg:top-20 space-y-5">
             <h3 className="font-bold flex items-center gap-2 text-sm">
@@ -359,7 +357,6 @@ export default function Produtos() {
           </div>
         </aside>
 
-        {/* Product Grid */}
         <main className="flex-1">
           {loading ? (
             <LoadingSpinner />
